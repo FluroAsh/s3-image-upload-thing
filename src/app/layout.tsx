@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import '@/css/globals.css'
 import Providers from '@/lib/providers'
-// import { AuthProvider } from "react-oidc-context";
 
 const geistSans = localFont({
   src: '../fonts/GeistVF.woff',
