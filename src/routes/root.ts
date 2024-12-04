@@ -1,29 +1,36 @@
-import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import * as z from "zod";
+// import { createRoute, OpenAPIHono } from '@hono/zod-openapi'
+// import * as z from 'zod'
+import { Hono } from 'hono'
+import {} from 'bcrypt'
+import { decode } from 'jsonwebtoken'
 
-const root = new OpenAPIHono();
+const root = new Hono()
 
-const rootRoute = createRoute({
-  method: "get",
-  path: "/",
-  responses: {
-    200: {
-      description: 'Returns the message "Hello Hono!"',
-      content: {
-        "application/json": {
-          schema: z.object({
-            message: z.string(),
-          }),
-        },
-      },
-    },
-  },
-  tags: ["Root Route"],
-  summary: "The root route which returns a message",
-});
+root.get('/', async (c) => {
+  return c.json({ message: 'Hello, World!' })
+})
 
-root.openapi(rootRoute, (c) => {
-  return c.json({ message: "Hello Hono!" });
-});
+// this logic should be inside a service/model
+root.post('/decode', async (c) => {
+  const { body } = await c.req.json()
+  const { token } = body
+  // console.log({ token })
+  // console.log(c.req)
 
-export default root;
+  console.log(token)
+  if (!token) {
+    return c.json({ message: 'Token is required' }, 400)
+  }
+
+  try {
+    const decoded = decode(token)
+
+    // TODO: Take the decoded token to provision AWS temporary credentials
+    // return the credentials to the client so they can access and manage AWS resources
+    return c.json({ decoded })
+  } catch (error) {
+    return c.json({ message: 'Invalid token' }, 400)
+  }
+})
+
+export default root

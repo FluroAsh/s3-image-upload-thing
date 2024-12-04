@@ -1,20 +1,27 @@
-import { swaggerUI } from "@hono/swagger-ui";
-import { OpenAPIHono } from "@hono/zod-openapi";
+// import { swaggerUI } from '@hono/swagger-ui'
+// import { OpenAPIHono } from '@hono/zod-openapi'
 
-import rootRoute from "./routes/root";
+import rootRoute from './routes/root'
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
-const app = new OpenAPIHono();
+const app = new Hono().basePath('/api')
 
-app.route("/", rootRoute);
+app.use('*', cors())
 
-app.doc("/doc", {
-  openapi: "3.0.0",
-  info: {
-    title: "Hono API",
-    version: "1.0.0",
-  },
-});
+app.route('/', rootRoute)
 
-app.get("/ui", swaggerUI({ url: "doc" }));
+// app.doc("/doc", {
+//   openapi: "3.0.0",
+//   info: {
+//     title: "Hono API",
+//     version: "1.0.0",
+//   },
+// });
 
-export default app;
+// app.get("/ui", swaggerUI({ url: "doc" }));
+
+export default {
+  port: process.env.PORT || 3002,
+  fetch: app.fetch
+}
