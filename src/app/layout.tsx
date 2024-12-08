@@ -1,17 +1,18 @@
 import type { Metadata } from 'next'
-import localFont from 'next/font/local'
+// import localFont from 'next/font/local'
+import { Geist, Geist_Mono } from 'next/font/google'
+
 import '@/css/globals.css'
 import Providers from '@/lib/providers'
 
-const geistSans = localFont({
-  src: '../fonts/GeistVF.woff',
-  variable: '--font-geist-sans',
-  weight: '100 900'
-})
-const geistMono = localFont({
-  src: '../fonts/GeistMonoVF.woff',
+const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
-  weight: '100 900'
+  weight: ['100', '900']
+})
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  weight: ['100', '500', '900']
 })
 
 export const metadata: Metadata = {
@@ -26,8 +27,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Providers>{children}</Providers>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+        <div className="min-h-screen w-screen grid grid-rows-[auto_1fr_auto]">
+          <header className="bg-sky-600 text-center">Placeholder Header</header>
+          <Providers>{children}</Providers>
+          <footer className="bg-red-600 text-center">Placeholder Footer</footer>
+        </div>
       </body>
     </html>
   )

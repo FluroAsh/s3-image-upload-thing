@@ -1,7 +1,3 @@
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="text-2xl font-bold">S3 Image Upload Thing</div>
-    </div>
-  )
+  return <div className="text-2xl font-bold grid h-full place-items-center">S3 Image Upload Thing</div>
 }
