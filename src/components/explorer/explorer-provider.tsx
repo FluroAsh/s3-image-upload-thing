@@ -3,7 +3,7 @@
 import { createContext, useContext, useReducer } from 'react'
 
 type ExplorerState = {
-  activeFile: string
+  activeFile: string | null
 }
 
 type Action = {
@@ -13,19 +13,16 @@ type Action = {
 
 type ExplorerActions = {
   setActiveFile: (name: string) => void
-  resetState: () => void
 }
 
 const initialState = {
-  activeFile: ''
+  activeFile: null
 } satisfies ExplorerState
 
 const reducer = (state: ExplorerState, action: Action): ExplorerState => {
   switch (action.type) {
     case 'SET_ACTIVE_FILE':
       return { ...state, activeFile: action.payload }
-    case 'RESET_STATE':
-      return initialState
     default:
       return state
   }
@@ -37,8 +34,7 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const actions: ExplorerActions = {
-    setActiveFile: (S3FilePath: string) => dispatch({ type: 'SET_ACTIVE_FILE', payload: S3FilePath }),
-    resetState: () => dispatch({ type: 'RESET_STATE', payload: '' })
+    setActiveFile: (S3FilePath: string) => dispatch({ type: 'SET_ACTIVE_FILE', payload: S3FilePath })
     // ... More actions
   }
 

@@ -34,7 +34,7 @@ const depthMap = {
 const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath = '') => (
   <ul>
     {nodes.map((node, idx) => {
-      const { setActiveFile, resetState } = useExplorer().actions
+      const { setActiveFile } = useExplorer().actions
 
       const currentPath = prevPath ? `${prevPath}/${node.name}` : node.name
 
@@ -103,7 +103,7 @@ const ActivePanel = () => {
   return (
     <div className="bg-sky-500">
       <p>ActivePanel</p>
-      <pre className="text-neutral-100 font-bold">{state.activeFile}</pre>
+      <pre className="text-neutral-100 font-bold">{state.activeFile ?? 'No active file'}</pre>
     </div>
   )
 }
