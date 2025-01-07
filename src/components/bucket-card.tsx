@@ -1,3 +1,5 @@
+'use client'
+
 import { FiGlobe, FiCalendar, FiDatabase } from 'react-icons/fi'
 
 const DetailSection: React.FC<{ label: string; text: string; icon: React.ReactNode }> = ({ label, text, icon }) => {
@@ -12,15 +14,19 @@ const DetailSection: React.FC<{ label: string; text: string; icon: React.ReactNo
   )
 }
 
-type S3BucketCardProps = {
+type BucketCardProps = {
   name: string
   region: string
   formattedCreationDate: string
+  handleClick: () => void
 }
 
-export default function S3BucketCard({ name, region, formattedCreationDate }: S3BucketCardProps) {
+export const BucketCard = ({ name, region, formattedCreationDate, handleClick }: BucketCardProps) => {
   return (
-    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-md border border-gray-700 max-h-fit min-w-[250px]">
+    <div
+      className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-md border border-gray-700 max-h-fit min-w-[250px] transition hover:cursor-pointer hover:brightness-125"
+      onClick={handleClick}
+    >
       <div className="pt-4 px-4 leading-tight">
         <h3 className="font-bold text-center text-transparent text-clip bg-clip-text bg-gradient-to-br from-blue-400 to-teal-400">
           {name}
