@@ -1,28 +1,20 @@
-'use client'
-
 import { createContext, useContext, useReducer } from 'react'
-
-type ExplorerState = {
-  activeFile: string | null
-}
-
-type Action = {
-  type: string
-  payload: string
-}
-
-type ExplorerActions = {
-  setActiveFile: (name: string) => void
-}
+import type { Action, ExplorerActions, ExplorerState } from './explorer-provider.types'
 
 const initialState = {
-  activeFile: null
+  searchTerm: '',
+  activeFile: {
+    remoteURL: '',
+    fileName: ''
+  }
 } satisfies ExplorerState
 
 const reducer = (state: ExplorerState, action: Action): ExplorerState => {
   switch (action.type) {
     case 'SET_ACTIVE_FILE':
       return { ...state, activeFile: action.payload }
+    case 'UPDATE_SEARCH_TERM':
+      return { ...state, searchTerm: action.payload }
     default:
       return state
   }
@@ -34,8 +26,8 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
   const [state, dispatch] = useReducer(reducer, initialState)
 
   const actions: ExplorerActions = {
-    setActiveFile: (S3FilePath: string) => dispatch({ type: 'SET_ACTIVE_FILE', payload: S3FilePath })
-    // ... More actions
+    setActiveFile: ({ remoteURL, fileName }) => dispatch({ type: 'SET_ACTIVE_FILE', payload: { remoteURL, fileName } }),
+    updateSearchTerm: (searchTerm: string) => dispatch({ type: 'UPDATE_SEARCH_TERM', payload: searchTerm })
   }
 
   return <ExplorerContext.Provider value={{ state, actions }}>{children}</ExplorerContext.Provider>

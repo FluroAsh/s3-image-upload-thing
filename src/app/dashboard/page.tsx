@@ -1,6 +1,6 @@
 import { BucketList } from '@/components/bucket-list'
 import { getBuckets, getFileTree } from '@/services/s3'
-import { Explorer, ViewPanel, ActivePanel } from '@/components/explorer'
+import { Explorer, ExplorerViewPanel, ExplorerActivePanel } from '@/components/explorer'
 
 export default async function Page({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
   const buckets = await getBuckets()
@@ -23,8 +23,8 @@ export default async function Page({ searchParams }: { searchParams?: { [key: st
       {/* TODO: Finish bucket display component */}
       {/* Pass the tree to the root component */}
       <Explorer bucketName={activeBucket}>
-        <ViewPanel fileTree={initialTree} bucketName={activeBucket} />
-        <ActivePanel />
+        <ExplorerViewPanel fileTree={initialTree} bucketName={activeBucket} />
+        <ExplorerActivePanel />
       </Explorer>
     </div>
   )
