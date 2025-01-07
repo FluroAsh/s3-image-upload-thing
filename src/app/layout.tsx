@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-// import localFont from 'next/font/local'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import '@/css/globals.css'
@@ -7,12 +6,14 @@ import Providers from '@/lib/providers'
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
-  weight: ['100', '900']
+  weight: ['100', '900'],
+  fallback: ['Arial', 'sans-serif']
 })
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  weight: ['100', '500', '900']
+  weight: ['100', '500', '900'],
+  fallback: ['Arial', 'sans-serif']
 })
 
 export const metadata: Metadata = {
