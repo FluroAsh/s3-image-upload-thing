@@ -1,18 +1,50 @@
-import { ListObjectsV2Command, type S3Client } from '@aws-sdk/client-s3'
+import fileSize from 'file-size'
 
-// export async function getBucketSize(s3Instance: S3Client, bucketName: string) {
-//   let size = 0
-//   let continuationToken
+export type S3Object = {
+  Key: string
+  LastModified: Date
+  ETag: string
+  Size: number
+  StorageClass: string // eg: "STANDARD"
+  Owner: {
+    DisplayName: string
+    ID: string
+  }
+}
 
-//   do {
-//     const listObjectsCommand = new ListObjectsV2Command({
-//       Bucket: bucketName,
-//       ContinuationToken: continuationToken
-//     })
-//     const res = await s3Instance.send(listObjectsCommand)
-//     size += res.Contents?.reduce((acc, obj) => acc + (obj.Size || 0), 0) || 0
-//     continuationToken = res.NextContinuationToken
-//   } while (continuationToken)
+type TreeNode = {
+  name: string
+  isFolder: boolean
+  depth: number
+  children: TreeNode[]
+  size?: string
+}
 
-//   return size
-// }
+export const buildTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
+  const root: TreeNode[] = []
+
+  objects.forEach((obj) => {
+    const parts = obj.Key.split('/')
+    let currentLevel = root
+
+    parts.forEach((part, index) => {
+      const existingNode = currentLevel.find((node) => node.name === part)
+
+      if (existingNode) {
+        currentLevel = existingNode.children
+      } else {
+        const newNode: TreeNode = {
+          name: part,
+          isFolder: index < parts.length - 1,
+          depth: index,
+          children: [],
+          size: index === parts.length - 1 ? fileSize(obj.Size).human('si') : undefined
+        }
+        currentLevel.push(newNode)
+        currentLevel = newNode.children
+      }
+    })
+  })
+
+  return root
+}
