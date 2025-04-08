@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils'
 
 import { TreeNode } from '@/services/s3'
 import { isImageFile } from '@/lib/helpers'
-import { Navigation } from './explorer-navigation'
-import { ExplorerProvider, useExplorer } from './explorer-provider'
+import { Navigation } from './navigation'
+import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
 
 const Explorer = ({ bucketName, children }: { bucketName: string | undefined; children: React.ReactNode }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -39,15 +39,7 @@ const depthPaddingMap = {
   5: 'pl-20'
 } as Record<string, string | undefined>
 
-const File = ({
-  node,
-  remoteURL,
-  handleContextMenu
-}: {
-  node: TreeNode
-  remoteURL: string
-  handleContextMenu: (e: React.MouseEvent<HTMLParagraphElement | HTMLDivElement, MouseEvent>) => void
-}) => {
+const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   const {
     actions: { setActiveFile },
     state: { activeFile }
@@ -61,7 +53,6 @@ const File = ({
         depthPaddingMap[node.depth]
       )}
       onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
-      onContextMenu={handleContextMenu}
     >
       📝&nbsp;{node.name}
     </p>
@@ -71,10 +62,6 @@ const File = ({
 const Folder = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: string; currentPath: string }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
-  const handleContextMenu = (e: React.MouseEvent<HTMLParagraphElement | HTMLDivElement, MouseEvent>) => {
-    e.preventDefault()
-  }
-
   return node.isFolder ? (
     <div>
       <div
@@ -83,7 +70,6 @@ const Folder = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName:
           depthPaddingMap[node.depth]
         )}
         onClick={() => setIsExpanded((prevState) => !prevState)}
-        onContextMenu={handleContextMenu}
       >
         {isExpanded ? '📂' : '📁'}&nbsp;{node.name}
       </div>
@@ -97,7 +83,6 @@ const Folder = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName:
     <File
       node={node}
       remoteURL={`https://${bucketName}.s3.${process.env.NEXT_PUBLIC_S3_REGION}.amazonaws.com/${currentPath}`}
-      handleContextMenu={handleContextMenu}
     />
   )
 }
@@ -116,10 +101,10 @@ const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath = '') =>
   </ul>
 )
 
-const ExplorerViewPanel = ({ fileTree, bucketName }: { fileTree: TreeNode[]; bucketName: string }) => {
+const ExplorerViewPanel = ({ fileTree, bucketName }: { fileTree: TreeNode[] | undefined; bucketName: string }) => {
   return (
     <nav className="bg-sky-900 overflow-y-auto overflow-x-hidden">
-      <ul>{renderFileTree(fileTree, bucketName)}</ul>
+      {fileTree ? <ul>{renderFileTree(fileTree, bucketName)}</ul> : <div>No Objects</div>}
     </nav>
   )
 }
@@ -137,6 +122,7 @@ const ExplorerActivePanel = () => {
       <div className="p-4">
         <h3 className="mr-1 font-bold ">Remote URL</h3>
         <a
+          target="_blank"
           className="text-neutral-100 hover:text-green-300 underline hover:no-underline break-all"
           href={remoteURL ?? ''}
         >
