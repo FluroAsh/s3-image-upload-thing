@@ -50,7 +50,7 @@ s3.get('/bucket/:bucketName', async (c) => {
     const res = await s3Instance.send(listCommand)
 
     if (!res.Contents) {
-      return c.json({ error: 'No objects found' }, 404)
+      return c.json({ message: 'No objects found' }, 200)
     }
 
     const fileTree = buildTree({ objects: res.Contents as S3Object[] })
