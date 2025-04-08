@@ -1,31 +1,47 @@
 import { BucketList } from '@/components/bucket-list'
-import { getBuckets, getFileTree } from '@/services/s3'
+import { Bucket, getBuckets, getFileTree } from '@/services/s3'
 import { Explorer, ExplorerViewPanel, ExplorerActivePanel } from '@/components/explorer'
 
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
+
+const qc = new QueryClient()
+
 export default async function Page({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
-  const buckets = await getBuckets()
+  await qc.prefetchQuery({
+    queryKey: ['buckets'],
+    queryFn: getBuckets
+  })
 
-  const activeBucket = ((await searchParams)?.bucket as string | undefined) || buckets[0]?.Name
+  const buckets = qc.getQueryData<Bucket[]>(['buckets'])
+  const activeBucket = (await searchParams)?.bucket || buckets?.[0]?.Name
 
-  // initial fetch should be URL param fetch or first bucket (fallback to first buck if the request fails - no res.ok)
+  if (!activeBucket || !buckets) {
+    return null
+  }
 
-  const initialTree = await getFileTree(activeBucket ?? buckets[0]?.Name)
+  await qc.prefetchQuery({
+    queryKey: ['fileTree', activeBucket],
+    queryFn: () => getFileTree(activeBucket)
+  })
+
+  const dehydratedState = dehydrate(qc)
 
   return (
-    <div className="grid grid-rows-[auto_fill_1fr]">
-      <div className="mb-8 overflow-auto">
-        <p className="text-xl font-bold pb-2">Bucket List</p>
+    <HydrationBoundary state={dehydratedState}>
+      <div className="grid grid-rows-[auto_fill_1fr]">
+        <div className="mb-8 overflow-auto">
+          <p className="text-xl font-bold pb-2">Bucket List</p>
 
-        {/* Cards should scroll when overflowing the container (max-screen-width) */}
-        <BucketList buckets={buckets} />
+          {/* Cards should scroll when overflowing the container (max-screen-width) */}
+          <BucketList buckets={buckets} />
+        </div>
+
+        {/* TODO: Finish bucket display component */}
+        <Explorer bucketName={activeBucket}>
+          <ExplorerViewPanel bucketName={activeBucket} />
+          <ExplorerActivePanel />
+        </Explorer>
       </div>
-
-      {/* TODO: Finish bucket display component */}
-      {/* Pass the tree to the root component */}
-      <Explorer bucketName={activeBucket}>
-        <ExplorerViewPanel fileTree={initialTree} bucketName={activeBucket} />
-        <ExplorerActivePanel />
-      </Explorer>
-    </div>
+    </HydrationBoundary>
   )
 }

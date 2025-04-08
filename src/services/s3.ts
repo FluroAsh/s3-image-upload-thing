@@ -33,7 +33,7 @@ export const getFileTree = async (bucketName: string) => {
   try {
     const { data: { tree } = {} } = await axios.get<{ tree: TreeNode[] }>(`/s3/bucket/${bucketName}`)
 
-    return tree
+    return tree ?? []
   } catch (e) {
     console.log('Caught exception', e)
     return []

@@ -7,6 +7,7 @@ import { TreeNode } from '@/services/s3'
 import { isImageFile } from '@/lib/helpers'
 import { Navigation } from './navigation'
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
+import { useFileTree } from '@/lib/query'
 
 const Explorer = ({ bucketName, children }: { bucketName: string | undefined; children: React.ReactNode }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -101,7 +102,13 @@ const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath = '') =>
   </ul>
 )
 
-const ExplorerViewPanel = ({ fileTree, bucketName }: { fileTree: TreeNode[] | undefined; bucketName: string }) => {
+const ExplorerViewPanel = ({ bucketName }: { bucketName: string }) => {
+  const { data: fileTree, isLoading } = useFileTree(bucketName)
+
+  if (isLoading) {
+    return <p>Loading...</p>
+  }
+
   return (
     <nav className="bg-sky-900 overflow-y-auto overflow-x-hidden">
       {fileTree ? <ul>{renderFileTree(fileTree, bucketName)}</ul> : <div>No Objects</div>}
