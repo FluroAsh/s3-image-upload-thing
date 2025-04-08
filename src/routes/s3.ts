@@ -8,11 +8,12 @@ import { buildTree, S3Object } from '@/services/bucket'
 const s3 = new Hono<WithS3Client>()
 s3.use('*', withS3Client)
 
-s3.get('/buckets', async (c) => {
-  const { s3Instance, region } = c.var
-  const limit = Number(c.req.query('limit')) || 10
+s3.get('/buckets', async (ctx) => {
+  const { s3Instance, region } = ctx.var
+  const limit = Number(ctx.req.query('limit')) || 10
 
   try {
+    // TODO: Add pagination - refer to: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/command/ListBucketsCommand/
     const listCommand = new ListBucketsCommand({
       BucketRegion: region,
       MaxBuckets: limit
@@ -21,10 +22,10 @@ s3.get('/buckets', async (c) => {
     const res = await s3Instance.send(listCommand)
 
     if (!res.Buckets) {
-      return c.json({ error: 'No buckets found' }, 404)
+      return ctx.json({ error: 'No buckets found' }, 404)
     }
 
-    return c.json({ buckets: res.Buckets.map(transformBucket) })
+    return ctx.json({ buckets: res.Buckets.map(transformBucket) })
   } catch (e) {
     if (e instanceof S3ServiceException) {
       console.error(`Error from S3 while listing buckets.  ${e.name}: ${e.message}`)
@@ -39,9 +40,9 @@ s3.get('/buckets', async (c) => {
 // -------------------------------------//
 
 /** Returns a tree of objects that are stored in the bucket */
-s3.get('/bucket/:bucketName', async (c) => {
-  const { s3Instance, region } = c.var
-  const bucketName = c.req.param('bucketName')
+s3.get('/bucket/:bucketName', async (ctx) => {
+  const { s3Instance, region } = ctx.var
+  const bucketName = ctx.req.param('bucketName')
   try {
     const listCommand = new ListObjectsCommand({
       Bucket: bucketName
@@ -50,12 +51,12 @@ s3.get('/bucket/:bucketName', async (c) => {
     const res = await s3Instance.send(listCommand)
 
     if (!res.Contents) {
-      return c.json({ message: 'No objects found' }, 200)
+      return ctx.json({ message: 'No objects found' }, 200)
     }
 
     const fileTree = buildTree({ objects: res.Contents as S3Object[] })
 
-    return c.json({ tree: fileTree })
+    return ctx.json({ tree: fileTree })
   } catch (e) {
     console.error(e)
   }
@@ -78,11 +79,11 @@ s3.delete('/bucket/:bucketName', async (c) => {
 // -------------------------------------//
 // ---- Single "Object" Operations ---- //
 // -------------------------------------//
-s3.get('/bucket/:bucketName/object/:name', async (c) => {
+s3.get('/bucket/:bucketName/object/:name', async (ctx) => {
   // TODO: Get "type" of object (e.g., image, text, etc.)
-  const { s3Instance, region } = c.var
-  const bucketName = c.req.param('bucketName')
-  const objectKey = c.req.param('name')
+  const { s3Instance, region } = ctx.var
+  const bucketName = ctx.req.param('bucketName')
+  const objectKey = ctx.req.param('name')
 
   console.log(`Getting object: ${objectKey} from bucket: ${bucketName}`)
 
@@ -90,7 +91,7 @@ s3.get('/bucket/:bucketName/object/:name', async (c) => {
   // const url = await getImage(bucketName, objectKey)
   // return c.json({ url })
 
-  return c.json({ url: 'https://via.placeholder.com/150' })
+  return ctx.json({ url: 'https://via.placeholder.com/150' })
 })
 s3.delete('/bucket/:bucketName/object/:name', async (c) => {
   // TODO: Delete an object from a bucket
