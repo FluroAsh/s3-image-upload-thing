@@ -1,17 +1,17 @@
 // import { swaggerUI } from '@hono/swagger-ui'
 // import { OpenAPIHono } from '@hono/zod-openapi'
 
-import rootRoute from './routes/root'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import s3 from './routes/s3'
+import s3 from './features/s3/route'
+import image from './features/image/route'
 
 const app = new Hono()
 
 app.use('*', cors())
 
-app.route('/', rootRoute)
 app.route('/s3', s3)
+app.route('/image', image)
 
 // app.doc("/doc", {
 //   openapi: "3.0.0",

@@ -1,6 +1,7 @@
-import { createInstance } from '../lib/s3-client'
 import { createMiddleware } from 'hono/factory'
 import { S3Client } from '@aws-sdk/client-s3'
+
+import { createInstance } from '@/features/s3/service'
 
 export type WithS3Client = {
   Variables: {

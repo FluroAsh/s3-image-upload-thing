@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { ListBucketsCommand, ListObjectsCommand, S3ServiceException } from '@aws-sdk/client-s3'
 
 import withS3Client, { type WithS3Client } from '@/middleware/with-s3-client'
-import { transformBucket } from '@/utils/transformers'
-import { buildTree, S3Object } from '@/services/bucket'
+import { transformBucket } from '@/lib/transformers'
+import { buildTree, type S3Object } from '@/features/s3/service'
 
 const s3 = new Hono<WithS3Client>()
 s3.use('*', withS3Client)
@@ -93,6 +93,7 @@ s3.get('/bucket/:bucketName/object/:name', async (ctx) => {
 
   return ctx.json({ url: 'https://via.placeholder.com/150' })
 })
+
 s3.delete('/bucket/:bucketName/object/:name', async (c) => {
   // TODO: Delete an object from a bucket
 })
