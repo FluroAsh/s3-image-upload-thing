@@ -1,4 +1,4 @@
-import { DEFAULT_FILE_TYPE } from '@/constants'
+import { DEFAULT_FILE_TYPE } from '@/lib/constants/image'
 import type { ImageVariants } from './model'
 import { PutObjectCommand, type PutObjectCommandOutput, S3Client } from '@aws-sdk/client-s3'
 import { type FormatEnum } from 'sharp'

@@ -1,3 +1,4 @@
+import { IMAGE_WIDTH } from '@/lib/constants/image'
 import { readableSize } from '@/lib/helpers'
 import sharp, { type FormatEnum } from 'sharp'
 
@@ -64,9 +65,9 @@ const createVariant = async (width: number, size: ImageVariant, image: Processed
 
 export const createImageVariants = async (sourceImage: ProcessedImage) => {
   const [thumbnail, medium, large] = await Promise.all([
-    createVariant(120, 'thumbnail', sourceImage),
-    createVariant(800, 'medium', sourceImage),
-    createVariant(1440, 'large', sourceImage)
+    createVariant(IMAGE_WIDTH.thumbnail, 'thumbnail', sourceImage),
+    createVariant(IMAGE_WIDTH.medium, 'medium', sourceImage),
+    createVariant(IMAGE_WIDTH.large, 'large', sourceImage)
   ])
 
   return { thumbnail, medium, large }
