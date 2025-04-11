@@ -1,74 +1,53 @@
-import { readableSize } from '@/lib/helpers'
-import sharp, { type FormatEnum } from 'sharp'
+import { DEFAULT_FILE_TYPE } from '@/constants'
+import type { ImageVariants } from './model'
+import { PutObjectCommand, type PutObjectCommandOutput, S3Client } from '@aws-sdk/client-s3'
+import { type FormatEnum } from 'sharp'
+import * as path from 'path'
 
-export type ProcessedImage = {
-  fieldName: string
-  buffer: ArrayBuffer
-  fileName: string
-  fileType: string
-  size: string
-}
+export const uploadImages = async (
+  s3Instance: S3Client,
+  image: ImageVariants,
+  options: {
+    format: keyof FormatEnum
+    bucketName: string
+    region: string
+  }
+) => {
+  const { fileName } = image
+  const { format, bucketName, region } = options
+  const { name: baseName } = path.parse(fileName)
 
-type ImageVariant = 'thumbnail' | 'medium' | 'large'
+  let payload = Object.entries(image.variations)
 
-export type ImageVariants = {
-  fieldName: string
-  fileName: string
-  filetype: string
-  size: string
-  source: ProcessedImage
-  variations: Record<
-    ImageVariant,
+  payload.push([
+    'source',
     {
-      buffer: Buffer
-      size: string
+      buffer: image.source.buffer as Buffer,
+      size: image.source.size
     }
-  >
-}
+  ])
 
-export const processImage = (files: [string, string | File][]) =>
-  Promise.all(
-    files.map(async ([fieldName, file]): Promise<ProcessedImage | undefined> => {
-      if (file instanceof File) {
-        return {
-          fieldName,
-          buffer: await file.arrayBuffer(),
-          fileName: file.name,
-          fileType: file.type,
-          size: readableSize(file.size)
-        }
+  return Promise.all(
+    payload.map(async ([variant, { buffer }]) => {
+      const key = `${baseName}/${variant === 'source' ? '' : `${variant}_`}${baseName}.${format ?? DEFAULT_FILE_TYPE}`
+
+      const command = new PutObjectCommand({
+        Body: buffer,
+        Bucket: bucketName,
+        Key: key,
+        ACL: 'public-read',
+        ContentType: 'image/webp'
+      })
+
+      const s3Response = await s3Instance.send(command)
+
+      return {
+        fileName: image.fileName,
+        variant,
+        ETag: s3Response.ETag,
+        imageURL: `https://${bucketName}.s3.${region}.amazonaws.com/${key}`,
+        attempts: s3Response.$metadata.attempts
       }
     })
   )
-
-const createVariant = async (width: number, size: ImageVariant, image: ProcessedImage) => {
-  const options: {
-    format: keyof FormatEnum
-    quality: number
-  } = {
-    format: 'webp',
-    quality: 90
-  }
-
-  const instance = sharp(image.buffer)
-
-  const variant = instance.clone().resize({
-    width
-    // ...other options
-  })
-
-  const buffer = await variant.toFormat(options.format, { quality: options.quality }).toBuffer()
-  console.log(`| "${image.fileName}" | ${size} successfully processed. |`)
-
-  return { buffer, size: readableSize(buffer.length) }
-}
-
-export const createImageVariants = async (image: ProcessedImage) => {
-  const [thumbnail, medium, large] = await Promise.all([
-    createVariant(120, 'thumbnail', image),
-    createVariant(800, 'medium', image),
-    createVariant(1440, 'large', image)
-  ])
-
-  return { thumbnail, medium, large }
 }

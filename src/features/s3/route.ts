@@ -3,7 +3,7 @@ import { ListBucketsCommand, ListObjectsCommand, S3ServiceException } from '@aws
 
 import withS3Client, { type WithS3Client } from '@/middleware/with-s3-client'
 import { transformBucket } from '@/lib/transformers'
-import { buildTree, type S3Object } from '@/features/s3/service'
+import { buildFileTree, type S3Object } from '@/features/s3/service'
 
 const s3 = new Hono<WithS3Client>()
 s3.use('*', withS3Client)
@@ -54,7 +54,7 @@ s3.get('/bucket/:bucketName', async (ctx) => {
       return ctx.json({ message: 'No objects found' }, 200)
     }
 
-    const fileTree = buildTree({ objects: res.Contents as S3Object[] })
+    const fileTree = buildFileTree({ objects: res.Contents as S3Object[] })
 
     return ctx.json({ tree: fileTree })
   } catch (e) {

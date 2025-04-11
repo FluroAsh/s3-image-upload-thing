@@ -1,6 +1,5 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { S3Client } from '@aws-sdk/client-s3'
 import { readableSize } from '@/lib/helpers'
-import { ImageVariants } from '../image/service'
 
 import * as path from 'path'
 
@@ -33,7 +32,7 @@ type TreeNode = {
   size?: string
 }
 
-export const buildTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
+export const buildFileTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
   const root: TreeNode[] = []
 
   objects.forEach((obj) => {
@@ -60,42 +59,4 @@ export const buildTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
   })
 
   return root
-}
-
-const uploadVariants = async (s3Instance: S3Client, image: ImageVariants, bucketName: string) => {
-  const { fileName } = image
-  const parsedPath = path.parse(fileName)
-  const baseName = parsedPath.name
-  const ext = parsedPath.ext
-
-  console.log('upload!')
-
-  const uploadPromises = await Object.entries(image.variations).map(async ([variation, { buffer }]) => {
-    const key = `${baseName}/${variation}_${baseName}${ext}`
-
-    console.log({
-      // buffer,
-      bucketName,
-      key,
-      ACL: 'public-read',
-      ContentType: 'image/webp'
-    })
-
-    const command = new PutObjectCommand({
-      Body: buffer,
-      Bucket: bucketName,
-      Key: key,
-      ACL: 'public-read',
-      ContentType: 'image/webp'
-    })
-
-    return s3Instance.send(command)
-  })
-
-  console.log('uploadVariants', uploadPromises)
-  return Promise.all(uploadPromises)
-}
-
-export const s3 = {
-  uploadImage: uploadVariants
 }
