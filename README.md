@@ -1,4 +1,3 @@
-# TODO
+# Notes
 
-- [ ] Handle user Authentication via AWS Cognito & JWT
-- [ ]
+- Requires `dcraw` to be installed and available on the host system — this handles raw image formats such as `.NEF`

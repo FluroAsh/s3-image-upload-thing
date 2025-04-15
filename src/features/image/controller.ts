@@ -2,10 +2,16 @@ import { WithS3Client } from '@/middleware/with-s3-client'
 import { Context } from 'hono'
 import { createImageVariants, prepareImages } from './model'
 import { uploadImages } from './service'
+// import { readableSize, writeToDesktop } from '@/lib/helpers'
+// import { processNefWithDarktable } from '@/infrastructure/image/darktable'
+// import sharp from 'sharp'
 
 export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance, region } = ctx.var
+  // TODO: generate AVIF formats and save to bucket as an additional format
+  const { withHDR } = ctx.req.query()
   const { bucketName, ...formData } = await ctx.req.parseBody()
+
   const fileEntries = Object.entries(formData)
 
   if (fileEntries.length === 0) {
@@ -25,8 +31,28 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
           const { fieldName, fileName, fileType: filetype, size } = sourceImage
 
           const variations = await createImageVariants(sourceImage)
-          sourceImage.buffer = await Buffer.from(sourceImage.buffer as ArrayBuffer)
 
+          // TODO: Update source buffer with a compressed version
+          // of the original RAW ".NEF" image
+          // const sourceBuffer = await processNefWithDarktable(
+          //   Buffer.isBuffer(sourceImage.buffer) ? sourceImage.buffer : Buffer.from(sourceImage.buffer)
+          // )
+
+          // const instance = await sharp(sourceBuffer)
+          //   .toFormat('webp', {
+          //     // lossless: true
+          //     quality: 100,
+          //     nearLossless: true,
+          //     smartSubsample: true,
+          //     effort: 6
+          //   })
+          //   .toColorspace('srgb')
+          //   .toBuffer()
+
+          // sourceImage.buffer = instance
+          // sourceImage.size = readableSize(instance.length)
+
+          // TODO: Optionally generate a "HDR" variation if "withHDR" is true
           return { fieldName, fileName, filetype, size, source: sourceImage, variations }
         }
       })
@@ -39,6 +65,7 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
     const uploadResults = await Promise.all(
       processedImages.map(async (image) => {
         if (image) {
+          // return await writeToDesktop(image)
           return await uploadImages(s3Instance, image, {
             format: 'webp',
             bucketName: bucketName as string,

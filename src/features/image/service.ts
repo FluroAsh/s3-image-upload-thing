@@ -1,5 +1,6 @@
 import { DEFAULT_FILE_TYPE } from '@/lib/constants/image'
-import type { ImageVariants } from './model'
+import { type ImageVariants } from './types'
+
 import { PutObjectCommand, type PutObjectCommandOutput, S3Client } from '@aws-sdk/client-s3'
 import { type FormatEnum } from 'sharp'
 import * as path from 'path'
@@ -28,25 +29,29 @@ export const uploadImages = async (
   ])
 
   return Promise.all(
-    payload.map(async ([variant, { buffer }]) => {
-      const key = `${baseName}/${variant === 'source' ? '' : `${variant}_`}${baseName}.${format ?? DEFAULT_FILE_TYPE}`
+    payload.map(async ([variant, { buffer, size }]) => {
+      const config = {
+        fileName: variant === 'source' ? fileName : `${variant}_${baseName}.${format ?? DEFAULT_FILE_TYPE}`
+      }
+
+      const key = `${baseName}/${config.fileName}`
 
       const command = new PutObjectCommand({
         Body: buffer,
         Bucket: bucketName,
         Key: key,
         ACL: 'public-read',
-        ContentType: 'image/webp'
+        ContentType: variant === 'source' ? 'image/x-raw' : 'image/webp'
       })
 
       const s3Response = await s3Instance.send(command)
 
       return {
-        fileName: image.fileName,
         variant,
-        ETag: s3Response.ETag,
+        fileName: image.fileName,
         imageURL: `https://${bucketName}.s3.${region}.amazonaws.com/${key}`,
-        attempts: s3Response.$metadata.attempts
+        size,
+        ETag: s3Response.ETag
       }
     })
   )
