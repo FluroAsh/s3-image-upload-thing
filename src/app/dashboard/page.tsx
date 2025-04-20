@@ -1,4 +1,4 @@
-import { BucketList } from '@/components/bucket-list'
+import { BucketList } from '@/components/bucket/list'
 import { Bucket, getBuckets, getFileTree } from '@/services/s3'
 import { Explorer, ExplorerViewPanel, ExplorerActivePanel } from '@/components/explorer'
 

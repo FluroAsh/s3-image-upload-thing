@@ -4,7 +4,7 @@ import { type Bucket } from '@/services/s3'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/navigation'
 
-import { BucketCard } from './bucket-card'
+import { BucketCard } from './card'
 
 export const BucketList = ({ buckets }: { buckets: Bucket[] }) => {
   const router = useRouter()
