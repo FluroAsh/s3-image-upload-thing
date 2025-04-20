@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <div className="min-h-screen w-screen grid grid-rows-[auto_1fr_auto]">
           <header className="bg-sky-600 text-center">Placeholder Header</header>

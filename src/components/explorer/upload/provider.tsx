@@ -1,0 +1,3 @@
+// TODO: Context Provider
+// - Manage modal state (idle, uploading, done etc).
+// - ...
