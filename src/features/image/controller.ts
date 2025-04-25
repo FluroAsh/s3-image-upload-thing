@@ -9,12 +9,9 @@ import { writeToDesktop } from '@/lib/helpers'
 
 export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance, region } = ctx.var
-  // TODO: generate AVIF formats and save to bucket as an additional format (for HDR content)
-  const { withHDR } = ctx.req.query()
-
   const { bucketName, images } = await ctx.req.parseBody({ all: true })
 
-  const fileEntries = Object.entries(images)
+  const fileEntries = Object.entries(Array.isArray(images) ? images : [images])
 
   if (fileEntries.length === 0) {
     return ctx.json({ error: 'No files uploaded' }, 404)
@@ -32,6 +29,7 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
         if (sourceImage) {
           const { fieldName, fileName, fileType, size } = sourceImage
 
+          // TODO: generate AVIF formats and save to bucket as an additional format (for HDR content)
           const variations = await createImageVariants(sourceImage)
 
           // TODO: Update source buffer with a compressed version
@@ -67,12 +65,12 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
     const uploadResults = await Promise.all(
       processedImages.map(async (image) => {
         if (image) {
-          return await writeToDesktop(image)
-          // return await uploadImages(s3Instance, image, {
-          //   format: 'webp',
-          //   bucketName: bucketName as string,
-          //   region
-          // })
+          // return await writeToDesktop(image)
+          return await uploadImages(s3Instance, image, {
+            format: 'webp',
+            bucketName: bucketName as string,
+            region
+          })
         }
       })
     )

@@ -65,6 +65,8 @@ export const checkPhotoFormat = (image: ProcessedImage) => {
 export const createImageVariants = async (sourceImage: ProcessedImage) => {
   const isPhotoFormat = checkPhotoFormat(sourceImage)
 
+  // TODO: if image is AVIF, it likely has HDR data - we should process this as an additional variant and return it
+
   const [thumbnail, medium, large] = await Promise.all(
     IMAGE_VARIANTS.map((v) => createVariant(IMAGE_WIDTH[v], v, sourceImage, isPhotoFormat))
   )
