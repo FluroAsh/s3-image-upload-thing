@@ -11,7 +11,7 @@ export type ImageVariant = 'thumbnail' | 'medium' | 'large'
 export type ImageVariants = {
   fieldName: string
   fileName: string
-  filetype: string
+  fileType: string
   size: string
   source: ProcessedImage
   variations: Record<

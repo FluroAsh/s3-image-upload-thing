@@ -2,17 +2,19 @@ import { WithS3Client } from '@/middleware/with-s3-client'
 import { Context } from 'hono'
 import { createImageVariants, prepareImages } from './model'
 import { uploadImages } from './service'
+import { writeToDesktop } from '@/lib/helpers'
 // import { readableSize, writeToDesktop } from '@/lib/helpers'
 // import { processNefWithDarktable } from '@/infrastructure/image/darktable'
 // import sharp from 'sharp'
 
 export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance, region } = ctx.var
-  // TODO: generate AVIF formats and save to bucket as an additional format
+  // TODO: generate AVIF formats and save to bucket as an additional format (for HDR content)
   const { withHDR } = ctx.req.query()
-  const { bucketName, ...formData } = await ctx.req.parseBody()
 
-  const fileEntries = Object.entries(formData)
+  const { bucketName, images } = await ctx.req.parseBody({ all: true })
+
+  const fileEntries = Object.entries(images)
 
   if (fileEntries.length === 0) {
     return ctx.json({ error: 'No files uploaded' }, 404)
@@ -28,7 +30,7 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
     const processedImages = await Promise.all(
       images.map(async (sourceImage) => {
         if (sourceImage) {
-          const { fieldName, fileName, fileType: filetype, size } = sourceImage
+          const { fieldName, fileName, fileType, size } = sourceImage
 
           const variations = await createImageVariants(sourceImage)
 
@@ -53,7 +55,7 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
           // sourceImage.size = readableSize(instance.length)
 
           // TODO: Optionally generate a "HDR" variation if "withHDR" is true
-          return { fieldName, fileName, filetype, size, source: sourceImage, variations }
+          return { fieldName, fileName, fileType, size, source: sourceImage, variations }
         }
       })
     )
@@ -65,12 +67,12 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
     const uploadResults = await Promise.all(
       processedImages.map(async (image) => {
         if (image) {
-          // return await writeToDesktop(image)
-          return await uploadImages(s3Instance, image, {
-            format: 'webp',
-            bucketName: bucketName as string,
-            region
-          })
+          return await writeToDesktop(image)
+          // return await uploadImages(s3Instance, image, {
+          //   format: 'webp',
+          //   bucketName: bucketName as string,
+          //   region
+          // })
         }
       })
     )
