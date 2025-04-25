@@ -1,27 +1,25 @@
 import { createContext, type Dispatch, type SetStateAction, useContext, useState } from 'react'
 
-type UploadState = 'idle' | 'uploading' | 'complete'
+export enum EUploadState {
+  Idle = 'Idle',
+  Uploading = 'Uploading',
+  Complete = 'Complete',
+  Error = 'Error'
+}
+
+export type UploadState = keyof typeof EUploadState
 
 type UploadProviderContext = {
-  state: {
-    uploadState: UploadState
-  }
-  actions: {
-    setUploadState: Dispatch<SetStateAction<UploadState>>
-  }
+  uploadState: UploadState
+  setUploadState: Dispatch<SetStateAction<UploadState>>
 }
 
 const UploadContext = createContext<UploadProviderContext | null>(null)
 
 export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
-  const [uploadState, setUploadState] = useState<UploadState>('idle')
+  const [uploadState, setUploadState] = useState<UploadState>(EUploadState.Idle)
 
-  const value = {
-    state: { uploadState },
-    actions: { setUploadState }
-  }
-
-  return <UploadContext.Provider value={value}>{children}</UploadContext.Provider>
+  return <UploadContext.Provider value={{ uploadState, setUploadState }}>{children}</UploadContext.Provider>
 }
 
 export const useUpload = () => {

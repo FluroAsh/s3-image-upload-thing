@@ -1,6 +1,6 @@
 'use server'
 
-import axios from '@/lib/axios'
+import ofetch from '@/lib/ofetch'
 
 export type Bucket = {
   Name: string
@@ -19,23 +19,20 @@ export type TreeNode = {
 
 export const getBuckets = async () => {
   try {
-    const res = await axios.get<{ buckets: Bucket[] }>('/s3/buckets')
-    const { buckets } = res.data ?? {}
-
-    return buckets || [1, 2, 3]
+    const { buckets } = await ofetch<{ buckets: Bucket[] }>('/s3/buckets')
+    return buckets || [1, 2, 3] // TODO: Clean this up
   } catch (e) {
-    console.error(e)
+    console.error('getBuckets exception', e)
     return []
   }
 }
 
 export const getFileTree = async (bucketName: string) => {
   try {
-    const { data: { tree } = {} } = await axios.get<{ tree: TreeNode[] }>(`/s3/bucket/${bucketName}`)
-
-    return tree ?? []
+    const { tree = [] } = await ofetch<{ tree: TreeNode[] }>(`/s3/bucket/${bucketName}`)
+    return tree
   } catch (e) {
-    console.log('Caught exception', e)
+    console.error('getFileTree exception', e)
     return []
   }
 }

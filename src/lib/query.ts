@@ -1,5 +1,6 @@
+import { postUploadImages } from '@/services/images'
 import { Bucket, getBuckets, getFileTree, TreeNode } from '@/services/s3'
-import { useQuery } from '@tanstack/react-query'
+import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 export const useBuckets = () =>
   useQuery<Bucket[]>({
@@ -12,3 +13,17 @@ export const useFileTree = (bucketName: string) =>
     queryKey: ['fileTree', bucketName],
     queryFn: async () => (await getFileTree(bucketName)) ?? []
   })
+
+export const useMutateUpload = (bucketName: string) => {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (formData: FormData) => postUploadImages(formData),
+    onSuccess: () => {
+      qc.invalidateQueries({
+        exact: false,
+        queryKey: ['fileTree', bucketName]
+      })
+    }
+  })
+}

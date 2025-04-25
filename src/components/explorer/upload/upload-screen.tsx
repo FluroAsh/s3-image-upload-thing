@@ -1,40 +1,50 @@
-// import { useParams } from 'next/navigation'
-import { cn } from '@/lib/utils'
 import { useSearchParams } from 'next/navigation'
-import { useRouter } from 'next/router'
 import { useRef, useState } from 'react'
 
+import { useMutateUpload } from '@/lib/query'
+import { cn } from '@/lib/utils'
+import { EUploadState, useUpload } from './provider'
+
+// TODO: modify strucutre to allow for custom properties prior to submission
+// eg: "isRenaming"...
 type ImageItem = {
-  url: string
-  name: string
+  file: File
   isRenaming: boolean
 }
 
 export const UploadScreen = () => {
   const [images, setImages] = useState<File[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  // TODO: Access first bucket as fallback if no param
   const bucketName = useSearchParams().get('bucket')
-  console.log({ bucketName })
 
-  const handleSubmit = () => {
-    console.log('form submitted')
-    // update uploading state (idle -> uploading)
-    // Make POST request (useMutation -> invalidate existing bucket cache)
+  const { setUploadState } = useUpload()
 
-    const formData = new FormData()
+  const { mutateAsync: postUploadImages } = useMutateUpload(bucketName ?? '')
 
-    formData.append('bucketName', bucketName as string)
+  const handleSubmit = async () => {
+    try {
+      if (!bucketName) {
+        throw new Error('Unable to find name of bucket.')
+      }
 
-    images.forEach((file) => {
-      formData.append(file.name.split('.')[0], file)
-    })
+      setUploadState(EUploadState.Uploading)
 
-    console.log('--- FormData Preview ---')
-    for (const pair of formData.entries()) {
-      console.log(`${pair[0]}:`, pair[1])
-      // pair[1] will be the File object if it's a file
+      const formData = new FormData()
+      formData.append('bucketName', bucketName ?? '')
+
+      images.forEach((file) => {
+        formData.append('images', file, file.name)
+      })
+
+      const successMessage = await postUploadImages(formData)
+      console.log(successMessage)
+      setUploadState(EUploadState.Complete)
+      // TODO: set toast or success message
+    } catch (e) {
+      setUploadState(EUploadState.Error)
+      console.warn(e)
     }
-    console.log('------------------------')
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,38 +1,42 @@
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { useUpload } from './provider'
+import { EUploadState, type UploadState, useUpload } from './provider'
 import { UploadScreen } from './upload-screen'
 
-type UploadTriggerProps = {
-  buttonText: string
-}
-
-type UploadState = 'idle' | 'uploading' | 'complete'
-
-const screens = {
-  idle: {
+const ModalScreens = {
+  [EUploadState.Idle]: {
     title: 'Upload',
     component: UploadScreen
   },
-  uploading: {
-    title: 'Uploading... Please wait...',
+  [EUploadState.Uploading]: {
+    title: 'Upload in Progress',
     component: ProcessingScreen
   },
-  complete: {
-    title: 'Images succesfully uploaded!',
+  [EUploadState.Error]: {
+    title: 'Upload Error',
+    component: ErrorScreen
+  },
+  [EUploadState.Complete]: {
+    title: 'Upload Success!',
     component: CompleteScreen
   }
 } satisfies Record<UploadState, { title: string; component: React.FC }>
 
-export const UploadTrigger = ({ buttonText }: UploadTriggerProps) => {
-  const {
-    state: { uploadState }
-  } = useUpload()
+type UploadTriggerProps = { buttonText: string }
 
-  const Screen = screens[uploadState].component
-  const title = screens[uploadState].title
+export const UploadTrigger = ({ buttonText }: UploadTriggerProps) => {
+  const { uploadState, setUploadState } = useUpload()
+
+  const Screen = ModalScreens[uploadState].component
+  const title = ModalScreens[uploadState].title
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setTimeout(() => setUploadState(EUploadState.Idle), 500)
+    }
+  }
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={handleOpenChange}>
       <DialogTrigger className="p-2.5 font-bold bg-yellow-600 rounded-sm">{buttonText}</DialogTrigger>
 
       <DialogContent className="max-w-[700px] w-full">
@@ -56,6 +60,13 @@ function CompleteScreen() {
       <p>Image 1 URL</p>
       <p>Image 2 URL</p>
       <p>Image 3 URL</p>
+    </div>
+  )
+}
+function ErrorScreen() {
+  return (
+    <div>
+      <p>Uh oh, we ran into an error!</p>
     </div>
   )
 }
