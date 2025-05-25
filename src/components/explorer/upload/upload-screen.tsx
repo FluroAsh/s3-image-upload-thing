@@ -34,7 +34,7 @@ export const UploadScreen = () => {
   const { data: buckets } = useBuckets()
   const bucketName = useSearchParams().get('bucket') || buckets?.[0]?.Name
 
-  const { setUploadState } = useUpload()
+  const { setUploadState, setUploadResponse } = useUpload()
   const { mutateAsync: postUploadImages } = useMutateUpload(bucketName ?? '')
 
   const handleSubmit = async () => {
@@ -48,13 +48,14 @@ export const UploadScreen = () => {
       images.forEach((file) => formData.append('images', file, file.name))
       formData.append('destination', folderPathRef.current)
 
-      const successMessage = await postUploadImages(formData)
-      console.log(successMessage)
+      const response = await postUploadImages(formData)
+      setUploadResponse(response)
       setUploadState(EUploadState.Complete)
 
       // TODO: set toast or success message
     } catch (e) {
       setUploadState(EUploadState.Error)
+      setUploadResponse(null)
       console.warn(e)
     }
   }

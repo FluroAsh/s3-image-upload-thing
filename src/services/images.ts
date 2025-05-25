@@ -3,12 +3,12 @@ import * as API from '@/types/api'
 
 export const postUploadImages = async (formData: FormData) => {
   try {
-    const { message } = await ofetch<API.Success>('/image/upload', {
+    const response = await ofetch<API.UploadSuccess>('/image/upload', {
       method: 'POST',
       body: formData
     })
 
-    return message
+    return response
   } catch (e) {
     throw new Error((e as Error).message)
   }

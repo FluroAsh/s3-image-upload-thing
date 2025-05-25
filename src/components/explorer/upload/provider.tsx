@@ -1,3 +1,4 @@
+import { type UploadSuccess } from '@/types/api'
 import { createContext, type Dispatch, type SetStateAction, useContext, useState } from 'react'
 
 export enum EUploadState {
@@ -11,15 +12,28 @@ export type UploadState = keyof typeof EUploadState
 
 type UploadProviderContext = {
   uploadState: UploadState
+  uploadResponse: UploadSuccess | null
   setUploadState: Dispatch<SetStateAction<UploadState>>
+  setUploadResponse: Dispatch<SetStateAction<UploadSuccess | null>>
+  resetState: () => void
 }
 
 const UploadContext = createContext<UploadProviderContext | null>(null)
 
 export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
   const [uploadState, setUploadState] = useState<UploadState>(EUploadState.Idle)
+  const [uploadResponse, setUploadResponse] = useState<any>(null)
 
-  return <UploadContext.Provider value={{ uploadState, setUploadState }}>{children}</UploadContext.Provider>
+  const resetState = () => {
+    setUploadState(EUploadState.Idle)
+    setUploadResponse(null)
+  }
+
+  return (
+    <UploadContext.Provider value={{ uploadState, uploadResponse, setUploadState, setUploadResponse, resetState }}>
+      {children}
+    </UploadContext.Provider>
+  )
 }
 
 export const useUpload = () => {
