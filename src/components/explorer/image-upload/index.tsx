@@ -47,7 +47,7 @@ export const ImageUpload = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newImages = new Array(...e.target.files)
+      const newImages = [...e.target.files]
       setImages((prev) => [...prev, ...newImages])
     }
   }
@@ -66,7 +66,7 @@ export const ImageUpload = ({
   return (
     // overflow-y-auto is a temp fix to scroll when there's overflow
     // TODO: Fix the layout to handle overflow properly...
-    <div>
+    <div className="overflow-y-auto overflow-x-hidden">
       <div id="main-image" className="mb-6 h-[350px]">
         {mainImage ? (
           // eslint-disable-next-line

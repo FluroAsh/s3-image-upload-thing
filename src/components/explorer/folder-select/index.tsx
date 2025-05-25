@@ -1,9 +1,11 @@
+import { type MutableRefObject, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from 'lucide-react'
+
+import { type TreeNode } from '@/services/s3'
 import { useActiveBucket } from '@/hooks/useActiveBucket'
 import { useFileTree } from '@/lib/query'
 
-import { TreeNode } from '@/services/s3'
-import { LucideArrowLeft, LucideFolder, LucideSearch } from 'lucide-react'
-import { MutableRefObject, useEffect, useState } from 'react'
 import { Folder } from './folder'
 
 const findCurrentFolders = (
@@ -20,6 +22,7 @@ const findCurrentFolders = (
 
 export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObject<string> }) => {
   const { bucketName } = useActiveBucket()
+  const qc = useQueryClient()
   const { data: nodes } = useFileTree(bucketName)
 
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -30,6 +33,14 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 
   const currentFolders = findCurrentFolders(activeFolder, nodes, searchQuery)
 
+  const handleBack = () => {
+    setFolderStack((prev) => {
+      const newStack = prev.slice(0, -1)
+      folderPathRef.current = newStack.map((n) => n.name).join('/')
+      return newStack
+    })
+  }
+
   const handleFolderSelect = (node: TreeNode) => {
     setFolderStack((prev) => {
       const newStack = [...prev, node]
@@ -38,17 +49,54 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
     })
   }
 
-  const handleBack = () => setFolderStack((prev) => prev.slice(0, -1))
+  const handleCreateFolder = () => {
+    const newFolderName = prompt('Enter new folder name:')
+    if (newFolderName) {
+      const newFolder: TreeNode = {
+        name: newFolderName,
+        isFolder: true,
+        depth: activeFolder ? activeFolder.depth + 1 : 0,
+        children: []
+      }
+
+      // Add the new folder to the query cache until the next refetch
+      qc.setQueryData(['fileTree', bucketName], (oldData: TreeNode[] | undefined) => {
+        if (!oldData) return [newFolder]
+        // Add the new folder to the current active folder's children
+        const updatedData = [...oldData]
+        const parentFolder = folderStack[folderStack.length - 1]
+
+        if (parentFolder) {
+          const parentIndex = updatedData.findIndex((node) => node.name === parentFolder.name)
+          if (parentIndex !== -1) {
+            updatedData[parentIndex].children.push(newFolder)
+          }
+        }
+        return updatedData
+      })
+
+      setFolderStack((prev) => [...prev, newFolder])
+      folderPathRef.current = [...folderStack.map((n) => n.name), newFolderName].join('/')
+    }
+  }
 
   return (
     // Header
     <div className="mb-4">
-      <div className="mb-4">
+      <div className="mb-4 flex justify-between items-center">
         <div className="text-neutral-300">
           <span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white">
             {currentPath ? currentPath : bucketName}
           </span>
         </div>
+
+        <button
+          className="flex items-center justify-center bg-neutral-500 text-neutral-100 py-2 px-4 rounded-md"
+          onClick={handleCreateFolder}
+        >
+          <LucideFolderPlus className="size-4" />
+          <span className="ml-2 text-sm">New Folder</span>
+        </button>
       </div>
 
       {/* Search/Navigaton */}
@@ -87,7 +135,13 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
             <div>
               <LucideFolder className="size-12 mx-auto mb-4 stroke-neutral-500" />
               {activeFolder ? (
-                <span className="text-neutral-300">No folders found in {activeFolder.name}</span>
+                <span className="text-neutral-300">
+                  Looks like
+                  <span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white mx-2">
+                    {activeFolder.name}
+                  </span>
+                  is empty!
+                </span>
               ) : (
                 <span className="text-neutral-300">No folders found in {bucketName}</span>
               )}
