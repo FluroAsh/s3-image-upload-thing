@@ -9,24 +9,26 @@ export const uploadImages = async (
   s3Instance: S3Client,
   image: ImageVariants,
   options: {
+    destination: string
     format: keyof FormatEnum
     bucketName: string
     region: string
   }
 ) => {
   const { fileName } = image
-  const { format, bucketName, region } = options
+  const { format, bucketName, region, destination } = options
   const { name: baseName } = path.parse(fileName)
 
   let payload = Object.entries(image.variations)
 
-  payload.push([
-    'source',
-    {
-      buffer: image.source.buffer as Buffer,
-      size: image.source.size
-    }
-  ])
+  // NOTE: Commenting this out for now, as source image is not needed (save on costs/space)
+  // payload.push([
+  //   'source',
+  //   {
+  //     buffer: image.source.buffer as Buffer,
+  //     size: image.source.size
+  //   }
+  // ])
 
   return Promise.all(
     payload.map(async ([variant, { buffer, size }]) => {
@@ -34,7 +36,8 @@ export const uploadImages = async (
         fileName: variant === 'source' ? fileName : `${variant}_${baseName}.${format ?? DEFAULT_FILE_TYPE}`
       }
 
-      const key = `${baseName}/${config.fileName}`
+      // const key = `${baseName}/${config.fileName}`
+      const key = destination ? `${destination}/${baseName}/${config.fileName}` : `${baseName}/${config.fileName}`
 
       const command = new PutObjectCommand({
         Body: buffer,
