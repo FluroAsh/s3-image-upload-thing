@@ -1,10 +1,11 @@
 import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { useBuckets, useMutateUpload } from '@/lib/query'
 import { cn } from '@/lib/utils'
 import { EUploadState, useUpload } from './provider'
 import { ImageUpload } from '../image-upload'
+import { FolderSelect } from '../folder-select'
 
 // TODO: modify strucutre to allow for custom properties prior to submission
 // eg: "isRenaming"...
@@ -28,6 +29,7 @@ const SubmitButton = ({ hasImages, onClick }: { hasImages: boolean; onClick: () 
 
 export const UploadScreen = () => {
   const [images, setImages] = useState<File[]>([])
+  const folderPathRef = useRef<string>('')
 
   const { data: buckets } = useBuckets()
   const bucketName = useSearchParams().get('bucket') || buckets?.[0]?.Name
@@ -37,24 +39,19 @@ export const UploadScreen = () => {
 
   const handleSubmit = async () => {
     try {
-      if (!bucketName) {
-        throw new Error('Unable to find name of bucket.')
-      }
+      if (!bucketName) throw new Error('Unable to find name of bucket.')
 
       setUploadState(EUploadState.Uploading)
 
       const formData = new FormData()
       formData.append('bucketName', bucketName ?? '')
-
-      images.forEach((file) => {
-        formData.append('images', file, file.name)
-      })
-
-      // TODO: Append a filepath to handle S3 upload — defaults to root of bucket
+      images.forEach((file) => formData.append('images', file, file.name))
+      formData.append('destination', folderPathRef.current)
 
       const successMessage = await postUploadImages(formData)
       console.log(successMessage)
       setUploadState(EUploadState.Complete)
+
       // TODO: set toast or success message
     } catch (e) {
       setUploadState(EUploadState.Error)
@@ -64,7 +61,7 @@ export const UploadScreen = () => {
 
   return (
     <div className="flex flex-col max-h-[calc(100dvh-200px)]">
-      {/* Folder selection */}
+      <FolderSelect folderPathRef={folderPathRef} />
       <ImageUpload setImages={setImages} mainImage={images[0]} restImages={images.slice(1)} />
 
       <div className="flex justify-center pt-6">
