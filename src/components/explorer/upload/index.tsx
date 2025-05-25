@@ -31,6 +31,7 @@ export const UploadTrigger = ({ buttonText }: UploadTriggerProps) => {
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
+      // Prevents visual flicker before dialog has fully closed
       setTimeout(() => setUploadState(EUploadState.Idle), 500)
     }
   }
