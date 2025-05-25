@@ -8,12 +8,12 @@ const AddImageButton = ({ onClick }: { onClick: () => void }) => (
   <button
     onClick={onClick}
     className={cn(
-      'size-[150px] border-2 border-dashed border-neutral-500 rounded-md hover:bg-neutral-500/10',
+      'h-[120px] border-2 border-dashed border-neutral-500 rounded-md hover:bg-neutral-500/10',
       'transition-colors hover:text-neutral-300 text-neutral-500'
     )}
   >
     <div className="grid place-items-center gap-1">
-      <LucidePlus className="size-8" />
+      <LucidePlus className="size-6" />
       <span className="text-xs">Add Image</span>
     </div>
   </button>
@@ -64,8 +64,10 @@ export const ImageUpload = ({
   }
 
   return (
+    // overflow-y-auto is a temp fix to scroll when there's overflow
+    // TODO: Fix the layout to handle overflow properly...
     <div>
-      <div id="main-image" className="mb-6 h-[450px]">
+      <div id="main-image" className="mb-6 h-[350px]">
         {mainImage ? (
           // eslint-disable-next-line
           <Image image={mainImage} onRemoveClick={() => handleRemoveImage(0)} />

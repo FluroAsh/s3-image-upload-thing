@@ -10,9 +10,11 @@ type ImageGridProps = {
 export const ImageGrid = ({ items, children, handleRemoveImage }: ImageGridProps) => {
   return (
     <div className="">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4 max-h-[250px]">
         {items.map((item, i) => (
-          <div key={`preview-image-${i}`} className="size-[150px]">
+          // Force images to be square and "slightly" break the grid layout if necessary while maintaining
+          // the aspectio ratio and spacing
+          <div key={`preview-image-${i}`} className="h-[120px] aspect-square">
             {/* eslint-disable-next-line */}
             <Image image={item} onRemoveClick={() => handleRemoveImage(i + 1)} />
           </div>
