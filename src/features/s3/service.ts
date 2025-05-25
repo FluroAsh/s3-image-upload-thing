@@ -32,6 +32,7 @@ type TreeNode = {
   size?: string
 }
 
+// TODO: Convert this into a flat list of objects with a parent-child relationship (e.g: w/ parentId property)
 export const buildFileTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
   const root: TreeNode[] = []
 

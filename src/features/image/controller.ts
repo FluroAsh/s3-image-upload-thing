@@ -8,7 +8,7 @@ import { uploadImages } from './service'
 
 export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance, region } = ctx.var
-  const { bucketName, images, destination } = await ctx.req.parseBody({ all: true })
+  const { bucketName, images, destination = '' } = await ctx.req.parseBody({ all: true })
 
   const fileEntries = Object.entries(Array.isArray(images) ? images : [images])
 
@@ -66,8 +66,8 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
         if (image) {
           // return await writeToDesktop(image)
           return await uploadImages(s3Instance, image, {
-            destination: destination as string,
             format: 'webp',
+            destination: destination as string,
             bucketName: bucketName as string,
             region
           })
