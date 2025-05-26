@@ -21,8 +21,8 @@ const findCurrentFolders = (
 }
 
 export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObject<string> }) => {
-  const { bucketName } = useActiveBucket()
   const qc = useQueryClient()
+  const { bucketName } = useActiveBucket()
   const { data: nodes } = useFileTree(bucketName)
 
   const [searchQuery, setSearchQuery] = useState<string>('')
@@ -80,6 +80,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
     }
   }
 
+  // TODO: Clean up this component and create more atomic components
   return (
     // Header
     <div className="mb-4">

@@ -55,7 +55,6 @@ export const ImageUpload = ({
   const handleRemoveImage = (index: number) => {
     const images = [mainImage, ...restImages]
     const newImages = images.filter((_, i) => i !== index)
-    console.log('newImages', newImages)
     setImages(newImages as File[])
   }
 
