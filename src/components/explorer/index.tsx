@@ -1,32 +1,36 @@
 'use client'
 
 import { useState } from 'react'
-import { LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImage, LucideImages } from 'lucide-react'
+import {
+  LucideChevronDown,
+  LucideChevronUp,
+  LucideFile,
+  LucideFolderClosed,
+  LucideFolderOpen,
+  LucideImage,
+  LucideImages
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { type TreeNode } from '@/services/s3'
-import { isImageFile } from '@/lib/helpers'
+import { type ImageVariant } from '@/types/images'
 import { DEPTH_PADDING_MAP } from './constants'
+import { isImageFile } from '@/lib/helpers'
 import { getImageCollection, replaceFileSegment } from './utils'
 
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
 import { Navigation } from './navigation'
 import { ExplorerViewPanel } from './explorer.view-panel'
 import { ExplorerActivePanel } from './explorer.active-panel'
-import { type ImageVariant } from '@/types/images'
 
 const Explorer = ({ bucketName, children }: { bucketName: string | undefined; children: React.ReactNode }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
 
   return (
     <div>
-      <h3>{bucketName}</h3>
       <ExplorerProvider bucketName={bucketName ?? ''}>
         <Navigation />
-        <div
-          id="explorer-container"
-          className="grid grid-cols-[800px_1fr] grid-rows-subgrid min-h-[736px] overflow-hidden"
-        >
+        <div id="explorer-container" className="flex h-[736px] overflow-hidden">
           {children}
         </div>
       </ExplorerProvider>
@@ -94,8 +98,10 @@ const ImageCollection = ({ variants, node, currentPath, size = 'large' }: ImageV
   return (
     <div
       className={cn(
-        'text-sm hover:cursor-pointer select-none transition-colors duration-75',
-        activeFile.fileName === node.name ? 'bg-sky-500' : 'hover:bg-sky-600',
+        'flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5',
+        activeFile.fileName === node.name
+          ? 'bg-sky-800/30 text-neutral-100 border border-sky-800/30'
+          : 'text-neutral-100 hover:bg-slate-700 hover:text-neutral-100',
         DEPTH_PADDING_MAP[node.depth]
       )}
       onClick={() => {
@@ -106,8 +112,11 @@ const ImageCollection = ({ variants, node, currentPath, size = 'large' }: ImageV
         })
       }}
     >
-      <LucideImages className="inline mr-2" />
-      <span className="text-sm">{node.name}</span>
+      <LucideImages className="size-4 mr-2 text-sky-400 flex-shrink-0" />
+      <span className="text-sm truncate">{node.name}</span>
+      <div className="ml-auto">
+        <span className="text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
+      </div>
     </div>
   )
 }
@@ -119,17 +128,24 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   } = useExplorer()
 
   return (
-    <p
+    <div
       className={cn(
-        'text-sm hover:cursor-pointer select-none transition-colors duration-75',
-        activeFile.fileName === node.name ? 'bg-sky-500' : 'hover:bg-sky-600',
+        'flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5',
+        activeFile.fileName === node.name
+          ? 'bg-sky-600 text-neutral-100 border border-sky-500'
+          : 'text-neutral-100 hover:bg-slate-700 hover:text-neutral-100',
         DEPTH_PADDING_MAP[node.depth]
       )}
       onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
     >
-      {isImageFile(node.name) ? <LucideImage className="inline mr-2" /> : <LucideFile className="inline mr-2" />}
-      <span className="text-sm">{node.name}</span>
-    </p>
+      {isImageFile(node.name) ? (
+        <LucideImage className="size-4 mr-2 text-sky-400 flex-shrink-0" />
+      ) : (
+        <LucideFile className="size-4 mr-2 text-slate-400 flex-shrink-0" />
+      )}
+      <span className="text-sm truncate">{node.name}</span>
+      {node.size && <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.size}</span>}
+    </div>
   )
 }
 
@@ -137,24 +153,55 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
 const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: string; currentPath: string }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
+  const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed
+  const ChevronIcon = isExpanded ? LucideChevronDown : LucideChevronUp
+
   return node.isFolder ? (
-    <div>
+    <>
       <div
         className={cn(
-          'flex text-sm hover:cursor-pointer select-none transition-colors duration-75 hover:bg-sky-600',
+          'flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5',
+          'text-neutral-100 hover:bg-slate-700 hover:text-neutral-100',
           DEPTH_PADDING_MAP[node.depth]
         )}
         onClick={() => setIsExpanded((prev) => !prev)}
       >
-        {isExpanded ? <LucideFolderOpen className="inline mr-2" /> : <LucideFolderClosed className="inline mr-2" />}
-        <span className="text-sm">{node.name}</span>
+        <div className="inline-flex mr-2">
+          <LucideChevronUp
+            className={cn(
+              'size-4 mr-2 transition duration-75',
+              isExpanded ? 'stroke-slate-400 rotate-180' : 'rotate-0 stroke-sky-400'
+            )}
+          />
+          <FolderIcon className="size-4 mr-2 stroke-sky-400" />
+        </div>
+        {/* {isExpanded ? (
+          <div className="inline-flex mr-2">
+            <LucideChevronDown className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
+            <LucideFolderOpen className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
+          </div>
+        ) : (
+          <div className="inline-flex mr-2">
+            <LucideChevronUp className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
+            <LucideFolderClosed className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
+          </div>
+        )} */}
+        <span className="text-sm font-medium truncate">{node.name}</span>
+        {node.children && node.children.length > 0 && (
+          <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.children.length}</span>
+        )}
       </div>
 
       {/* Recursively render subtree descendants */}
-      <div className={isExpanded ? 'block' : 'hidden'}>
+      <div
+        className={cn(
+          'transition-opacity duration-75 overflow-hidden',
+          isExpanded ? 'opacity-100 max-h-none' : 'opacity-0 max-h-0'
+        )}
+      >
         {node.children && node.children.length > 0 && renderFileTree(node.children, bucketName, currentPath)}
       </div>
-    </div>
+    </>
   ) : (
     <File
       node={node}

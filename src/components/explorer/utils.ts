@@ -2,6 +2,13 @@ import { type TreeNode } from '@/services/s3'
 
 const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1]
 
+export const getVariantType = (fileName: string): string => {
+  if (fileName.includes('thumbnail_')) return 'Thumbnail'
+  if (fileName.includes('medium_')) return 'Medium'
+  if (fileName.includes('large_')) return 'Large'
+  return ''
+}
+
 export const getImageCollection = (isFolder: boolean, node: TreeNode) => {
   const variants: TreeNode[] = []
   let isImageCollection = false
