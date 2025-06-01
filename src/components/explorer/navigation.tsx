@@ -4,9 +4,7 @@ import { UploadProvider } from './upload/provider'
 
 export const Navigation = () => {
   return (
-    <header
-      className={`bg-slate-800/90 backdrop-blur-sm border-b border-slate-600/50 flex items-center justify-between h-16 p-4 shadow-lg rounded-t-md`}
-    >
+    <header className="bg-slate-800/90 backdrop-blur-sm border-b border-slate-600/50 flex items-center justify-between h-16 p-4 rounded-t-md">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="size-8 rounded-lg bg-sky-500/25 flex items-center justify-center">

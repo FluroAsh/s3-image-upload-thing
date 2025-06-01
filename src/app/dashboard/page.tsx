@@ -30,10 +30,8 @@ export default async function Page({ searchParams }: { searchParams?: { [key: st
     <HydrationBoundary state={dehydratedState}>
       <div className="grid grid-rows-[auto_fill_1fr]">
         <div className="mb-8 overflow-auto">
-          <p className="text-xl font-bold pb-2">Bucket List</p>
-
           {/* Cards should scroll when overflowing the container (max-screen-width) */}
-          <BucketList buckets={buckets} />
+          <BucketList buckets={buckets} bucketName={activeBucket} />
         </div>
 
         {/* TODO: Finish bucket display component */}

@@ -20,6 +20,9 @@ applyTo: '**/*.ts,**/*.tsx'
 - Follow the React hooks rules (no conditional hooks)
 - Keep components small and atomic
 - Use Tailwind for styling, and style attributes where appropriate for more specific styling
+- Don't include constants unless it's specifically requested
+- For icons use the Lucide library
+- Prefer using "stroke" over "text" as a className for icon styling
 
 ## TypeScript Guidelines
 
