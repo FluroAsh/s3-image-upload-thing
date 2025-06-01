@@ -1,8 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { readableSize } from '@/lib/helpers'
 
-import * as path from 'path'
-
 export const createInstance = (region: string) =>
   new S3Client({
     region,
@@ -37,21 +35,31 @@ export const buildFileTree = ({ objects }: { objects: S3Object[] }): TreeNode[] 
   const root: TreeNode[] = []
 
   objects.forEach((obj) => {
-    const parts = obj.Key.split('/')
     let currentLevel = root
 
-    parts.forEach((part, index) => {
+    // Filter out empty parts to handle trailing/double slashes
+    // eg: ["japan-2025", "/"] — as S3 will return a trailing slash for "folder" Objects
+    const parts = obj.Key.split('/').filter((part) => part.trim() !== '')
+
+    parts.forEach((part, idx) => {
       const existingNode = currentLevel.find((node) => node.name === part)
+      const isLastPart = idx === parts.length - 1
 
       if (existingNode) {
         currentLevel = existingNode.children
+
+        if (!isLastPart) {
+          // If we're revisiting a node and it's not the last part, it must be a folder
+          existingNode.isFolder = true
+          existingNode.size = undefined // Remove size from folders
+        }
       } else {
         const newNode: TreeNode = {
           name: part,
-          isFolder: index < parts.length - 1,
-          depth: index,
+          isFolder: !isLastPart, // Initially assume it's a folder if not the last part
+          depth: idx,
           children: [],
-          size: index === parts.length - 1 ? readableSize(obj.Size) : undefined
+          size: isLastPart ? readableSize(obj.Size) : undefined
         }
         currentLevel.push(newNode)
         currentLevel = newNode.children
