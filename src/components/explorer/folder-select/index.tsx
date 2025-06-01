@@ -123,13 +123,11 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
       </div>
 
       {currentFolders.length > 0 ? (
-        <>
-          <div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-neutral-500">
-            {currentFolders.map((folder, i) => (
-              <Folder key={`${folder.name}-${i}`} name={folder.name} onClick={() => handleFolderSelect(folder)} />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-neutral-500">
+          {currentFolders.map((folder, i) => (
+            <Folder key={`${folder.name}-${i}`} name={folder.name} onClick={() => handleFolderSelect(folder)} />
+          ))}
+        </div>
       ) : (
         <div className="mb-4">
           <div className="p-4 rounded-md border border-neutral-500 h-[300px] grid place-items-center">
