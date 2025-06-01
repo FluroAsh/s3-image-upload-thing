@@ -1,5 +1,5 @@
 ---
-applyTo: '**/*.tsx,**/*.ts'
+applyTo: '**/*.ts,**/*.tsx'
 ---
 
 # Project coding standards for TSX

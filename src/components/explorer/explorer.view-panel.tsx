@@ -1,4 +1,4 @@
-import { LucideFolder, LucideLoader2, LucideCloud } from 'lucide-react'
+import { LucideFolder, LucideLoader2, LucideCloud, LucideDatabase } from 'lucide-react'
 
 import { useFileTree } from '@/lib/query'
 import { useExplorer } from '@/lib/providers/explorer-provider'
@@ -27,7 +27,7 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
   <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
     <div className="flex items-center gap-3">
       <div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
-        <LucideCloud className="size-4 text-sky-400" />
+        <LucideDatabase className="size-4 text-sky-400" />
       </div>
       <div>
         <h2 className="text-sm font-semibold text-neutral-100">{bucketName}</h2>

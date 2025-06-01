@@ -1,3 +1,4 @@
+import { LucideUpload } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 import { EUploadState, type UploadState, useUpload } from './provider'
@@ -7,7 +8,7 @@ import { UploadingScreen } from './screen.uploading'
 import { ErrorScreen } from './screen.error'
 import { CompleteScreen } from './screen.complete'
 
-const ModalScreens: Record<UploadState, { title: string; component: React.FC }> = {
+const MODAL_SCREENS: Record<UploadState, { title: string; component: React.FC }> = {
   [EUploadState.Idle]: {
     title: 'Upload',
     component: UploadScreen
@@ -25,27 +26,29 @@ const ModalScreens: Record<UploadState, { title: string; component: React.FC }> 
     component: CompleteScreen
   }
 }
+const DIALOG_CLOSE_DELAY_MS = 500
 
-type UploadTriggerProps = { buttonText: string }
-
-export const UploadTrigger = ({ buttonText }: UploadTriggerProps) => {
+export const UploadTrigger = () => {
   const { uploadState, resetState } = useUpload()
 
-  const Screen = ModalScreens[uploadState].component
-  const title = ModalScreens[uploadState].title
+  const Screen = MODAL_SCREENS[uploadState].component
+  const title = MODAL_SCREENS[uploadState].title
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      setTimeout(resetState, 500) // Prevents visual flicker before dialog has fully closed
+      setTimeout(resetState, DIALOG_CLOSE_DELAY_MS)
     }
   }
 
   return (
     <Dialog onOpenChange={handleOpenChange}>
-      <DialogTrigger className="p-2.5 font-bold bg-yellow-600 rounded-sm">{buttonText}</DialogTrigger>
+      <DialogTrigger className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-neutral-100 font-medium text-sm rounded-lg transition-colors duration-200">
+        <LucideUpload className="size-4" />
+        Upload Files
+      </DialogTrigger>
 
-      <DialogContent className="max-w-[700px] w-full">
-        <DialogTitle>{title}</DialogTitle>
+      <DialogContent className="max-w-[700px] w-full bg-slate-900 border-slate-700">
+        <DialogTitle className="text-xl font-semibold text-neutral-100">{title}</DialogTitle>
         <div className="min-h-[500px]">
           <Screen />
         </div>

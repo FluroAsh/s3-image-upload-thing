@@ -29,7 +29,7 @@ const Explorer = ({ bucketName, children }: { bucketName: string | undefined; ch
     <div>
       <ExplorerProvider bucketName={bucketName ?? ''}>
         <Navigation />
-        <div id="explorer-container" className="flex h-[736px] overflow-hidden">
+        <div id="explorer-container" className="flex h-[736px] rounded-b-md overflow-hidden">
           {children}
         </div>
       </ExplorerProvider>
