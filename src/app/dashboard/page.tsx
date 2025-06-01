@@ -1,6 +1,6 @@
 import { BucketList } from '@/components/bucket/list'
 import { Bucket, getBuckets, getFileTree } from '@/services/s3'
-import { Explorer, ExplorerViewPanel, ExplorerActivePanel } from '@/components/explorer'
+import { Explorer, ViewPanel, ActivePanel } from '@/components/explorer'
 
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
 
@@ -38,8 +38,8 @@ export default async function Page({ searchParams }: { searchParams?: { [key: st
 
         {/* TODO: Finish bucket display component */}
         <Explorer bucketName={activeBucket}>
-          <ExplorerViewPanel bucketName={activeBucket} />
-          <ExplorerActivePanel />
+          <ViewPanel />
+          <ActivePanel />
         </Explorer>
       </div>
     </HydrationBoundary>

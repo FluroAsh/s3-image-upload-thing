@@ -1,15 +1,38 @@
 import { createContext, useContext, useReducer } from 'react'
-import type { Action, ExplorerActions, ExplorerState } from './explorer-provider.types'
 
-const initialState = {
+import { type TreeNode } from '@/services/s3'
+
+export type State = {
+  bucketName: string
+  searchTerm: string
+  activeFile: {
+    remoteURL: string
+    fileName: string
+    variants?: TreeNode[]
+  }
+}
+
+export type Action =
+  | {
+      type: 'SET_ACTIVE_FILE'
+      payload: { remoteURL: string; fileName: string; variants?: TreeNode[] }
+    }
+  | {
+      type: 'UPDATE_SEARCH_TERM'
+      payload: string
+    }
+
+const initialState: State = {
+  bucketName: '',
   searchTerm: '',
   activeFile: {
     remoteURL: '',
-    fileName: ''
+    fileName: '',
+    variants: []
   }
-} satisfies ExplorerState
+}
 
-const reducer = (state: ExplorerState, action: Action): ExplorerState => {
+const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case 'SET_ACTIVE_FILE':
       return { ...state, activeFile: action.payload }
@@ -20,17 +43,39 @@ const reducer = (state: ExplorerState, action: Action): ExplorerState => {
   }
 }
 
-const ExplorerContext = createContext<{ state: ExplorerState; actions: ExplorerActions } | undefined>(undefined)
+const ExplorerContext = createContext<{ state: State; actions: Actions } | undefined>(undefined)
 
-export const ExplorerProvider = ({ children }: { children: React.ReactNode }) => {
+export type Actions = {
+  setActiveFile: ({
+    remoteURL,
+    fileName,
+    variants
+  }: {
+    remoteURL: string
+    fileName: string
+    variants?: TreeNode[]
+  }) => void
+  resetActiveState: () => void
+  updateSearchTerm: (searchTerm: string) => void
+}
+
+export const ExplorerProvider = ({ bucketName, children }: { bucketName: string; children: React.ReactNode }) => {
   const [state, dispatch] = useReducer(reducer, initialState)
 
-  const actions: ExplorerActions = {
-    setActiveFile: ({ remoteURL, fileName }) => dispatch({ type: 'SET_ACTIVE_FILE', payload: { remoteURL, fileName } }),
+  const resetActiveState = () => {
+    dispatch({ type: 'SET_ACTIVE_FILE', payload: { remoteURL: '', fileName: '', variants: [] } })
+  }
+
+  const actions: Actions = {
+    setActiveFile: ({ remoteURL, fileName, variants }) =>
+      dispatch({ type: 'SET_ACTIVE_FILE', payload: { remoteURL, fileName, variants: variants ? variants : [] } }),
+    resetActiveState,
     updateSearchTerm: (searchTerm: string) => dispatch({ type: 'UPDATE_SEARCH_TERM', payload: searchTerm })
   }
 
-  return <ExplorerContext.Provider value={{ state, actions }}>{children}</ExplorerContext.Provider>
+  return (
+    <ExplorerContext.Provider value={{ state: { ...state, bucketName }, actions }}>{children}</ExplorerContext.Provider>
+  )
 }
 
 export const useExplorer = () => {

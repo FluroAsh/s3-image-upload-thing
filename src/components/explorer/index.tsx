@@ -1,13 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImage } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-import { TreeNode } from '@/services/s3'
+import { type TreeNode } from '@/services/s3'
 import { isImageFile } from '@/lib/helpers'
-import { Navigation } from './navigation'
+import { DEPTH_PADDING_MAP } from './constants'
+import { getImageVariants, replaceFileSegment } from './utils'
+
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
-import { useFileTree } from '@/lib/query'
+import { Navigation } from './navigation'
+import { ExplorerViewPanel } from './explorer.view-panel'
+import { ExplorerActivePanel } from './explorer.active-panel'
 
 const Explorer = ({ bucketName, children }: { bucketName: string | undefined; children: React.ReactNode }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -15,7 +20,7 @@ const Explorer = ({ bucketName, children }: { bucketName: string | undefined; ch
   return (
     <div>
       <h3>{bucketName}</h3>
-      <ExplorerProvider>
+      <ExplorerProvider bucketName={bucketName ?? ''}>
         <Navigation />
         <div
           id="explorer-container"
@@ -28,17 +33,71 @@ const Explorer = ({ bucketName, children }: { bucketName: string | undefined; ch
   )
 }
 
-// ---------------------//
-// ---- View Panel ---- //
-// ---------------------//
-const depthPaddingMap = {
-  0: undefined,
-  1: 'pl-4',
-  2: 'pl-8',
-  3: 'pl-12',
-  4: 'pl-16',
-  5: 'pl-20'
-} as Record<string, string | undefined>
+/**
+ * Renders a file tree structure from a given array of TreeNode objects.
+ *
+ * This function recursively maps through the provided nodes to generate a nested unordered list (<ul><li>) representing the file tree.
+ * It handles both folders and image variants, rendering them with the appropriate components.
+ *
+ * @example
+ * // Example usage:
+ * const fileTree = [
+ *   { name: 'folder1', isFolder: true, children: [...] },
+ *   { name: 'image1.jpg', isFolder: false },
+ *   { name: 'image2_large.jpg', isFolder: false },
+ *   { name: 'image2_small.jpg', isFolder: false },
+ * ];
+ *
+ * <Explorer nodes={fileTree} bucketName="my-bucket" />
+ */
+export const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath = '') => (
+  <ul>
+    {nodes.map((node, idx) => {
+      const currentPath = prevPath ? `${prevPath}/${node.name}` : node.name
+
+      const { isImageVariant, variants } = getImageVariants(node.isFolder, node)
+      const props = { node, bucketName, currentPath }
+
+      return <li key={idx}>{isImageVariant ? <ImageVariant variants={variants} {...props} /> : <Node {...props} />}</li>
+    })}
+  </ul>
+)
+
+type ImageVariantProps = {
+  node: TreeNode
+  variants: TreeNode[]
+  currentPath: string
+}
+
+const ImageVariant = ({ variants, node, currentPath }: ImageVariantProps) => {
+  const {
+    actions: { setActiveFile },
+    state: { bucketName, activeFile }
+  } = useExplorer()
+
+  const largeFilename = variants.find((v) => v.name.includes('large'))?.name || ''
+  const relativeLargePath = replaceFileSegment(currentPath, `${node.name}/${largeFilename}`)
+
+  return (
+    <div
+      className={cn(
+        'text-sm hover:cursor-pointer select-none transition-colors duration-75',
+        activeFile.fileName === node.name ? 'bg-sky-500' : 'hover:bg-sky-600',
+        DEPTH_PADDING_MAP[node.depth]
+      )}
+      onClick={() => {
+        setActiveFile({
+          remoteURL: `https://${bucketName}.s3.${process.env.NEXT_PUBLIC_S3_REGION}.amazonaws.com/${relativeLargePath}`,
+          fileName: node.name,
+          variants
+        })
+      }}
+    >
+      <LucideImage className="inline mr-2" />
+      <span className="text-sm">{node.name}</span>
+    </div>
+  )
+}
 
 const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   const {
@@ -51,28 +110,30 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
       className={cn(
         'text-sm hover:cursor-pointer select-none transition-colors duration-75',
         activeFile.fileName === node.name ? 'bg-sky-500' : 'hover:bg-sky-600',
-        depthPaddingMap[node.depth]
+        DEPTH_PADDING_MAP[node.depth]
       )}
       onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
     >
-      📝&nbsp;{node.name}
+      {isImageFile(node.name) ? <LucideImage className="inline mr-2" /> : <LucideFile className="inline mr-2" />}
+      <span className="text-sm">{node.name}</span>
     </p>
   )
 }
 
-const Folder = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: string; currentPath: string }) => {
+const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: string; currentPath: string }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
   return node.isFolder ? (
     <div>
       <div
         className={cn(
-          'text-sm hover:cursor-pointer select-none transition-colors duration-75 hover:bg-sky-600',
-          depthPaddingMap[node.depth]
+          'flex text-sm hover:cursor-pointer select-none transition-colors duration-75 hover:bg-sky-600',
+          DEPTH_PADDING_MAP[node.depth]
         )}
-        onClick={() => setIsExpanded((prevState) => !prevState)}
+        onClick={() => setIsExpanded((prev) => !prev)}
       >
-        {isExpanded ? '📂' : '📁'}&nbsp;{node.name}
+        {isExpanded ? <LucideFolderOpen className="inline mr-2" /> : <LucideFolderClosed className="inline mr-2" />}
+        <span className="text-sm">{node.name}</span>
       </div>
 
       {/* Recursively render subtree descendants */}
@@ -88,65 +149,7 @@ const Folder = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName:
   )
 }
 
-const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath = '') => (
-  <ul>
-    {nodes.map((node, idx) => {
-      const currentPath = prevPath ? `${prevPath}/${node.name}` : node.name
+const ViewPanel = ExplorerViewPanel
+const ActivePanel = ExplorerActivePanel
 
-      return (
-        <li key={idx}>
-          <Folder node={node} bucketName={bucketName} currentPath={currentPath} />
-        </li>
-      )
-    })}
-  </ul>
-)
-
-const ExplorerViewPanel = ({ bucketName }: { bucketName: string }) => {
-  const { data: fileTree, isLoading } = useFileTree(bucketName)
-
-  if (isLoading) {
-    return <p>Loading...</p>
-  }
-
-  return (
-    <nav className="bg-sky-900 overflow-y-auto overflow-x-hidden">
-      {fileTree ? <ul>{renderFileTree(fileTree, bucketName)}</ul> : <div>No Objects</div>}
-    </nav>
-  )
-}
-
-// -----------------------//
-// ---- Active Panel ---- //
-// -----------------------//
-const ExplorerActivePanel = () => {
-  const {
-    activeFile: { remoteURL }
-  } = useExplorer().state
-
-  return (
-    <div className="bg-sky-700 justify-center items-center gap-4">
-      <div className="p-4">
-        <h3 className="mr-1 font-bold ">Remote URL</h3>
-        <a
-          target="_blank"
-          className="text-neutral-100 hover:text-green-300 underline hover:no-underline break-all"
-          href={remoteURL ?? ''}
-        >
-          {remoteURL ?? 'No active file'}
-        </a>
-      </div>
-
-      {isImageFile(remoteURL) && (
-        <div className="mx-auto p-4 text-center">
-          <span className="font-bold">Preview</span>
-          <div id="preview-container" className="size-[600px] overflow-hidden mx-auto">
-            <img src={remoteURL} className="w-full h-full object-scale-down aspect-square bg-slate-600/50" />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export { Explorer, ExplorerViewPanel, ExplorerActivePanel }
+export { Explorer, ViewPanel, ActivePanel }
