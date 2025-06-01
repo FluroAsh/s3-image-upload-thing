@@ -30,36 +30,57 @@ type TreeNode = {
   size?: string
 }
 
-// TODO: Convert this into a flat list of objects with a parent-child relationship (e.g: w/ parentId property)
+/** Natural sort comparison that handles numbers within strings properly */
+const naturalSort = (a: string, b: string): number =>
+  a.localeCompare(b, undefined, {
+    numeric: true, // Checks numbers in a sequence of characters and handles it correctly (ie: 1 < 10)
+    sensitivity: 'base'
+  })
+
+const sortTreeNodes = (nodes: TreeNode[]): TreeNode[] =>
+  nodes
+    .sort((a, b) => {
+      // Folders come before files
+      if (a.isFolder !== b.isFolder) {
+        return a.isFolder ? -1 : 1
+      }
+      // Within same type, sort naturally (handles numbers)
+      return naturalSort(a.name, b.name)
+    })
+    .map((node) => ({
+      ...node,
+      children: sortTreeNodes(node.children)
+    }))
+
 export const buildFileTree = ({ objects }: { objects: S3Object[] }): TreeNode[] => {
   const root: TreeNode[] = []
 
-  objects.forEach((obj) => {
+  // Pre-sort objects by path length to reduce lookups
+  const sortedObjects = objects.sort((a, b) => a.Key.length - b.Key.length)
+
+  sortedObjects.forEach((obj) => {
+    const parts = obj.Key.split('/').filter(Boolean)
     let currentLevel = root
 
-    // Filter out empty parts to handle trailing/double slashes
-    // eg: ["japan-2025", "/"] — as S3 will return a trailing slash for "folder" Objects
-    const parts = obj.Key.split('/').filter((part) => part.trim() !== '')
-
-    parts.forEach((part, idx) => {
+    parts.forEach((part, index) => {
+      // Locate the node which we want to append to or modify if it exists in our current level.
       const existingNode = currentLevel.find((node) => node.name === part)
-      const isLastPart = idx === parts.length - 1
 
       if (existingNode) {
-        currentLevel = existingNode.children
-
-        if (!isLastPart) {
-          // If we're revisiting a node and it's not the last part, it must be a folder
+        // Update existing node
+        if (index < parts.length - 1) {
           existingNode.isFolder = true
-          existingNode.size = undefined // Remove size from folders
+          existingNode.size = undefined
         }
+        currentLevel = existingNode.children
       } else {
+        // Create new node
         const newNode: TreeNode = {
           name: part,
-          isFolder: !isLastPart, // Initially assume it's a folder if not the last part
-          depth: idx,
+          isFolder: index < parts.length - 1,
+          depth: index,
           children: [],
-          size: isLastPart ? readableSize(obj.Size) : undefined
+          size: index === parts.length - 1 ? readableSize(obj.Size) : undefined
         }
         currentLevel.push(newNode)
         currentLevel = newNode.children
@@ -67,5 +88,5 @@ export const buildFileTree = ({ objects }: { objects: S3Object[] }): TreeNode[] 
     })
   })
 
-  return root
+  return sortTreeNodes(root)
 }
