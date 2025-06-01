@@ -1,6 +1,8 @@
+import { LucideFolder, LucideLoader2, LucideCloud } from 'lucide-react'
+
 import { useFileTree } from '@/lib/query'
 import { useExplorer } from '@/lib/providers/explorer-provider'
-import { LucideFolder, LucideLoader2, LucideCloud } from 'lucide-react'
+import { useHasMounted } from '@/hooks/useHasMounted'
 
 import { renderFileTree } from './index'
 
@@ -37,17 +39,22 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 export const ExplorerViewPanel = () => {
   const { bucketName } = useExplorer().state
   const { data: fileTree, isLoading } = useFileTree(bucketName)
+  const hasMounted = useHasMounted()
+
+  // Show loading during SSR/hydration or when actually loading
+  const shouldShowLoading = !hasMounted || isLoading
 
   return (
-    <nav className="flex-1 bg-slate-900 border-r border-slate-700  overflow-y-auto">
+    <nav className="flex-1 bg-slate-900 border-r border-slate-700 overflow-y-auto">
       <BucketHeader bucketName={bucketName} />
 
-      {/* Content */}
       <div>
-        {isLoading ? (
+        {shouldShowLoading ? (
           <LoadingState />
         ) : fileTree ? (
-          <ul className="space-y-1 p-2">{renderFileTree(fileTree, bucketName)}</ul>
+          <ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
+            {renderFileTree(fileTree, bucketName)}
+          </ul>
         ) : (
           <EmptyState />
         )}

@@ -16,7 +16,6 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
     <li className="group">
       <a
         target="_blank"
-        rel="noopener noreferrer"
         className="flex items-center justify-between p-3 rounded-lg bg-sky-800/50 hover:bg-sky-700/70 border border-sky-600/30 hover:border-sky-500/50 transition-all duration-200"
         href={replaceFileSegment(remoteURL, variant.name)}
       >
@@ -62,7 +61,6 @@ export const ExplorerActivePanel = () => {
 
   return (
     <div className="bg-slate-900 border-l border-slate-700 h-full min-w-[450px] flex-1 overflow-y-auto overflow-x-hidden">
-      {/* Header */}
       <div className="border-b border-slate-700 p-6">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-lg bg-sky-500/20 flex items-center justify-center">
@@ -87,7 +85,6 @@ export const ExplorerActivePanel = () => {
         </div>
         <a
           target="_blank"
-          rel="noopener noreferrer"
           className="inline-flex items-center gap-2 p-3 rounded-lg bg-sky-800/30 hover:bg-sky-700/40 border border-sky-600/30 hover:border-sky-500/50 transition-all duration-200 group w-full"
           href={remoteURL}
         >

@@ -56,7 +56,6 @@ export type Actions = {
     variants?: TreeNode[]
   }) => void
   resetActiveState: () => void
-  updateSearchTerm: (searchTerm: string) => void
 }
 
 export const ExplorerProvider = ({ bucketName, children }: { bucketName: string; children: React.ReactNode }) => {
@@ -69,8 +68,7 @@ export const ExplorerProvider = ({ bucketName, children }: { bucketName: string;
   const actions: Actions = {
     setActiveFile: ({ remoteURL, fileName, variants }) =>
       dispatch({ type: 'SET_ACTIVE_FILE', payload: { remoteURL, fileName, variants: variants ? variants : [] } }),
-    resetActiveState,
-    updateSearchTerm: (searchTerm: string) => dispatch({ type: 'UPDATE_SEARCH_TERM', payload: searchTerm })
+    resetActiveState
   }
 
   return (

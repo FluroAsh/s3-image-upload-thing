@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import {
-  LucideChevronDown,
   LucideChevronUp,
   LucideFile,
   LucideFolderClosed,
@@ -154,7 +153,6 @@ const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: s
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
   const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed
-  const ChevronIcon = isExpanded ? LucideChevronDown : LucideChevronUp
 
   return node.isFolder ? (
     <>
@@ -168,24 +166,12 @@ const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: s
       >
         <div className="inline-flex mr-2">
           <LucideChevronUp
-            className={cn(
-              'size-4 mr-2 transition duration-75',
+            className={`size-4 mr-2 transition duration-75', ${
               isExpanded ? 'stroke-slate-400 rotate-180' : 'rotate-0 stroke-sky-400'
-            )}
+            }`}
           />
           <FolderIcon className="size-4 mr-2 stroke-sky-400" />
         </div>
-        {/* {isExpanded ? (
-          <div className="inline-flex mr-2">
-            <LucideChevronDown className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
-            <LucideFolderOpen className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
-          </div>
-        ) : (
-          <div className="inline-flex mr-2">
-            <LucideChevronUp className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
-            <LucideFolderClosed className="size-4 mr-2 stroke-sky-400 flex-shrink-0" />
-          </div>
-        )} */}
         <span className="text-sm font-medium truncate">{node.name}</span>
         {node.children && node.children.length > 0 && (
           <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.children.length}</span>
@@ -194,10 +180,9 @@ const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: s
 
       {/* Recursively render subtree descendants */}
       <div
-        className={cn(
-          'transition-opacity duration-75 overflow-hidden',
+        className={`transition-opacity duration-75 overflow-hidden ${
           isExpanded ? 'opacity-100 max-h-none' : 'opacity-0 max-h-0'
-        )}
+        }`}
       >
         {node.children && node.children.length > 0 && renderFileTree(node.children, bucketName, currentPath)}
       </div>
