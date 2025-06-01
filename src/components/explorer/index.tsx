@@ -1,18 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImage } from 'lucide-react'
+import { LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImage, LucideImages } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { type TreeNode } from '@/services/s3'
 import { isImageFile } from '@/lib/helpers'
 import { DEPTH_PADDING_MAP } from './constants'
-import { getImageVariants, replaceFileSegment } from './utils'
+import { getImageCollection, replaceFileSegment } from './utils'
 
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
 import { Navigation } from './navigation'
 import { ExplorerViewPanel } from './explorer.view-panel'
 import { ExplorerActivePanel } from './explorer.active-panel'
+import { type ImageVariant } from '@/types/images'
 
 const Explorer = ({ bucketName, children }: { bucketName: string | undefined; children: React.ReactNode }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -39,6 +40,8 @@ const Explorer = ({ bucketName, children }: { bucketName: string | undefined; ch
  * This function recursively maps through the provided nodes to generate a nested unordered list (<ul><li>) representing the file tree.
  * It handles both folders and image variants, rendering them with the appropriate components.
  *
+ * Image variants will *not* recursively render their children, as they are intended to display a collection of image variants (e.g., thumbnail, medium, large).
+ *
  * @example
  * // Example usage:
  * const fileTree = [
@@ -55,10 +58,14 @@ export const renderFileTree = (nodes: TreeNode[], bucketName: string, prevPath =
     {nodes.map((node, idx) => {
       const currentPath = prevPath ? `${prevPath}/${node.name}` : node.name
 
-      const { isImageVariant, variants } = getImageVariants(node.isFolder, node)
+      const { isImageCollection, variants } = getImageCollection(node.isFolder, node)
       const props = { node, bucketName, currentPath }
 
-      return <li key={idx}>{isImageVariant ? <ImageVariant variants={variants} {...props} /> : <Node {...props} />}</li>
+      return (
+        <li key={idx}>
+          {isImageCollection ? <ImageCollection size="large" variants={variants} {...props} /> : <Node {...props} />}
+        </li>
+      )
     })}
   </ul>
 )
@@ -67,16 +74,22 @@ type ImageVariantProps = {
   node: TreeNode
   variants: TreeNode[]
   currentPath: string
+  /** Used for setting the desired size for the image preview in the Explorer's "active" panel — by default this is "large". */
+  size?: ImageVariant
 }
 
-const ImageVariant = ({ variants, node, currentPath }: ImageVariantProps) => {
+/**
+ * This component will not recursively render children, it is intended to be used immediately, and display a
+ * collection of image variants for a given node (thumbnail, medium, large, etc.).
+ */
+const ImageCollection = ({ variants, node, currentPath, size = 'large' }: ImageVariantProps) => {
   const {
     actions: { setActiveFile },
     state: { bucketName, activeFile }
   } = useExplorer()
 
-  const largeFilename = variants.find((v) => v.name.includes('large'))?.name || ''
-  const relativeLargePath = replaceFileSegment(currentPath, `${node.name}/${largeFilename}`)
+  const resizedFilename = variants.find((v) => v.name.includes(size))?.name || ''
+  const resizedRelativePath = replaceFileSegment(currentPath, `${node.name}/${resizedFilename}`)
 
   return (
     <div
@@ -87,13 +100,13 @@ const ImageVariant = ({ variants, node, currentPath }: ImageVariantProps) => {
       )}
       onClick={() => {
         setActiveFile({
-          remoteURL: `https://${bucketName}.s3.${process.env.NEXT_PUBLIC_S3_REGION}.amazonaws.com/${relativeLargePath}`,
+          remoteURL: `https://${bucketName}.s3.${process.env.NEXT_PUBLIC_S3_REGION}.amazonaws.com/${resizedRelativePath}`,
           fileName: node.name,
           variants
         })
       }}
     >
-      <LucideImage className="inline mr-2" />
+      <LucideImages className="inline mr-2" />
       <span className="text-sm">{node.name}</span>
     </div>
   )
@@ -120,6 +133,7 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   )
 }
 
+/** Render a single node in the file tree, and recursively render its children if it is a folder. */
 const Node = ({ node, bucketName, currentPath }: { node: TreeNode; bucketName: string; currentPath: string }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false)
 
