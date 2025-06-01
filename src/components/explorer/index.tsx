@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { type TreeNode } from '@/services/s3'
 import { type ImageVariant } from '@/types/images'
 import { DEPTH_PADDING_MAP } from './constants'
-import { isImageFile } from '@/lib/helpers'
+import { getFileIcon, isImageFile } from '@/lib/helpers'
 import { getImageCollection, replaceFileSegment } from './utils'
 
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
@@ -126,6 +126,8 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
     state: { activeFile }
   } = useExplorer()
 
+  const Icon = getFileIcon(node.name) || LucideFile
+
   return (
     <div
       className={cn(
@@ -137,11 +139,7 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
       )}
       onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
     >
-      {isImageFile(node.name) ? (
-        <LucideImage className="size-4 mr-2 text-sky-400 flex-shrink-0" />
-      ) : (
-        <LucideFile className="size-4 mr-2 text-slate-400 flex-shrink-0" />
-      )}
+      <Icon className="size-4 mr-2 stroke-sky-400" />
       <span className="text-sm truncate">{node.name}</span>
       {node.size && <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.size}</span>}
     </div>

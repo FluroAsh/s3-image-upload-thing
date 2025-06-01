@@ -1,7 +1,7 @@
 import { LucideExternalLink, LucideImage, LucideLink, LucideFile } from 'lucide-react'
 
 import { getVariantType, replaceFileSegment } from './utils'
-import { isImageFile } from '@/lib/helpers'
+import { isImageFile, isVideoFile } from '@/lib/helpers'
 import { TreeNode } from '@/services/s3'
 
 import { useExplorer } from '@/lib/providers/explorer-provider'
@@ -59,17 +59,15 @@ export const ExplorerActivePanel = () => {
     )
   }
 
+  const Icon = isImageFile(remoteURL) ? LucideImage : LucideFile
+
   return (
     <div className="bg-slate-800 border-l border-slate-700 size-full min-w-[450px] flex-1 overflow-y-auto overflow-x-hidden">
       {/* Header - Even lighter for hierarchy */}
       <div className="border-b border-slate-600 p-6 bg-slate-750">
         <div className="flex items-center gap-3">
           <div className="size-10 rounded-lg bg-sky-500/20 flex items-center justify-center">
-            {isImageFile(remoteURL) ? (
-              <LucideImage className="size-5 text-sky-400" />
-            ) : (
-              <LucideFile className="size-5 text-sky-400" />
-            )}
+            <Icon className="size-6 stroke-sky-400" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-neutral-100">{fileName || 'Active File'}</h2>
@@ -95,23 +93,34 @@ export const ExplorerActivePanel = () => {
         </a>
       </div>
 
-      {/* Image Preview Section */}
-      {isImageFile(remoteURL) && (
+      {/* Preview Section */}
+      {(isImageFile(remoteURL) || isVideoFile(remoteURL)) && (
         <div className="p-6 border-b border-slate-600">
           <div className="flex items-center gap-2 mb-4">
             <LucideImage className="size-4 text-sky-400" />
-            <h3 className="text-sm font-medium text-neutral-100">Preview</h3>
+            <h3 className="text-sm font-medium text-neutral-100">
+              {isVideoFile(remoteURL) ? 'Video Preview' : 'Preview'}
+            </h3>
           </div>
           <div className="relative rounded-lg overflow-hidden border border-slate-500 bg-slate-700/30">
-            <div
-              className="mx-auto flex items-center justify-center max-w-full"
-              style={{
-                minWidth: `${PREVIEW_CONTAINER_SIZE}px`,
-                height: `${PREVIEW_CONTAINER_SIZE}px`
-              }}
-            >
-              <img src={remoteURL} alt={fileName || 'Preview'} className="max-w-full max-h-full object-contain" />
-            </div>
+            {isImageFile(remoteURL) ? (
+              <div
+                className="mx-auto flex items-center justify-center "
+                style={{ height: `${PREVIEW_CONTAINER_SIZE}px` }}
+              >
+                <img src={remoteURL} alt={fileName || 'Preview'} className="max-w-full max-h-full object-contain" />
+              </div>
+            ) : (
+              <video
+                src={remoteURL}
+                controls
+                className="w-full"
+                style={{ maxHeight: `${PREVIEW_CONTAINER_SIZE}px` }}
+                onLoadedData={(e) => {
+                  e.currentTarget.volume = 0.25
+                }}
+              />
+            )}
           </div>
         </div>
       )}
