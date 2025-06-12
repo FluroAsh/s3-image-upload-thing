@@ -1,4 +1,4 @@
-import { LucideFolder, LucideLoader2, LucideCloud, LucideDatabase } from 'lucide-react'
+import { LucideFolder, LucideLoader2, LucideDatabase } from 'lucide-react'
 
 import { useFileTree } from '@/lib/query'
 import { useExplorer } from '@/lib/providers/explorer-provider'

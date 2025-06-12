@@ -1,21 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  LucideChevronUp,
-  LucideFile,
-  LucideFolderClosed,
-  LucideFolderOpen,
-  LucideImage,
-  LucideImages
-} from 'lucide-react'
+import { LucideChevronUp, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { type TreeNode } from '@/services/s3'
 import { type ImageVariant } from '@/types/images'
-import { DEPTH_PADDING_MAP } from './constants'
-import { getFileIcon, isImageFile } from '@/lib/helpers'
+import { getFileIcon } from '@/lib/helpers'
 import { getImageCollection, replaceFileSegment } from './utils'
+import { DEPTH_PADDING_MAP } from './constants'
 
 import { ExplorerProvider, useExplorer } from '../../lib/providers/explorer-provider'
 import { Navigation } from './navigation'
