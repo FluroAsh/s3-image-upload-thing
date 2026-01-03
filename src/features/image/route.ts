@@ -1,10 +1,10 @@
-import withS3Client, { type WithS3Client } from '@/middleware/with-s3-client'
-import { uploadImagesHandler } from './controller'
-import { Hono } from 'hono'
+import withS3Client, { type WithS3Client } from "@/middleware/with-s3-client";
+import { uploadImagesHandler } from "./controller";
+import { Hono } from "hono";
 
-const image = new Hono<WithS3Client>().use('*', withS3Client)
+const image = new Hono<WithS3Client>();
 
-image.use('*', withS3Client)
-image.post('/upload', uploadImagesHandler)
+image.use("*", withS3Client);
+image.post("/upload", uploadImagesHandler);
 
-export default image
+export default image;

@@ -1,92 +1,142 @@
-import { WithS3Client } from '@/middleware/with-s3-client'
-import { Context } from 'hono'
-import { createImageVariants, prepareImages } from './model'
-import { uploadImages } from './service'
+import { Context } from "hono";
+import { WithS3Client } from "@/middleware/with-s3-client";
+import { createImageVariants, prepareImages } from "./model";
+import { uploadImages } from "./service";
+import type { ImageVariants, ProcessedImage } from "./types";
+
 // import { readableSize, writeToDesktop } from '@/lib/helpers'
 // import { processNefWithDarktable } from '@/infrastructure/image/darktable'
 // import sharp from 'sharp'
 
-export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
-  const { s3Instance, region } = ctx.var
-  const { bucketName, images, destination = '' } = await ctx.req.parseBody({ all: true })
+/**
+ * Validates and extracts request body parameters
+ * @returns Parsed request body with validated parameters
+ */
+const parseUploadRequest = async (ctx: Context<WithS3Client>) => {
+  const body = await ctx.req.parseBody({ all: true });
+  const { bucketName, images, destination = "" } = body;
 
-  const fileEntries = Object.entries(Array.isArray(images) ? images : [images])
-
-  if (fileEntries.length === 0) {
-    return ctx.json({ error: 'No files uploaded' }, 404)
+  if (!bucketName || typeof bucketName !== "string") {
+    throw new Error("Bucket name is required");
   }
 
-  try {
-    const images = await prepareImages(fileEntries)
+  if (!images) {
+    throw new Error("No images provided");
+  }
 
-    if (images.length === 0) {
-      return ctx.json({ error: 'Unable to prepare images' }, 500)
+  const imageArray = Array.isArray(images) ? images : [images];
+  const fileEntries = Object.entries(imageArray);
+
+  return {
+    bucketName,
+    destination: destination as string,
+    fileEntries,
+  };
+};
+
+/**
+ * Processes a single source image by creating all variants
+ * @param sourceImage - The source image to process
+ * @returns Processed image with all variants
+ */
+const processImage = async (
+  sourceImage: ProcessedImage
+): Promise<ImageVariants> => {
+  const { fieldName, fileName, fileType, size } = sourceImage;
+
+  // TODO: generate AVIF formats and save to bucket as an additional format (for HDR content)
+  const variations = await createImageVariants(sourceImage);
+
+  // TODO: Update source buffer with a compressed version of the original RAW ".NEF" image
+  // const sourceBuffer = await processNefWithDarktable(
+  //   Buffer.isBuffer(sourceImage.buffer) ? sourceImage.buffer : Buffer.from(sourceImage.buffer)
+  // )
+  //
+  // const compressedSource = await sharp(sourceBuffer)
+  //   .toFormat('webp', {
+  //     quality: 100,
+  //     nearLossless: true,
+  //     smartSubsample: true,
+  //     effort: 6
+  //   })
+  //   .toColorspace('srgb')
+  //   .toBuffer()
+  //
+  // sourceImage.buffer = compressedSource
+  // sourceImage.size = readableSize(compressedSource.length)
+
+  // TODO: Optionally generate a "HDR" variation if "withHDR" is true
+
+  return {
+    fieldName,
+    fileName,
+    fileType,
+    size,
+    source: sourceImage,
+    variations,
+  };
+};
+
+export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
+  try {
+    const { s3Instance, region } = ctx.var;
+    const { bucketName, destination, fileEntries } = await parseUploadRequest(
+      ctx
+    );
+
+    if (fileEntries.length === 0) {
+      return ctx.json({ error: "No files uploaded" }, 400);
     }
 
+    // Prepare images from uploaded files
+    const preparedImages = await prepareImages(fileEntries);
+
+    if (preparedImages.length === 0) {
+      return ctx.json({ error: "Unable to prepare images" }, 400);
+    }
+
+    // Process all images to create variants
     const processedImages = await Promise.all(
-      images.map(async (sourceImage) => {
-        if (sourceImage) {
-          const { fieldName, fileName, fileType, size } = sourceImage
-
-          // TODO: generate AVIF formats and save to bucket as an additional format (for HDR content)
-          const variations = await createImageVariants(sourceImage)
-
-          // TODO: Update source buffer with a compressed version
-          // of the original RAW ".NEF" image
-          // const sourceBuffer = await processNefWithDarktable(
-          //   Buffer.isBuffer(sourceImage.buffer) ? sourceImage.buffer : Buffer.from(sourceImage.buffer)
-          // )
-
-          // const instance = await sharp(sourceBuffer)
-          //   .toFormat('webp', {
-          //     // lossless: true
-          //     quality: 100,
-          //     nearLossless: true,
-          //     smartSubsample: true,
-          //     effort: 6
-          //   })
-          //   .toColorspace('srgb')
-          //   .toBuffer()
-
-          // sourceImage.buffer = instance
-          // sourceImage.size = readableSize(instance.length)
-
-          // TODO: Optionally generate a "HDR" variation if "withHDR" is true
-          return { fieldName, fileName, fileType, size, source: sourceImage, variations }
-        }
-      })
-    )
+      preparedImages.map((image) => processImage(image))
+    );
 
     if (processedImages.length === 0) {
-      return ctx.json({ error: 'Unable to process images' }, 401)
+      return ctx.json({ error: "Unable to process images" }, 500);
     }
 
+    // Upload all processed images and their variants to S3
     const uploadResults = await Promise.all(
-      processedImages.map(async (image) => {
-        if (image) {
-          // return await writeToDesktop(image)
-          return await uploadImages(s3Instance, image, {
-            format: 'webp',
-            destination: destination as string,
-            bucketName: bucketName as string,
-            region
-          })
-        }
-      })
-    )
+      processedImages.map((image) =>
+        uploadImages(s3Instance, image, {
+          format: "webp",
+          destination,
+          bucketName,
+          region,
+        })
+      )
+    );
+
+    // Flatten the results array (each image returns an array of variant uploads)
+    const flattenedResults = uploadResults.flat();
 
     return ctx.json({
-      message: 'Successful upload.',
-      files: uploadResults
-    })
+      message: "Successfully uploaded images",
+      files: flattenedResults,
+    });
   } catch (error) {
-    console.error('Error in upload process:', error)
+    console.error("Error in upload process:", error);
+
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "An unexpected error occurred during upload";
+
     return ctx.json(
       {
-        error: 'An unexpected error occurred during upload',
-        message: error
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined,
       },
       500
-    )
+    );
   }
-}
+};

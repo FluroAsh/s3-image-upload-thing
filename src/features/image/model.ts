@@ -1,75 +1,161 @@
-import { /*CAMERA_DIMENSIONS,*/ IMAGE_VARIANTS, IMAGE_WIDTH, PHOTO_FORMATS } from '@/lib/constants/image'
-import { readableSize } from '@/lib/helpers'
-import { getFileType } from '@/lib/utils'
-import type { OutputOptions } from './types/sharp'
-import type { ImageVariant, ProcessedImage } from './types'
-import { processNefWithDarktable } from '@/infrastructure/image/darktable'
+import {
+  IMAGE_VARIANTS,
+  IMAGE_WIDTH,
+  PHOTO_FORMATS,
+} from "@/lib/constants/image";
+import { readableSize } from "@/lib/helpers";
+import { getFileType } from "@/lib/utils";
+import { processNefWithDarktable } from "@/infrastructure/image/darktable";
+import sharp, { type FormatEnum } from "sharp";
 
-import sharp, { type FormatEnum } from 'sharp'
+import type { OutputOptions } from "./types/sharp";
+import type { ImageVariant, ProcessedImage } from "./types";
+
 // import exifr from 'exifr'
 
-export const prepareImages = (files: [string, string | File][]) =>
-  Promise.all(
-    files.map(async ([fieldName, file]): Promise<ProcessedImage | undefined> => {
-      if (file instanceof File) {
-        return {
-          fieldName,
-          buffer: await file.arrayBuffer(),
-          fileName: file.name,
-          fileType: file.type,
-          size: readableSize(file.size)
-        }
+/**
+ * Prepares uploaded files for processing by converting them to ProcessedImage format
+ * @param files - Array of tuples containing field name and file
+ * @returns Promise resolving to array of ProcessedImage objects
+ */
+export const prepareImages = async (
+  files: [string, string | File][]
+): Promise<ProcessedImage[]> => {
+  const processedImages = await Promise.all(
+    files.map(async ([fieldName, file]): Promise<ProcessedImage | null> => {
+      if (!(file instanceof File)) {
+        return null;
       }
+
+      return {
+        fieldName,
+        buffer: await file.arrayBuffer(),
+        fileName: file.name,
+        fileType: file.type,
+        size: readableSize(file.size),
+      };
     })
-  )
+  );
 
-const createVariant = async (width: number, size: ImageVariant, source: ProcessedImage, isPhotoFormat: boolean) => {
-  const outputFormat: keyof FormatEnum = 'webp'
-  let outputOptions: OutputOptions = { quality: 85 }
-  let rawBuffer = null
+  return processedImages.filter(
+    (image): image is ProcessedImage => image !== null
+  );
+};
 
-  if (isPhotoFormat) {
-    const inputBuffer = Buffer.isBuffer(source.buffer) ? source.buffer : Buffer.from(source.buffer)
-    // const exifData = await exifr.parse(new Uint8Array(source.buffer))
-    // console.log('exifr', exifData)
+/**
+ * Checks if the image is in a RAW photo format that requires special processing
+ * @param image - The processed image to check
+ * @returns True if the image is in a RAW photo format
+ */
+export const isRawPhotoFormat = (image: ProcessedImage): boolean => {
+  const fileType = getFileType(image.fileName).replace(".", "");
+  return PHOTO_FORMATS.includes(fileType);
+};
 
-    // rawBuffer = await processNefWithDcraw(source.buffer as Buffer)
-    rawBuffer = await processNefWithDarktable(inputBuffer, { format: 'jpeg' })
+/**
+ * Converts buffer to Buffer type if it's an ArrayBuffer
+ * @param buffer - The buffer to convert
+ * @returns Buffer instance
+ */
+const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => {
+  return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+};
 
-    // const { width: cameraWidth } = CAMERA_DIMENSIONS[exifData.model] ?? CAMERA_DIMENSIONS['NIKON Z 50']
-    // width = IMAGE_WIDTH.xLarge
+/**
+ * Processes RAW photo format to JPEG using Darktable
+ * @param buffer - The raw image buffer
+ * @returns Processed buffer
+ */
+const processRawPhoto = async (
+  buffer: ArrayBuffer | Buffer
+): Promise<Buffer> => {
+  const inputBuffer = ensureBuffer(buffer);
+  return await processNefWithDarktable(inputBuffer, { format: "jpeg" });
+};
 
-    outputOptions = {
-      ...outputOptions,
-      quality: size === 'thumbnail' ? 80 : 100,
-      nearLossless: true // Perceptually lossless compression
-    } as any
+/**
+ * Gets output options for Sharp based on variant type and photo format
+ * @param variant - The image variant being created
+ * @param isRawPhoto - Whether the source is a RAW photo format
+ * @returns Sharp output options
+ */
+const getOutputOptions = (
+  variant: ImageVariant,
+  isRawPhoto: boolean
+): OutputOptions => {
+  const baseOptions: OutputOptions = { quality: 85 };
+
+  if (!isRawPhoto) {
+    return baseOptions;
   }
 
-  const instance = sharp(rawBuffer ?? source.buffer)
+  return {
+    ...baseOptions,
+    quality: variant === "thumbnail" ? 80 : 100,
+    nearLossless: true, // Perceptually lossless compression
+  };
+};
 
-  const variant = instance.clone().rotate().resize({ width, withoutEnlargement: true })
+/**
+ * Creates a single image variant at the specified width
+ * @param width - Target width for the variant
+ * @param variant - The variant type (thumbnail, medium, large)
+ * @param source - The source image to process
+ * @param isRawPhoto - Whether the source is a RAW photo format
+ * @returns Object containing the processed buffer and size
+ */
+const createImageVariant = async (
+  width: number,
+  variant: ImageVariant,
+  source: ProcessedImage,
+  isRawPhoto: boolean
+): Promise<{ buffer: Buffer; size: string }> => {
+  const outputFormat: keyof FormatEnum = "webp";
+  const outputOptions = getOutputOptions(variant, isRawPhoto);
 
-  const buffer = await variant.toFormat(outputFormat, outputOptions).toBuffer()
-  const compressedSize = readableSize(buffer.length)
+  // Process RAW photos with Darktable before resizing
+  const sourceBuffer = isRawPhoto
+    ? await processRawPhoto(source.buffer)
+    : source.buffer;
 
-  console.log(`||== ✅ "${source.fileName}" | ${size} | successfully compressed image to ${compressedSize} ==||`)
-  return { buffer, size: compressedSize }
-}
+  // TODO: Extract EXIF data and use camera-specific dimensions
+  // const exifData = await exifr.parse(new Uint8Array(source.buffer))
+  // const { width: cameraWidth } = CAMERA_DIMENSIONS[exifData.model] ?? CAMERA_DIMENSIONS['NIKON Z 50']
 
-export const checkPhotoFormat = (image: ProcessedImage) => {
-  const fileType = getFileType(image.fileName).replace('.', '')
-  return PHOTO_FORMATS.includes(fileType)
-}
+  const processedBuffer = await sharp(sourceBuffer)
+    .rotate() // Auto-rotate based on EXIF orientation
+    .resize({ width, withoutEnlargement: true })
+    .toFormat(outputFormat, outputOptions)
+    .toBuffer();
 
-export const createImageVariants = async (sourceImage: ProcessedImage) => {
-  const isPhotoFormat = checkPhotoFormat(sourceImage)
+  const compressedSize = readableSize(processedBuffer.length);
+
+  console.log(
+    `||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${compressedSize} ==||`
+  );
+
+  return { buffer: processedBuffer, size: compressedSize };
+};
+
+/**
+ * Creates all image variants (thumbnail, medium, large) from a source image
+ * @param sourceImage - The source image to create variants from
+ * @returns Object containing all image variants
+ */
+export const createImageVariants = async (
+  sourceImage: ProcessedImage
+): Promise<Record<ImageVariant, { buffer: Buffer; size: string }>> => {
+  const isRawPhoto = isRawPhotoFormat(sourceImage);
 
   // TODO: if image is AVIF, it likely has HDR data - we should process this as an additional variant and return it
 
-  const [thumbnail, medium, large] = await Promise.all(
-    IMAGE_VARIANTS.map((v) => createVariant(IMAGE_WIDTH[v], v, sourceImage, isPhotoFormat))
-  )
+  const variants = await Promise.all(
+    IMAGE_VARIANTS.map((variant) =>
+      createImageVariant(IMAGE_WIDTH[variant], variant, sourceImage, isRawPhoto)
+    )
+  );
 
-  return { thumbnail, medium, large }
-}
+  const [thumbnail, medium, large] = variants;
+
+  return { thumbnail, medium, large };
+};
