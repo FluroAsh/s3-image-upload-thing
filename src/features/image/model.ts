@@ -2,11 +2,11 @@ import {
   IMAGE_VARIANTS,
   IMAGE_WIDTH,
   IMAGE_QUALITY,
-  PHOTO_FORMATS,
+  // PHOTO_FORMATS,
 } from "@/lib/constants/image";
 import { readableSize } from "@/lib/helpers";
-import { getFileType } from "@/lib/utils";
-import { processNefWithDarktable } from "@/infrastructure/image/darktable";
+// import { getFileType } from "@/lib/utils";
+// import { processNefWithDarktable } from "@/infrastructure/image/darktable";
 import sharp, { type FormatEnum } from "sharp";
 
 import type { OutputOptions } from "./types/sharp";
@@ -48,10 +48,10 @@ export const prepareImages = async (
  * @param image - The processed image to check
  * @returns True if the image is in a RAW photo format
  */
-export const isRawPhotoFormat = (image: ProcessedImage): boolean => {
-  const fileType = getFileType(image.fileName).replace(".", "");
-  return PHOTO_FORMATS.includes(fileType);
-};
+// export const isRawPhotoFormat = (image: ProcessedImage): boolean => {
+//   const fileType = getFileType(image.fileName).replace(".", "");
+//   return PHOTO_FORMATS.includes(fileType);
+// };
 
 /**
  * Converts buffer to Buffer type if it's an ArrayBuffer
@@ -67,12 +67,12 @@ const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => {
  * @param buffer - The raw image buffer
  * @returns Processed buffer
  */
-const processRawPhoto = async (
-  buffer: ArrayBuffer | Buffer
-): Promise<Buffer> => {
-  const inputBuffer = ensureBuffer(buffer);
-  return await processNefWithDarktable(inputBuffer, { format: "jpeg" });
-};
+// const processRawPhoto = async (
+//   buffer: ArrayBuffer | Buffer
+// ): Promise<Buffer> => {
+//   const inputBuffer = ensureBuffer(buffer);
+//   return await processNefWithDarktable(inputBuffer, { format: "jpeg" });
+// };
 
 /**
  * Gets output options for Sharp based on variant type
@@ -85,8 +85,8 @@ const getOutputOptions = (variant: ImageVariant): OutputOptions => {
   // Lossless variant uses near-lossless compression for best quality
   if (variant === "lossless") {
     return {
-      quality: 100,
-      nearLossless: true, // Perceptually lossless, visually identical
+      quality,
+      // nearLossless: true, // Visually identical -- this causes the image to effectively be the same size as the original
       effort: 6, // Maximum compression effort
     };
   }
@@ -119,8 +119,8 @@ const createImageVariant = async (
   width: number | null,
   variant: ImageVariant,
   source: ProcessedImage,
-  sourceMetadata: { width: number; height: number; size: number },
-  isRawPhoto: boolean
+  sourceMetadata: { width: number; height: number; size: number }
+  // isRawPhoto: boolean
 ): Promise<{ buffer: Buffer; size: string } | null> => {
   const outputFormat: keyof FormatEnum = "webp";
   const outputOptions = getOutputOptions(variant);
@@ -146,6 +146,10 @@ const createImageVariant = async (
     sharpInstance = sharpInstance
       .resize({ width: width!, withoutEnlargement: true })
       .toFormat(outputFormat, outputOptions);
+  }
+
+  if (variant === "placeholder") {
+    sharpInstance = sharpInstance.blur(10);
   }
 
   const processedBuffer = await sharpInstance.toBuffer();
@@ -179,7 +183,7 @@ const createImageVariant = async (
 export const createImageVariants = async (
   sourceImage: ProcessedImage
 ): Promise<Record<ImageVariant, { buffer: Buffer; size: string }>> => {
-  const isRawPhoto = isRawPhotoFormat(sourceImage);
+  // const isRawPhoto = isRawPhotoFormat(sourceImage);
   const sourceBuffer = ensureBuffer(sourceImage.buffer);
 
   // Get source image metadata to make intelligent decisions
@@ -205,8 +209,8 @@ export const createImageVariants = async (
         IMAGE_WIDTH[variant],
         variant,
         sourceImage,
-        sourceMetadata,
-        isRawPhoto
+        sourceMetadata
+        // isRawPhoto
       )
     )
   );

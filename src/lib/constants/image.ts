@@ -23,7 +23,7 @@ export const IMAGE_QUALITY = {
   small: 80, // Good quality for mobile
   medium: 85, // Balanced quality/size
   large: 90, // High quality for desktop
-  lossless: 100, // Maximum quality, near-lossless compression
+  lossless: 95, // Maximum quality, near-lossless compression
 } as const;
 
 export const PHOTO_FORMATS = ["NEF"];
