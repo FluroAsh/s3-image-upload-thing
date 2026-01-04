@@ -1,6 +1,7 @@
 import {
   IMAGE_VARIANTS,
   IMAGE_WIDTH,
+  IMAGE_QUALITY,
   PHOTO_FORMATS,
 } from "@/lib/constants/image";
 import { readableSize } from "@/lib/helpers";
@@ -74,61 +75,94 @@ const processRawPhoto = async (
 };
 
 /**
- * Gets output options for Sharp based on variant type and photo format
+ * Gets output options for Sharp based on variant type
  * @param variant - The image variant being created
- * @param isRawPhoto - Whether the source is a RAW photo format
  * @returns Sharp output options
  */
-const getOutputOptions = (
-  variant: ImageVariant,
-  isRawPhoto: boolean
-): OutputOptions => {
-  const baseOptions: OutputOptions = { quality: 85 };
+const getOutputOptions = (variant: ImageVariant): OutputOptions => {
+  const quality = IMAGE_QUALITY[variant];
 
-  if (!isRawPhoto) {
-    return baseOptions;
+  // Lossless variant uses near-lossless compression for best quality
+  if (variant === "lossless") {
+    return {
+      quality: 100,
+      nearLossless: true, // Perceptually lossless, visually identical
+      effort: 6, // Maximum compression effort
+    };
   }
 
+  // Placeholder uses lower quality and faster compression
+  if (variant === "placeholder") {
+    return {
+      quality,
+      effort: 4, // Faster compression for small placeholder
+    };
+  }
+
+  // Standard variants
   return {
-    ...baseOptions,
-    quality: variant === "thumbnail" ? 80 : 100,
-    nearLossless: true, // Perceptually lossless compression
+    quality,
+    effort: 6, // Good balance of size and speed
   };
 };
 
 /**
  * Creates a single image variant at the specified width
- * @param width - Target width for the variant
- * @param variant - The variant type (thumbnail, medium, large)
+ * @param width - Target width for the variant (null for lossless = no resize)
+ * @param variant - The variant type (placeholder, small, medium, large, lossless)
  * @param source - The source image to process
+ * @param sourceMetadata - Metadata about the source image (dimensions, size)
  * @param isRawPhoto - Whether the source is a RAW photo format
- * @returns Object containing the processed buffer and size
+ * @returns Object containing the processed buffer and size, or null if variant should be skipped
  */
 const createImageVariant = async (
-  width: number,
+  width: number | null,
   variant: ImageVariant,
   source: ProcessedImage,
+  sourceMetadata: { width: number; height: number; size: number },
   isRawPhoto: boolean
-): Promise<{ buffer: Buffer; size: string }> => {
+): Promise<{ buffer: Buffer; size: string } | null> => {
   const outputFormat: keyof FormatEnum = "webp";
-  const outputOptions = getOutputOptions(variant, isRawPhoto);
+  const outputOptions = getOutputOptions(variant);
 
-  // Process RAW photos with Darktable before resizing
-  const sourceBuffer = isRawPhoto
-    ? await processRawPhoto(source.buffer)
-    : source.buffer;
+  // Process RAW photos with Darktable before resizing (skip for now as per requirements)
+  const sourceBuffer = ensureBuffer(source.buffer);
 
-  // TODO: Extract EXIF data and use camera-specific dimensions
-  // const exifData = await exifr.parse(new Uint8Array(source.buffer))
-  // const { width: cameraWidth } = CAMERA_DIMENSIONS[exifData.model] ?? CAMERA_DIMENSIONS['NIKON Z 50']
+  // Skip variants that would upscale the image
+  if (width !== null && width > sourceMetadata.width) {
+    console.log(
+      `||== ⏭️  "${source.fileName}" | ${variant} | skipped (would upscale from ${sourceMetadata.width}px to ${width}px) ==||`
+    );
+    return null;
+  }
 
-  const processedBuffer = await sharp(sourceBuffer)
-    .rotate() // Auto-rotate based on EXIF orientation
-    .resize({ width, withoutEnlargement: true })
-    .toFormat(outputFormat, outputOptions)
-    .toBuffer();
+  let sharpInstance = sharp(sourceBuffer).rotate(); // Auto-rotate based on EXIF orientation
 
+  // Lossless variant: No resize, preserve original dimensions
+  if (variant === "lossless") {
+    sharpInstance = sharpInstance.toFormat(outputFormat, outputOptions);
+  } else {
+    // All other variants: Resize to target width
+    sharpInstance = sharpInstance
+      .resize({ width: width!, withoutEnlargement: true })
+      .toFormat(outputFormat, outputOptions);
+  }
+
+  const processedBuffer = await sharpInstance.toBuffer();
   const compressedSize = readableSize(processedBuffer.length);
+
+  // If the processed buffer is larger than source, use the smaller one for lossless
+  if (variant === "lossless" && processedBuffer.length > sourceMetadata.size) {
+    console.log(
+      `||== ⚠️  "${
+        source.fileName
+      }" | ${variant} | processed size (${compressedSize}) larger than source (${readableSize(
+        sourceMetadata.size
+      )}), using source ==||`
+    );
+    // Return the original buffer if it's smaller
+    return { buffer: sourceBuffer, size: readableSize(sourceMetadata.size) };
+  }
 
   console.log(
     `||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${compressedSize} ==||`
@@ -138,24 +172,69 @@ const createImageVariant = async (
 };
 
 /**
- * Creates all image variants (thumbnail, medium, large) from a source image
+ * Creates all image variants (placeholder, small, medium, large, lossless) from a source image
  * @param sourceImage - The source image to create variants from
- * @returns Object containing all image variants
+ * @returns Object containing all image variants (only those that make sense to generate)
  */
 export const createImageVariants = async (
   sourceImage: ProcessedImage
 ): Promise<Record<ImageVariant, { buffer: Buffer; size: string }>> => {
   const isRawPhoto = isRawPhotoFormat(sourceImage);
+  const sourceBuffer = ensureBuffer(sourceImage.buffer);
+
+  // Get source image metadata to make intelligent decisions
+  const metadata = await sharp(sourceBuffer).metadata();
+  const sourceMetadata = {
+    width: metadata.width || 0,
+    height: metadata.height || 0,
+    size: sourceBuffer.length,
+  };
+
+  console.log(
+    `||== 📊 "${sourceImage.fileName}" | Source: ${sourceMetadata.width}x${
+      sourceMetadata.height
+    } (${readableSize(sourceMetadata.size)}) ==||`
+  );
 
   // TODO: if image is AVIF, it likely has HDR data - we should process this as an additional variant and return it
 
-  const variants = await Promise.all(
+  // Generate all 5 variants in parallel
+  const variantResults = await Promise.all(
     IMAGE_VARIANTS.map((variant) =>
-      createImageVariant(IMAGE_WIDTH[variant], variant, sourceImage, isRawPhoto)
+      createImageVariant(
+        IMAGE_WIDTH[variant],
+        variant,
+        sourceImage,
+        sourceMetadata,
+        isRawPhoto
+      )
     )
   );
 
-  const [thumbnail, medium, large] = variants;
+  // Build result object, using the largest available variant as fallback for skipped ones
+  const result: Record<string, { buffer: Buffer; size: string }> = {};
+  let largestVariant: { buffer: Buffer; size: string } | null = null;
 
-  return { thumbnail, medium, large };
+  IMAGE_VARIANTS.forEach((variant, index) => {
+    const variantResult = variantResults[index];
+
+    if (variantResult) {
+      result[variant] = variantResult;
+      // Track the largest variant for fallback
+      if (
+        !largestVariant ||
+        variantResult.buffer.length > largestVariant.buffer.length
+      ) {
+        largestVariant = variantResult;
+      }
+    } else if (largestVariant) {
+      // Use largest available variant as fallback
+      console.log(
+        `||== 🔄 "${sourceImage.fileName}" | ${variant} | using fallback (largest available variant) ==||`
+      );
+      result[variant] = largestVariant;
+    }
+  });
+
+  return result as Record<ImageVariant, { buffer: Buffer; size: string }>;
 };
