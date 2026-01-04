@@ -1,1 +1,1 @@
-export type ImageVariant = 'thumbnail' | 'medium' | 'large'
+export type ImageVariant = 'placeholder' | 'small' | 'medium' | 'large' | 'lossless'

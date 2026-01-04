@@ -25,9 +25,11 @@ const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
 }
 
 const variantSizeLabel: Record<Variant, string> = {
-  thumbnail: 'thmb',
+  placeholder: 'plch',
+  small: 'sm',
   medium: 'md',
-  large: 'lg'
+  large: 'lg',
+  lossless: 'loss'
 }
 
 const FileItem = ({ file }: { file: FileVariant }) => {
@@ -51,15 +53,26 @@ const FileItem = ({ file }: { file: FileVariant }) => {
 
 export const CompleteScreen = () => {
   const { uploadResponse } = useUpload()
-  const files = uploadResponse?.files
-  const groupCount = files?.length || 0
-  const imageCount = files?.reduce((count, group) => count + group.length, 0) || 0
+  const files = uploadResponse?.files || []
+  
+  // Group files by fileName (each image has multiple variants)
+  const groupedFiles = files.reduce((acc, file) => {
+    if (!acc[file.fileName]) {
+      acc[file.fileName] = []
+    }
+    acc[file.fileName].push(file)
+    return acc
+  }, {} as Record<string, FileVariant[]>)
+  
+  const groups = Object.values(groupedFiles)
+  const groupCount = groups.length
+  const imageCount = files.length
 
   return (
     <div>
       <Header imageCount={imageCount} groupCount={groupCount} />
       <div className="max-h-[700px] overflow-y-auto space-y-3 pr-2">
-        <FileGroup groups={files || []} />
+        <FileGroup groups={groups} />
       </div>
     </div>
   )

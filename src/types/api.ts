@@ -1,4 +1,4 @@
-export type Variant = 'thumbnail' | 'medium' | 'large'
+export type Variant = 'placeholder' | 'small' | 'medium' | 'large' | 'lossless'
 
 export type FileVariant = {
   variant: Variant
@@ -10,4 +10,4 @@ export type FileVariant = {
 
 export type FileVariants = FileVariant[]
 
-export type UploadSuccess = { message: string; files: FileVariants[] }
+export type UploadSuccess = { message: string; files: FileVariant[] }
