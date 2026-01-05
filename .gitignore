@@ -12,7 +12,7 @@ node_modules/
 /coverage
 
 # Next.js (client)
-/.next/
+.next
 /out/
 
 # Production builds
@@ -52,3 +52,8 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# Cursor & Local Development
+.cursor/
+.documentation/
+.features/
