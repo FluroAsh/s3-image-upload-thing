@@ -4,7 +4,7 @@ services:
   s3-upload-client:
     build:
       context: ./client
-      dockerfile: Dockerfile
+      dockerfile: ../.docker/client.Dockerfile
     container_name: s3-upload-client
     restart: unless-stopped
     environment:
@@ -20,7 +20,7 @@ services:
   s3-upload-server:
     build:
       context: ./server
-      dockerfile: Dockerfile
+      dockerfile: ../.docker/server.Dockerfile
     container_name: s3-upload-server
     restart: unless-stopped
     env_file:
