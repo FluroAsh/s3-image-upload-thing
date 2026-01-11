@@ -1,7 +1,8 @@
-# Stage 1: Dependencies
+
 FROM oven/bun:1 AS base
 WORKDIR /app
 
+# Stage 1: Dependencies
 FROM base AS deps
 RUN mkdir -p /temp/dev
 COPY package.json bun.lockb* ./

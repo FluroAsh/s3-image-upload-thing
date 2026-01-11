@@ -8,6 +8,8 @@ import { bodyLimit } from "hono/body-limit";
 import s3 from "./features/s3/route";
 import image from "./features/image/route";
 
+const port = process.env.PORT || 3002;
+
 const app = new Hono();
 const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
 
@@ -45,10 +47,10 @@ app.get("/health", (c) =>
 
 // app.get("/ui", swaggerUI({ url: "doc" }));
 
-console.log("Server started on port 3002");
+console.log(`Server started on port ${port}`);
 
 export default {
-  port: process.env.PORT || 3002,
+  port,
   fetch: app.fetch,
   maxRequestBodySize: maxSize,
 };
