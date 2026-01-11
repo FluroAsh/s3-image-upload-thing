@@ -1,42 +1,32 @@
-version: "3.8"
+name: s3-image-upload-thing
 
 services:
   s3-upload-client:
-    build:
-      context: ./client
-      dockerfile: ../.docker/client.Dockerfile
     container_name: s3-upload-client
+    build:
+      context: ../client
+      dockerfile: ../.docker/client.Dockerfile
     restart: unless-stopped
     depends_on:
       - s3-upload-server
     environment:
       - NODE_ENV=production
-      - API_URL=http://localhost:5101
+      - API_URL=http://s3-upload-server:5101
       - NEXT_PUBLIC_S3_REGION=ap-southeast-2
       - PORT=5100
-    networks:
-      - s3-upload-network
     ports:
       - "5100:5100"
 
   s3-upload-server:
-    build:
-      context: ./server
-      dockerfile: ../.docker/server.Dockerfile
     container_name: s3-upload-server
+    build:
+      context: ../server
+      dockerfile: ../.docker/server.Dockerfile
     restart: unless-stopped
     env_file:
-      - ./server/.env
-      # ACCESS_KEY_ID
-      # SECRET_ACCESS_KEY
+      - ../server/.env
     environment:
       - NODE_ENV=production
       - PORT=5101
-    networks:
-      - s3-upload-network
     ports:
       - "5101:5101"
-
-networks:
-  s3-upload-network:
-    driver: bridge
