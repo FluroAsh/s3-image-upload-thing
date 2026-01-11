@@ -1,30 +1,38 @@
-import { BucketList } from '@/components/bucket/list'
-import { Bucket, getBuckets, getFileTree } from '@/services/s3'
-import { Explorer, ViewPanel, ActivePanel } from '@/components/explorer'
+import { BucketList } from "@/components/bucket/list";
+import { Bucket, getBuckets, getFileTree } from "@/services/s3";
+import { Explorer, ViewPanel, ActivePanel } from "@/components/explorer";
 
-import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query'
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from "@tanstack/react-query";
 
-const qc = new QueryClient()
+const qc = new QueryClient();
 
-export default async function Page({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | undefined }>;
+}) {
   await qc.prefetchQuery({
-    queryKey: ['buckets'],
-    queryFn: getBuckets
-  })
+    queryKey: ["buckets"],
+    queryFn: getBuckets,
+  });
 
-  const buckets = qc.getQueryData<Bucket[]>(['buckets'])
-  const activeBucket = (await searchParams)?.bucket || buckets?.[0]?.Name
+  const buckets = qc.getQueryData<Bucket[]>(["buckets"]);
+  const activeBucket = (await searchParams)?.bucket || buckets?.[0]?.Name;
 
   if (!activeBucket || !buckets) {
-    return null
+    return null;
   }
 
   await qc.prefetchQuery({
-    queryKey: ['fileTree', activeBucket],
-    queryFn: () => getFileTree(activeBucket)
-  })
+    queryKey: ["fileTree", activeBucket],
+    queryFn: () => getFileTree(activeBucket),
+  });
 
-  const dehydratedState = dehydrate(qc)
+  const dehydratedState = dehydrate(qc);
 
   return (
     <HydrationBoundary state={dehydratedState}>
@@ -41,5 +49,5 @@ export default async function Page({ searchParams }: { searchParams?: { [key: st
         </Explorer>
       </div>
     </HydrationBoundary>
-  )
+  );
 }
