@@ -7,6 +7,8 @@ services:
       dockerfile: ../.docker/client.Dockerfile
     container_name: s3-upload-client
     restart: unless-stopped
+    depends_on:
+      - s3-upload-server
     environment:
       - NODE_ENV=production
       - API_URL=http://localhost:5101
