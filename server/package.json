@@ -1,6 +1,7 @@
 {
-  "name": "bun-hono-demo",
+  "name": "s3-upload-server",
   "scripts": {
+    "start": "bun run src/index.ts",
     "dev": "bun run --hot src/index.ts",
     "test": "vitest"
   },
