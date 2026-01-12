@@ -5,7 +5,7 @@ WORKDIR /app
 FROM base AS deps
 RUN mkdir -p /temp/dev
 COPY package.json bun.lockb* ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile
 
 # Stage 2: Builder
 FROM base AS builder
