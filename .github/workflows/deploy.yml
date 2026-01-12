@@ -6,89 +6,63 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch: # for manual deployment
 
 env:
   DOCKER_COMPOSE_FILE: .docker/docker-compose.yml
-  DEPLOY_PATH: /docker/s3-upload-thing
+  DEPLOY_PATH: /docker/s3-image-upload-thing
 
 jobs:
   deployment:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
-          oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TAILSCALE_OAUTH_CLIENT_SECRET }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
-      - name: Test SSH connection
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          debug: true
-          script: |
-            echo "SSH connection successful!"
-            whoami
-            pwd
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            # Create deployment directory if it doesn't exist
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} bash << 'EOF'
+            set -e
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
-
-            # Clone or update repository (uses server's configured git credentials)
+            
             if [ -d ".git" ]; then
-              echo "Repository exists, pulling latest changes..."
+              echo "Pulling latest changes..."
               git pull origin main
             else
               echo "Cloning repository..."
-              git clone git@github.com:FluroAsh/s3-image-upload-thing.git
+              git clone git@github.com:FluroAsh/s3-image-upload-thing.git .
             fi
-
-            # Create .env file for server
+            
             mkdir -p server
-            cat > server/.env.docker << EOF
+            cat > server/.env.docker << 'ENVEOF'
             ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            EOF
-
-            # Stop existing services
+            ENVEOF
+            
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down || true
-
-            # Build images
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
-
-            # Start services
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d
-
-            # Wait for services to be ready
             sleep 10
-
-            # Verify services are running
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps
-
-            # Show logs
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} logs --tail=50
+          EOF
 
-      # - name: Health check
-      #   uses: appleboy/ssh-action@v1.0.3
-      #   with:
-      #     host: ${{ secrets.SSH_HOST }}
-      #     username: ${{ secrets.SSH_USER }}
-      #     key: ${{ secrets.SSH_PRIVATE_KEY }}
-      #     script: |
-      #       # Check if services are responding
-      #       curl -f http://localhost:5100 > /dev/null 2>&1 && echo "✅ Client is healthy" || echo "❌ Client health check failed"
-      #       curl -f http://localhost:5101 > /dev/null 2>&1 && echo "✅ Server is healthy" || echo "❌ Server health check failed"
+      - name: Health check
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            curl -f http://localhost:5100 > /dev/null 2>&1 && echo "✅ Client is healthy" || echo "❌ Client health check failed"
+            curl -f http://localhost:5101 > /dev/null 2>&1 && echo "✅ Server is healthy" || echo "❌ Server health check failed"
+          EOF
