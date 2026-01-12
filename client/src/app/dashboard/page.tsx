@@ -8,6 +8,8 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 
+export const dynamic = "force-dynamic";
+
 const qc = new QueryClient();
 
 export default async function Page({
