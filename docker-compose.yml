@@ -4,8 +4,8 @@ services:
   s3-upload-client:
     container_name: s3-upload-client
     build:
-      context: ../client
-      dockerfile: ../.docker/client.Dockerfile
+      context: ./client
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       - s3-upload-server
@@ -20,11 +20,11 @@ services:
   s3-upload-server:
     container_name: s3-upload-server
     build:
-      context: ../server
-      dockerfile: ../.docker/server.Dockerfile
+      context: ./server
+      dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ../server/.env
+      - ./server/.env
     environment:
       - NODE_ENV=production
       - PORT=5101
