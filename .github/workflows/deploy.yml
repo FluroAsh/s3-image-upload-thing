@@ -46,8 +46,8 @@ jobs:
             fi
 
             mkdir -p server
-            echo "ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > server/.env.docker
-            echo "SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> server/.env.docker
+            echo "ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > server/.env
+            echo "SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> server/.env
 
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down || true
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
