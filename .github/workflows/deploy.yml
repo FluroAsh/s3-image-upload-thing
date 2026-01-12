@@ -28,7 +28,6 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
-      # NOTE: The Homelab shell is running `fish` as the shell.
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.4
         with:
