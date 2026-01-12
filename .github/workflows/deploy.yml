@@ -25,6 +25,7 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
+      # NOTE: The Homelab shell is running `fish` as the shell.
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.4
         with:
@@ -45,10 +46,8 @@ jobs:
             fi
 
             mkdir -p server
-            cat > server/.env.docker << 'ENVEOF'
-            ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-            SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            ENVEOF
+            echo "ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > server/.env.docker
+            echo "SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> server/.env.docker
 
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down || true
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
