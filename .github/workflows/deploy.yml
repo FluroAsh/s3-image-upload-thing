@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "client/**"
+      - "server/**"
   workflow_dispatch: # for manual deployment
 
 env:
