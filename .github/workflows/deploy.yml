@@ -25,20 +25,17 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-
       - name: Deploy to server
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} bash << 'EOF'
+        uses: appleboy/ssh-action@1.2.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             set -e
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
-            
+
             if [ -d ".git" ]; then
               echo "Pulling latest changes..."
               git pull origin main
@@ -46,24 +43,26 @@ jobs:
               echo "Cloning repository..."
               git clone git@github.com:FluroAsh/s3-image-upload-thing.git .
             fi
-            
+
             mkdir -p server
             cat > server/.env.docker << 'ENVEOF'
             ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             ENVEOF
-            
+
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} down || true
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} up -d
             sleep 10
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} ps
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} logs --tail=50
-          EOF
 
       - name: Health check
-        run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+        uses: appleboy/ssh-action@1.2.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
             curl -f http://localhost:5100 > /dev/null 2>&1 && echo "✅ Client is healthy" || echo "❌ Client health check failed"
             curl -f http://localhost:5101 > /dev/null 2>&1 && echo "✅ Server is healthy" || echo "❌ Server health check failed"
-          EOF
