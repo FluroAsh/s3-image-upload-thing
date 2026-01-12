@@ -26,7 +26,7 @@ jobs:
           tags: tag:ci
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@1.2.4
+        uses: appleboy/ssh-action@1.2.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -58,7 +58,7 @@ jobs:
             docker-compose -f ${{ env.DOCKER_COMPOSE_FILE }} logs --tail=50
 
       - name: Health check
-        uses: appleboy/ssh-action@1.2.4
+        uses: appleboy/ssh-action@1.2.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
