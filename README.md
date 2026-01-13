@@ -3,7 +3,7 @@
 ## Run with Docker
 
 ```bash
-cd .docker && docker compose up --build
+docker compose build --no-cache && docker compose up -d
 ```
 
 This should trigger both the client and server to build and start, in sequence.
