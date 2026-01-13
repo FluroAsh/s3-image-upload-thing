@@ -9,11 +9,10 @@ on:
     paths:
       - "client/**"
       - "server/**"
-      - ".docker/**"
   workflow_dispatch: # for manual deployment
 
 env:
-  DOCKER_COMPOSE_FILE: .docker/docker-compose.yml
+  DOCKER_COMPOSE_FILE: ./docker-compose.yml
   DEPLOY_PATH: /docker/s3-image-upload-thing
 
 jobs:
