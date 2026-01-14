@@ -67,4 +67,4 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             curl -f http://localhost:5100 > /dev/null 2>&1 && echo "✅ Client is healthy" || echo "❌ Client health check failed"
-            curl -f http://localhost:5101 > /dev/null 2>&1 && echo "✅ Server is healthy" || echo "❌ Server health check failed"
+            curl -f http://localhost:5101/health > /dev/null 2>&1 && echo "✅ Server is healthy" || echo "❌ Server health check failed"
