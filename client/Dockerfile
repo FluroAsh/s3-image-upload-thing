@@ -13,7 +13,16 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . . 
 
+# Set environment variables for the builder
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_S3_REGION
+
+# Set environment variables, so they are available during the Next.js build process
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_S3_REGION=${NEXT_PUBLIC_S3_REGION}
 ENV NODE_ENV=production
+ENV PORT=5100
+
 RUN bun run build
 
 # Stage 3: Runner
