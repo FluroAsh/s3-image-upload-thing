@@ -13,8 +13,15 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . . 
 
+# Accept build arguments
+ARG API_URL
+ARG NEXT_PUBLIC_S3_REGION
+
+# Set as environment variables for the build
 ENV NODE_ENV=production
 ENV PORT=5100
+ENV API_URL=${API_URL}
+ENV NEXT_PUBLIC_S3_REGION=${NEXT_PUBLIC_S3_REGION}
 
 RUN bun run build
 
