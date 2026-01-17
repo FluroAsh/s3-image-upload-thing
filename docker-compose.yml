@@ -7,7 +7,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args: 
-        NEXT_PUBLIC_API_URL: http://s3-upload-server:5101
+        NEXT_PUBLIC_API_URL: http://192.168.0.3:5101
         NEXT_PUBLIC_S3_REGION: ap-southeast-2
     restart: unless-stopped
     depends_on:
