@@ -1,6 +1,6 @@
 import { ofetch } from 'ofetch'
 
-/**
+/*
  * Get the appropriate API URL based on execution context.
  * 
  * - **Server-side (SSR)**: Directly uses the backend URL from `API_URL` env var (ie. http://s3-image-upload-server:5101)
