@@ -1,27 +1,31 @@
-import { LucideFolder, LucideLoader2, LucideDatabase } from 'lucide-react'
+import { LucideFolder, LucideLoader2, LucideDatabase } from "lucide-react";
 
-import { useFileTree } from '@/lib/query'
-import { useExplorer } from '@/lib/providers/explorer-provider'
-import { useHasMounted } from '@/hooks/useHasMounted'
+import { useFileTree } from "@/lib/query";
+import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useHasMounted } from "@/hooks/useHasMounted";
 
-import { renderFileTree } from './index'
+import { renderFileTree } from "./index";
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center p-8 text-center">
     <LucideLoader2 className="size-8 text-slate-400 animate-spin mb-4" />
     <p className="text-sm text-slate-300">Loading file tree...</p>
   </div>
-)
+);
 
 const EmptyState = () => (
   <div className="flex flex-col items-center justify-center p-8 text-center">
     <div className="size-16 rounded-full bg-slate-700 flex items-center justify-center mb-4">
       <LucideFolder className="size-8 text-slate-400" />
     </div>
-    <h3 className="text-sm font-medium text-neutral-100 mb-2">No files found</h3>
-    <p className="text-xs text-slate-400 max-w-xs">This bucket appears to be empty or the files are still loading</p>
+    <h3 className="text-sm font-medium text-neutral-100 mb-2">
+      No files found
+    </h3>
+    <p className="text-xs text-slate-400 max-w-xs">
+      This bucket appears to be empty or the files are still loading
+    </p>
   </div>
-)
+);
 
 const BucketHeader = ({ bucketName }: { bucketName: string }) => (
   <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
@@ -34,15 +38,15 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
       </div>
     </div>
   </div>
-)
+);
 
-export const ExplorerViewPanel = () => {
-  const { bucketName } = useExplorer().state
-  const { data: nodes, isLoading } = useFileTree(bucketName)
-  const hasMounted = useHasMounted()
+export const BrowserPanel = () => {
+  const { bucketName } = useExplorer().state;
+  const { data: nodes, isLoading } = useFileTree(bucketName);
+  const hasMounted = useHasMounted();
 
   // Show loading during SSR/hydration or when actually loading
-  const shouldShowLoading = !hasMounted || isLoading
+  const shouldShowLoading = !hasMounted || isLoading;
 
   return (
     <nav className="flex-1 bg-slate-900 border-r border-slate-700 overflow-y-auto">
@@ -60,5 +64,5 @@ export const ExplorerViewPanel = () => {
         )}
       </div>
     </nav>
-  )
-}
+  );
+};

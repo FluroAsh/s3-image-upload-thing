@@ -59,7 +59,7 @@ const EmptyState = () => (
 
 const PREVIEW_CONTAINER_SIZE = 600;
 
-export const ExplorerActivePanel = () => {
+export const DetailsPanel = () => {
   const {
     activeFile: { remoteURL, fileName, variants },
   } = useExplorer().state;

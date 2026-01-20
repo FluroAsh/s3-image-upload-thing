@@ -1,6 +1,6 @@
 import { BucketList } from "@/components/bucket/list";
 import { Bucket, getBuckets, getFileTree } from "@/services/s3";
-import { Explorer, ViewPanel, ActivePanel } from "@/components/explorer";
+import { Explorer, BrowserPanel, DetailsPanel } from "@/components/explorer";
 
 import {
   dehydrate,
@@ -46,8 +46,8 @@ export default async function Page({
 
         {/* TODO: Finish bucket display component */}
         <Explorer bucketName={activeBucket}>
-          <ViewPanel />
-          <ActivePanel />
+          <BrowserPanel />
+          <DetailsPanel />
         </Explorer>
       </div>
     </HydrationBoundary>

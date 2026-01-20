@@ -20,9 +20,10 @@ import {
   ExplorerProvider,
   useExplorer,
 } from "../../lib/providers/explorer-provider";
-import { Navigation } from "./navigation";
-import { ExplorerViewPanel } from "./explorer.view-panel";
-import { ExplorerActivePanel } from "./explorer.active-panel";
+
+import { DetailsPanel } from "./panel.details";
+import { BrowserPanel } from "./panel.browser";
+import { Header } from "./header";
 
 const Explorer = ({
   bucketName,
@@ -36,7 +37,7 @@ const Explorer = ({
   return (
     <div>
       <ExplorerProvider bucketName={bucketName ?? ""}>
-        <Navigation />
+        <Header />
         <div
           id="explorer-container"
           className="flex h-[736px] rounded-b-md overflow-hidden"
@@ -244,7 +245,4 @@ const Node = ({
   );
 };
 
-const ViewPanel = ExplorerViewPanel;
-const ActivePanel = ExplorerActivePanel;
-
-export { Explorer, ViewPanel, ActivePanel };
+export { Explorer, BrowserPanel, DetailsPanel };
