@@ -10,6 +10,7 @@ import { isImageFile, isVideoFile } from "@/lib/helpers";
 import { type TreeNode } from "@/services/s3";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
+import { ScrollArea } from "../ui/scroll-area";
 
 type ActiveVariantProps = {
   variant: TreeNode;
@@ -78,7 +79,7 @@ export const DetailsPanel = () => {
   const Icon = isImage ? LucideImage : LucideFile;
 
   return (
-    <div className="bg-slate-800 border-l border-slate-700 flex-1 overflow-y-auto overflow-x-hidden">
+    <ScrollArea className="bg-slate-800 border-l border-slate-700 flex-1 overflow-y-auto overflow-x-hidden">
       {/* Header - Even lighter for hierarchy */}
       <div className="border-b border-slate-600 p-6 bg-slate-750">
         <div className="flex items-center gap-3">
@@ -173,6 +174,6 @@ export const DetailsPanel = () => {
           </ul>
         </div>
       )}
-    </div>
+    </ScrollArea>
   );
 };

@@ -7,6 +7,7 @@ import {
   HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
+import { Header } from "@/components/explorer/header";
 
 export const dynamic = "force-dynamic";
 
@@ -38,16 +39,41 @@ export default async function Page({
 
   return (
     <HydrationBoundary state={dehydratedState}>
-      <div className="grid grid-rows-[auto_fill_1fr] p-4">
-        <div className="mb-8 overflow-auto">
-          {/* Cards should scroll when overflowing the container (max-screen-width) */}
-          <BucketList buckets={buckets} bucketName={activeBucket} />
-        </div>
-
-        {/* TODO: Finish bucket display component */}
+      <div className="h-screen overflow-hidden">
         <Explorer bucketName={activeBucket}>
-          <BrowserPanel />
-          <DetailsPanel />
+          <div className="">
+            <div className="w-[300px] h-full bg-sky-500/50 p-4 flex flex-col gap-4">
+              <div className="bg-sky-600">
+                <p>Buckets</p>
+                <div>Search Buckets</div>
+              </div>
+
+              <div className="bg-sky-700">
+                <div>Total Buckets: 0</div>
+                <div>Total Files: 0</div>
+              </div>
+
+              <div className="flex flex-col gap-2 bg-sky-600">
+                {/* <BucketList buckets={buckets} bucketName={activeBucket} /> */}
+                <div>Bucket 1</div>
+                <div>Bucket 2</div>
+                <div>Bucket 3</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="size-full flex flex-col">
+            <Header />
+
+            <div className="flex h-full overflow-hidden">
+              {/* Left Panel */}
+              <BrowserPanel />
+
+              {/* Right Panel */}
+              {/* Contains 2 panels (top/bottom) */}
+              <DetailsPanel />
+            </div>
+          </div>
         </Explorer>
       </div>
     </HydrationBoundary>

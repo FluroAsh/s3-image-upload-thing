@@ -23,7 +23,6 @@ import {
 
 import { DetailsPanel } from "./panel.details";
 import { BrowserPanel } from "./panel.browser";
-import { Header } from "./header";
 
 const Explorer = ({
   bucketName,
@@ -35,17 +34,11 @@ const Explorer = ({
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
 
   return (
-    <div>
-      <ExplorerProvider bucketName={bucketName ?? ""}>
-        <Header />
-        <div
-          id="explorer-container"
-          className="flex h-[736px] rounded-b-md overflow-hidden"
-        >
-          {children}
-        </div>
-      </ExplorerProvider>
-    </div>
+    <ExplorerProvider bucketName={bucketName ?? ""}>
+      <div id="explorer-container" className="flex overflow-hidden size-full">
+        {children}
+      </div>
+    </ExplorerProvider>
   );
 };
 
