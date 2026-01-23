@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "@/css/globals.css";
-import Providers from "@/lib/providers";
+import { GlobalProviders } from "@/lib/providers/global-providers";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -38,7 +38,7 @@ export default function RootLayout({
       >
         <div className="min-h-screen w-screen grid grid-rows-[auto_1fr_auto]">
           {/* <header className="bg-sky-600 text-center">Placeholder Header</header> */}
-          <Providers>{children}</Providers>
+          <GlobalProviders>{children}</GlobalProviders>
           {/* <footer className="bg-red-600 text-center">Placeholder Footer</footer> */}
         </div>
       </body>
