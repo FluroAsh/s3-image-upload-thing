@@ -19,24 +19,22 @@ import { DEPTH_PADDING_MAP } from "./constants";
 import {
   ExplorerProvider,
   useExplorer,
-} from "../../lib/providers/explorer-provider";
+} from "@/lib/providers/explorer-provider";
+import { Sidebar } from "./layout.sidebar";
+import { MainContent } from "./layout.main-content";
 
-import { DetailsPanel } from "./panel.details";
-import { BrowserPanel } from "./panel.browser";
-
-const Explorer = ({
+export const ExplorerLayout = ({
   bucketName,
-  children,
 }: {
   bucketName: string | undefined;
-  children: React.ReactNode;
 }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
 
   return (
     <ExplorerProvider bucketName={bucketName ?? ""}>
       <div id="explorer-container" className="flex overflow-hidden size-full">
-        {children}
+        <Sidebar />
+        <MainContent />
       </div>
     </ExplorerProvider>
   );
@@ -237,5 +235,3 @@ const Node = ({
     <File node={node} remoteURL={node.presignedUrl || ""} />
   );
 };
-
-export { Explorer, BrowserPanel, DetailsPanel };

@@ -1,15 +1,21 @@
-'use client'
+"use client";
 
-import { type Bucket } from '@/services/s3'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useRouter } from 'next/navigation'
+import { type Bucket } from "@/services/s3";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-import { BucketCard } from './card'
+import { BucketCard } from "./card";
 
-export const BucketList = ({ buckets, bucketName }: { buckets: Bucket[]; bucketName: string }) => {
-  const router = useRouter()
-  const pathName = usePathname()
-  const searchParams = useSearchParams()
+export const BucketList = ({
+  buckets,
+  bucketName,
+}: {
+  buckets: Bucket[];
+  bucketName: string;
+}) => {
+  const router = useRouter();
+  const pathName = usePathname();
+  const searchParams = useSearchParams();
 
   if (buckets.length === 0) {
     return (
@@ -17,12 +23,14 @@ export const BucketList = ({ buckets, bucketName }: { buckets: Bucket[]; bucketN
         <div className="size-16 rounded-full bg-slate-700/50 flex items-center justify-center mb-4">
           <div className="size-8 text-slate-400">📦</div>
         </div>
-        <h3 className="text-lg font-medium text-neutral-100 mb-2">No buckets found</h3>
+        <h3 className="text-lg font-medium text-neutral-100 mb-2">
+          No buckets found
+        </h3>
         <p className="text-sm text-slate-400 max-w-sm">
           Create your first S3 bucket to get started with file management
         </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -31,7 +39,7 @@ export const BucketList = ({ buckets, bucketName }: { buckets: Bucket[]; bucketN
         <div>
           <h2 className="text-xl font-semibold text-neutral-100">S3 Buckets</h2>
           <p className="text-sm text-slate-400">
-            {buckets.length} bucket{buckets.length !== 1 ? 's' : ''} available
+            {buckets.length} bucket{buckets.length !== 1 ? "s" : ""} available
           </p>
         </div>
       </div>
@@ -45,13 +53,13 @@ export const BucketList = ({ buckets, bucketName }: { buckets: Bucket[]; bucketN
             region={bucket.BucketRegion}
             formattedCreationDate={bucket.formattedCreationDate}
             handleClick={() => {
-              const params = new URLSearchParams(searchParams.toString())
-              params.set('bucket', encodeURIComponent(bucket.Name))
-              router.push(`${pathName}?${params.toString()}`)
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("bucket", encodeURIComponent(bucket.Name));
+              router.push(`${pathName}?${params.toString()}`);
             }}
           />
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
