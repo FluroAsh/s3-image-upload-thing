@@ -6,6 +6,7 @@ import { useBuckets } from "@/lib/query";
 import { useSearchParams } from "next/navigation";
 import { LucideDatabase, LucideSettings } from "lucide-react";
 import { BucketSearch } from "./bucket/search";
+import { Separator } from "../ui/separator";
 
 export const Sidebar = () => {
   const { data: buckets } = useBuckets();
@@ -25,23 +26,29 @@ export const Sidebar = () => {
   return (
     <div>
       <div className="w-[300px] h-full bg-neutral-900 flex flex-col justify-between border-r border-neutral-700">
-        <div className="flex flex-col gap-4 p-4">
-          <div className="flex items-center gap-2 ">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 p-4 ">
             <div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
               <LucideDatabase className="size-4 stroke-sky-400" />
             </div>
             <span className="text-neutral-100 font-semibold">Buckets</span>
           </div>
 
-          <BucketSearch />
+          <div className="pb-4 px-4">
+            <BucketSearch />
+          </div>
 
-          <div className="bg-sky-700">
-            <div>Total Buckets: {filteredBuckets.length}</div>
+          <Separator />
+
+          <div className="p-4">
+            <div className="">Total Buckets: {filteredBuckets.length}</div>
             {/* TODO: Return object count in our backend GET /s3/buckets call */}
             <div>Total Files: 0</div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <Separator />
+
+          <div className="flex flex-col gap-2 p-4">
             <BucketList buckets={filteredBuckets} bucketName={activeBucket} />
           </div>
         </div>
