@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   LucideChevronRight,
-  LucideChevronUp,
   LucideFile,
   LucideFolderClosed,
   LucideFolderOpen,
