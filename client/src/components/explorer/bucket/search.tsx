@@ -16,6 +16,7 @@ export const BucketSearch = () => {
     <div className="relative">
       <LucideSearch className="size-4 stroke-neutral-300 absolute top-1/2 left-4 bottom-0 transform -translate-y-1/2" />
       <input
+        name="bucket-search"
         type="text"
         className={clsx(
           "pl-10 w-full p-2 rounded-md border border-neutral-500 text-neutral-300 bg-neutral-900 transition-colors text-sm",
