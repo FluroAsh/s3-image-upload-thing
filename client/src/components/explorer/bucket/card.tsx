@@ -1,4 +1,4 @@
-import { LucideChevronRight, LucideCloud } from "lucide-react";
+import { LucideDatabase, LucideTimer } from "lucide-react";
 
 interface BucketCardProps {
   name: string;
@@ -14,76 +14,56 @@ export const BucketCard = ({
   formattedCreationDate,
   isActive,
   handleClick,
-}: BucketCardProps) => {
-  return (
-    <div
-      onClick={handleClick}
-      className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg ${
-        isActive
-          ? "bg-sky-900/50 border-sky-400/70 shadow-lg shadow-sky-500/20"
-          : "bg-slate-800/90 hover:bg-slate-750 border-slate-600/60 hover:border-sky-400/50 hover:shadow-sky-500/10"
-      }`}
-    >
-      <div className="flex items-center gap-3">
-        {/* Icon container */}
+}: BucketCardProps) => (
+  <div
+    className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg  ${
+      isActive
+        ? "bg-sky-900/50 border-sky-400/70 shadow-lg shadow-sky-500/20"
+        : "hover:bg-sky-900/10 border-slate-600/60 hover:border-sky-400/50 hover:shadow-sky-500/10"
+    }`}
+    onClick={handleClick}
+  >
+    <div className="flex flex-col items-center gap-3">
+      {/* Content section */}
+      <div className="w-full text-center">
         <div
-          className={`size-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+          title={name}
+          className={`flex gap-2 items-center text-base font-semibold truncate transition-colors ${
             isActive
-              ? "bg-sky-500/30 border border-sky-400/60"
-              : "bg-sky-500/20 border border-sky-500/30"
+              ? "text-sky-50"
+              : "text-neutral-100 group-hover:text-sky-100"
           }`}
         >
-          <LucideCloud
-            className={`size-5 transition-colors ${
+          <LucideDatabase
+            className={`size-4 transition-colors ${
               isActive ? "text-sky-200" : "text-sky-400"
             }`}
           />
+          <h3 className="truncate">{name}</h3>
         </div>
 
-        {/* Content section */}
-        <div className="flex-1 min-w-0">
-          <h3
-            className={`text-base font-semibold truncate transition-colors ${
-              isActive
-                ? "text-sky-50"
-                : "text-neutral-100 group-hover:text-sky-100"
-            }`}
-          >
-            {name}
-          </h3>
-          <div className="flex items-center gap-4 mt-1">
-            <span
-              className={`text-xs transition-colors ${
-                isActive ? "text-sky-200" : "text-slate-400"
-              }`}
-            >
-              {region}
-            </span>
-            <span
-              className={`text-xs transition-colors ${
-                isActive ? "text-sky-300" : "text-slate-500"
-              }`}
-            >
-              {formattedCreationDate}
-            </span>
-          </div>
-        </div>
+        {/* Attributes section */}
+        <div className="flex flex-col gap-2 mt-2 ml-5">
+          {/* <span className="text-xs transition-colors flex items-center">
+            <HardDrive className="size-4 inline mr-1" />
+            2.4 GB
+          </span>
 
-        {/* Action indicator */}
-        <div
-          className={`size-4 flex items-center justify-center transition-all ${
-            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          }`}
-        >
-          <LucideChevronRight
-            className={`size-4 transition-colors ${
-              isActive
-                ? "text-sky-300"
-                : "text-slate-400 group-hover:text-sky-400"
-            }`}
-          />
+          <span className="text-xs transition-colors flex items-center">
+            <LucideFileText className="size-4 inline mr-1" />
+            100 files
+          </span> */}
+
+          <span className={`text-xs transition-colors flex items-center`}>
+            <LucideTimer className="size-4 inline mr-1" />
+            {formattedCreationDate}
+          </span>
+
+          <span className="text-xs transition-colors rounded-md px-2 py-1 border border-sky-500/50 bg-sky-500/10 w-fit text-sky-200">
+            {region}
+          </span>
         </div>
       </div>
     </div>
-  );
-};
+  </div>
+);

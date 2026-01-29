@@ -19,15 +19,16 @@ export const Sidebar = () => {
 
   return (
     <div>
-      <div className="w-[300px] h-full bg-sky-500/50 flex flex-col justify-between">
+      <div className="w-[300px] h-full bg-neutral-900 flex flex-col justify-between border-r border-neutral-700">
         <div className="flex flex-col gap-4 p-4">
           <div className="bg-sky-600">
             <p>Buckets</p>
-            <div>Search Buckets</div>d
+            <div>Search Buckets</div>
           </div>
 
           <div className="bg-sky-700">
             <div>Total Buckets: {buckets.length}</div>
+            {/* TODO: Return object count in our backend GET /s3/buckets call */}
             <div>Total Files: 0</div>
           </div>
 
@@ -36,9 +37,15 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        <div className="bg-neutral-900 py-2 px-4 flex items-center">
-          <LucideSettings className="size-4 text-neutral-100 inline mr-1.5" />
-          <span className="mt-[1.5px]">Settings</span>
+        <div className="p-3 border-t border-neutral-700">
+          {/* TODO: Open/build settings modal */}
+          <button
+            onClick={() => console.log("Open settings modal")}
+            className="w-full justify-start gap-2 text-sm hover:bg-sky-900/30 hover:[text,fill]-sky-400 transition-colors hover:cursor-pointer rounded-md p-2"
+          >
+            <LucideSettings className="size-4 text-neutral-100 inline mr-1.5" />
+            Settings
+          </button>
         </div>
       </div>
     </div>
