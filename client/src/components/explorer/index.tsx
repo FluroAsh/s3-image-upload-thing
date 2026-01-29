@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  LucideChevronRight,
   LucideChevronUp,
   LucideFile,
   LucideFolderClosed,
@@ -203,10 +204,10 @@ const Node = ({
         onClick={() => setIsExpanded((prev) => !prev)}
       >
         <div className="inline-flex mr-2">
-          <LucideChevronUp
+          <LucideChevronRight
             className={`size-4 mr-2 transition duration-75', ${
               isExpanded
-                ? "stroke-slate-400 rotate-180"
+                ? "stroke-slate-400 rotate-90"
                 : "rotate-0 stroke-sky-400"
             }`}
           />
