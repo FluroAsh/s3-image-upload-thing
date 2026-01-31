@@ -7,29 +7,63 @@ import {
 
 import withS3Client, { type WithS3Client } from "@/middleware/with-s3-client";
 import { transformBucket } from "@/lib/transformers";
-import { buildFileTree, type S3Object } from "@/features/s3/service";
+import {
+  buildFileTree,
+  getBucketStats,
+  type S3Object,
+} from "@/features/s3/service";
+import { BUCKETS_LIST_MAX, BUCKETS_PAGE_SIZE } from "@/lib/constants/s3";
 
 const s3 = new Hono<WithS3Client>();
 s3.use("*", withS3Client);
 
 s3.get("/buckets", async (ctx) => {
   const { s3Instance, region } = ctx.var;
-  const limit = Number(ctx.req.query("limit")) || 10;
+  const limit = Math.min(
+    Math.max(1, Number(ctx.req.query("limit")) || BUCKETS_PAGE_SIZE),
+    100
+  );
+  const page = Math.max(1, Number(ctx.req.query("page")) || 1);
 
   try {
-    // TODO: Add pagination - refer to: https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/command/ListBucketsCommand/
     const listCommand = new ListBucketsCommand({
       BucketRegion: region,
-      MaxBuckets: limit,
+      MaxBuckets: BUCKETS_LIST_MAX,
     });
 
     const res = await s3Instance.send(listCommand);
 
-    if (!res.Buckets) {
+    if (!res.Buckets?.length) {
       return ctx.json({ error: "No buckets found" }, 404);
     }
 
-    return ctx.json({ buckets: res.Buckets.map(transformBucket) });
+    const totalCount = res.Buckets.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const start = (page - 1) * limit;
+    const bucketsForPage = res.Buckets.slice(start, start + limit);
+
+    const bucketsWithStats = await Promise.all(
+      bucketsForPage.map(async (bucket) => {
+        const stats = bucket.Name
+          ? await getBucketStats(s3Instance, bucket.Name)
+          : undefined;
+        return transformBucket(bucket, stats);
+      })
+    );
+
+    const totalObjectCount = bucketsWithStats.reduce(
+      (sum, b) => sum + b.objectCount,
+      0
+    );
+
+    return ctx.json({
+      buckets: bucketsWithStats,
+      totalObjectCount,
+      page,
+      limit,
+      totalCount,
+      totalPages,
+    });
   } catch (e) {
     if (e instanceof S3ServiceException) {
       console.error(

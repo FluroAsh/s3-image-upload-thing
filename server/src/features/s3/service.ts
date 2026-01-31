@@ -1,6 +1,54 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  GetObjectCommand,
+  ListObjectsV2Command,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { readableSize } from "@/lib/helpers";
+
+export type BucketStats = {
+  objectCount: number;
+  totalSize: number;
+};
+
+/**
+ * Fetches object count and total size (bytes) for a bucket using ListObjectsV2
+ * with pagination. Returns { objectCount: 0, totalSize: 0 } on permission or
+ * not-found errors so callers get a consistent response shape.
+ */
+export const getBucketStats = async (
+  s3Client: S3Client,
+  bucketName: string
+): Promise<BucketStats> => {
+  const stats: BucketStats = { objectCount: 0, totalSize: 0 };
+  let continuationToken: string | undefined;
+
+  try {
+    do {
+      const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        ContinuationToken: continuationToken,
+      });
+
+      const res = await s3Client.send(command);
+
+      if (res.Contents) {
+        for (const obj of res.Contents) {
+          stats.objectCount += 1;
+          stats.totalSize += obj.Size ?? 0;
+        }
+      }
+
+      continuationToken = res.IsTruncated
+        ? res.NextContinuationToken
+        : undefined;
+    } while (continuationToken);
+  } catch {
+    return stats;
+  }
+
+  return stats;
+};
 
 export const createInstance = (region: string) =>
   new S3Client({
