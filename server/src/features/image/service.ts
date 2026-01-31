@@ -9,6 +9,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { type FormatEnum } from "sharp";
 import * as path from "path";
+import { TIME } from "@/lib/constants";
 
 /**
  * Generates a presigned URL for secure, temporary access to S3 objects
@@ -27,7 +28,7 @@ const generatePresignedUrl = async (
 
   // @ts-ignore - Type mismatch due to nested @smithy dependencies
   return await getSignedUrl(s3Instance, getCommand, {
-    expiresIn: 3600, // 1 hour
+    expiresIn: TIME.ONE_HOUR,
   });
 };
 
