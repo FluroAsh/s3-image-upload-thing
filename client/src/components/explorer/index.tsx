@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { type TreeNode } from "@/services/s3";
+import type { TreeNode } from "@/types/api";
 import { type ImageVariant } from "@/types/images";
 import { getFileIcon } from "@/lib/helpers";
 import { getImageCollection } from "./utils";

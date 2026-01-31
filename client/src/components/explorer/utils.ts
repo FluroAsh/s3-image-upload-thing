@@ -1,4 +1,4 @@
-import { type TreeNode } from "@/services/s3";
+import type { TreeNode } from "@/types/api";
 
 // Extracts the string between "_" and "." (ie: "large_filename.jpg" -> "filename")
 const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];

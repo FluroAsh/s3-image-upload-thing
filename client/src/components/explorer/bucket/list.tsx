@@ -1,6 +1,6 @@
 "use client";
 
-import { type Bucket } from "@/services/s3";
+import type { Bucket } from "@/types/api";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer } from "react";
 
-import { type TreeNode } from "@/services/s3";
+import type { TreeNode } from "@/types/api";
 
 export type State = {
   bucketName: string;

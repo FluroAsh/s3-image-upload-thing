@@ -7,7 +7,7 @@ import {
 
 import { getVariantType, replaceFileSegment } from "./utils";
 import { isImageFile, isVideoFile } from "@/lib/helpers";
-import { type TreeNode } from "@/services/s3";
+import type { TreeNode } from "@/types/api";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { ScrollArea } from "../ui/scroll-area";

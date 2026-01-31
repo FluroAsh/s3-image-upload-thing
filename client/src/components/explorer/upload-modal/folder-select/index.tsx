@@ -7,7 +7,7 @@ import {
   LucideSearch,
 } from "lucide-react";
 
-import { type TreeNode } from "@/services/s3";
+import type { TreeNode } from "@/types/api";
 import { useActiveBucket } from "@/hooks/useActiveBucket";
 import { useFileTree } from "@/lib/query";
 

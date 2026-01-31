@@ -1,4 +1,5 @@
-import { type Bucket, getBuckets, getFileTree } from "@/services/s3";
+import type { Bucket } from "@/types/api";
+import { getBuckets, getFileTree } from "@/services/s3";
 import { ExplorerLayout } from "@/components/explorer";
 
 import {

@@ -1,22 +1,7 @@
 "use server";
 
 import ofetch from "@/lib/ofetch";
-
-export type Bucket = {
-  Name: string;
-  CreationDate: string;
-  formattedCreationDate: string;
-  BucketRegion: string;
-};
-
-export type TreeNode = {
-  name: string;
-  isFolder: boolean;
-  depth: number;
-  children: TreeNode[];
-  size?: string;
-  presignedUrl?: string;
-};
+import type { Bucket, TreeNode } from "@/types/api";
 
 export const getBuckets = async () => {
   try {
