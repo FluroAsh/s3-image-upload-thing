@@ -1,6 +1,7 @@
 import { type Bucket } from "@aws-sdk/client-s3";
 import { format } from "date-fns";
 import type { BucketStats } from "@/features/s3/service";
+import { readableSize } from "./helpers";
 
 export const transformBucket = (bucket: Bucket, stats?: BucketStats) => {
   const formattedCreationDate = bucket.CreationDate
@@ -13,6 +14,7 @@ export const transformBucket = (bucket: Bucket, stats?: BucketStats) => {
     formattedCreationDate,
     BucketRegion: bucket.BucketRegion,
     objectCount: stats?.objectCount ?? 0,
-    totalSize: stats?.totalSize ?? 0,
+    totalSizeBytes: stats?.totalSize ?? 0,
+    totalSizeHuman: readableSize(stats?.totalSize ?? 0),
   };
 };

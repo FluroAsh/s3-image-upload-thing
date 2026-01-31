@@ -13,6 +13,7 @@ import {
   type S3Object,
 } from "@/features/s3/service";
 import { BUCKETS_LIST_MAX, BUCKETS_PAGE_SIZE } from "@/lib/constants/s3";
+import { readableSize } from "@/lib/helpers";
 
 const s3 = new Hono<WithS3Client>();
 s3.use("*", withS3Client);
@@ -51,6 +52,11 @@ s3.get("/buckets", async (ctx) => {
       })
     );
 
+    const totalSizeBytes = bucketsWithStats.reduce(
+      (sum, b) => sum + b.totalSizeBytes,
+      0
+    );
+
     const totalObjectCount = bucketsWithStats.reduce(
       (sum, b) => sum + b.objectCount,
       0
@@ -59,6 +65,8 @@ s3.get("/buckets", async (ctx) => {
     return ctx.json({
       buckets: bucketsWithStats,
       totalObjectCount,
+      totalSizeBytes,
+      totalSizeHuman: readableSize(totalSizeBytes),
       page,
       limit,
       totalCount,

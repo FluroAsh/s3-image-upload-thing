@@ -32,6 +32,7 @@ const generatePresignedUrl = async (
   });
 };
 
+/** Uploads image variants to S3 and generates presigned URLs for secure access to private buckets. */
 export const uploadImages = async (
   s3Instance: S3Client,
   image: ImageVariants,
