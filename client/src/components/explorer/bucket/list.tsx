@@ -30,23 +30,23 @@ export const BucketList = ({ buckets, bucketName }: BucketListProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        {buckets.map((bucket, idx: number) => (
-          <BucketCard
-            key={`bucket-${bucket.Name}-${idx}`}
-            isActive={bucket.Name === bucketName}
-            name={bucket.Name}
-            region={bucket.BucketRegion}
-            formattedCreationDate={bucket.formattedCreationDate}
-            handleClick={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.set("bucket", encodeURIComponent(bucket.Name));
-              router.push(`${pathName}?${params.toString()}`);
-            }}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col gap-2 p-4" aria-label="Bucket List">
+      {buckets.map((bucket, idx: number) => (
+        <BucketCard
+          key={`bucket-${bucket.Name}-${idx}`}
+          isActive={bucket.Name === bucketName}
+          name={bucket.Name}
+          region={bucket.BucketRegion}
+          formattedCreationDate={bucket.formattedCreationDate}
+          totalSizeHuman={bucket.totalSizeHuman}
+          objectCount={bucket.objectCount}
+          handleClick={() => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("bucket", encodeURIComponent(bucket.Name));
+            router.push(`${pathName}?${params.toString()}`);
+          }}
+        />
+      ))}
     </div>
   );
 };

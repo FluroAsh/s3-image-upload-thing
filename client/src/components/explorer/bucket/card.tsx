@@ -1,9 +1,16 @@
-import { LucideDatabase, LucideTimer } from "lucide-react";
+import {
+  HardDrive,
+  LucideDatabase,
+  LucideFileText,
+  LucideTimer,
+} from "lucide-react";
 
 interface BucketCardProps {
   name: string;
   region: string;
   formattedCreationDate: string;
+  totalSizeHuman: string;
+  objectCount: number;
   isActive: boolean;
   handleClick: () => void;
 }
@@ -12,11 +19,13 @@ export const BucketCard = ({
   name,
   region,
   formattedCreationDate,
+  totalSizeHuman,
+  objectCount,
   isActive,
   handleClick,
 }: BucketCardProps) => (
   <div
-    className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg  ${
+    className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg min-w-0 ${
       isActive
         ? "bg-sky-900/50 border-sky-400/70 shadow-lg shadow-sky-500/20"
         : "hover:bg-sky-900/10 border-slate-600/60 hover:border-sky-400/50 hover:shadow-sky-500/10"
@@ -44,15 +53,15 @@ export const BucketCard = ({
 
         {/* Attributes section */}
         <div className="flex flex-col gap-2 mt-2 ml-5">
-          {/* <span className="text-xs transition-colors flex items-center">
+          <span className="text-xs transition-colors flex items-center">
             <HardDrive className="size-4 inline mr-1" />
-            2.4 GB
+            {totalSizeHuman}
           </span>
 
           <span className="text-xs transition-colors flex items-center">
             <LucideFileText className="size-4 inline mr-1" />
-            100 files
-          </span> */}
+            {objectCount} files
+          </span>
 
           <span className={`text-xs transition-colors flex items-center`}>
             <LucideTimer className="size-4 inline mr-1" />

@@ -1,10 +1,10 @@
 import { postUploadImages } from "@/services/images";
-import type { Bucket, TreeNode } from "@/types/api";
+import type { BucketsResponse, TreeNode } from "@/types/api";
 import { getBuckets, getFileTree } from "@/services/s3";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useBuckets = () =>
-  useQuery<Bucket[]>({
+  useQuery<BucketsResponse, Error>({
     queryKey: ["buckets"],
     queryFn: getBuckets,
   });
