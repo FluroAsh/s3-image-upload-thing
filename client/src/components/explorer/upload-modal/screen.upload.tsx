@@ -37,8 +37,9 @@ export const UploadScreen = () => {
   const [images, setImages] = useState<File[]>([]);
   const folderPathRef = useRef<string>("");
 
-  const { data: buckets } = useBuckets();
-  const bucketName = useSearchParams().get("bucket") || buckets?.[0]?.Name;
+  const { data: bucketData } = useBuckets();
+  const bucketName =
+    useSearchParams().get("bucket") || bucketData?.buckets?.[0]?.Name;
 
   const { setUploadState, setUploadResponse } = useUpload();
   const { mutateAsync: postUploadImages } = useMutateUpload(bucketName ?? "");
