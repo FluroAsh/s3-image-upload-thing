@@ -18,7 +18,7 @@ const ScrollArea = React.forwardRef<
      * Unable to opt out of `display: table`, so override with `!block`
      * see: https://github.com/radix-ui/primitives/issues/2964
      */}
-    <ScrollAreaPrimitive.Viewport className="[&>div]:!block size-full rounded-[inherit]">
+    <ScrollAreaPrimitive.Viewport className="[&>div]:!block size-full rounded-[inherit] [&>div]:h-full">
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />

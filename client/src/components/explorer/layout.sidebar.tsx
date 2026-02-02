@@ -10,25 +10,25 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 
 export const Sidebar = () => {
-  const { data: bucketData } = useBuckets();
-  const { bucketName, bucketSearchTerm } = useExplorer().state;
+  const { data: bucketData, isLoading, isError, error } = useBuckets();
 
+  const { bucketSearchTerm } = useExplorer().state;
   const searchParams = useSearchParams();
+
   const activeBucket =
     searchParams.get("bucket") || bucketData?.buckets?.[0]?.Name;
 
-  if (!bucketData || !bucketName || !activeBucket) {
-    return null;
-  }
+  const totalCount = bucketData?.totalCount ?? 0;
+  const totalObjectCount = bucketData?.totalObjectCount ?? 0;
+  const buckets = bucketData?.buckets ?? [];
 
-  const { buckets, totalObjectCount, totalCount } = bucketData;
-
+  // Filter buckets based on search term
   const filteredBuckets = buckets.filter((bucket) =>
     bucket.Name?.toLowerCase().includes(bucketSearchTerm.toLowerCase())
   );
 
   return (
-    <aside className="w-[300px] h-full bg-neutral-900 flex flex-col justify-between border-r border-neutral-700">
+    <aside className="min-w-[300px] max-w-[300px] h-full bg-neutral-900 flex flex-col border-r border-neutral-700">
       <header className="flex flex-col shrink-0">
         <div className="flex items-center gap-2 p-4">
           <div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
@@ -38,7 +38,7 @@ export const Sidebar = () => {
         </div>
 
         <div className="pb-4 px-4" aria-label="Bucket Search">
-          <BucketSearch />
+          <BucketSearch disabled={isLoading} />
         </div>
 
         <Separator />
@@ -46,21 +46,31 @@ export const Sidebar = () => {
 
       <div aria-label="Bucket Collection Summary" className="shrink-0">
         <div className="p-4">
-          <p>Total Buckets: {totalCount}</p>
-          <p>Total Files: {totalObjectCount}</p>
+          <p className="text-sm text-neutral-300">
+            Total Buckets: {isLoading ? "..." : totalCount}
+          </p>
+          <p className="text-sm text-neutral-300">
+            Total Files: {isLoading ? "..." : totalObjectCount}
+          </p>
         </div>
         <Separator />
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
-        <BucketList buckets={filteredBuckets} bucketName={activeBucket} />
+        <BucketList
+          buckets={filteredBuckets}
+          bucketName={activeBucket}
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          searchTerm={bucketSearchTerm}
+        />
       </ScrollArea>
 
       <footer
         className="p-3 border-t border-neutral-700 shrink-0"
         aria-label="Account Settings"
       >
-        {/* TODO: Open/build settings modal */}
         <button
           onClick={() => console.log("Open settings modal")}
           className="w-full justify-start gap-2 text-sm hover:bg-sky-900/30 hover:[text,fill]-sky-400 transition-colors hover:cursor-pointer rounded-md p-2"

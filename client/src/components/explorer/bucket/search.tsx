@@ -2,7 +2,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import clsx from "clsx";
 import { LucideSearch } from "lucide-react";
 
-export const BucketSearch = () => {
+export const BucketSearch = ({ disabled }: { disabled: boolean }) => {
   const {
     actions: { setBucketSearchTerm },
     state: { bucketSearchTerm },
@@ -20,11 +20,13 @@ export const BucketSearch = () => {
         type="text"
         className={clsx(
           "pl-10 w-full p-2 rounded-md border border-neutral-500 text-neutral-300 bg-neutral-900 transition-colors text-sm",
-          "focus:outline-none focus:border-sky-400 placeholder:text-neutral-500"
+          "focus:outline-none focus:border-sky-400 placeholder:text-neutral-500",
+          "disabled:opacity-50 disabled:cursor-not-allowed"
         )}
         placeholder="Search buckets..."
         onChange={handleChange}
         value={bucketSearchTerm}
+        disabled={disabled}
       />
     </div>
   );
