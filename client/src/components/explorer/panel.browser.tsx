@@ -5,6 +5,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useHasMounted } from "@/hooks/useHasMounted";
 
 import { renderFileTree } from "./index";
+import { ScrollArea } from "../ui/scroll-area";
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -49,20 +50,22 @@ export const BrowserPanel = () => {
   const shouldShowLoading = !hasMounted || isLoading;
 
   return (
-    <nav className="flex-1 bg-slate-900 border-r border-slate-700 overflow-y-auto">
+    <nav className="flex flex-col flex-1 bg-slate-900 border-r border-slate-700">
       <BucketHeader bucketName={bucketName} />
 
-      <div>
+      <ScrollArea>
         {shouldShowLoading ? (
           <LoadingState />
         ) : nodes ? (
-          <ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
-            {renderFileTree(nodes, bucketName)}
-          </ul>
+          <ScrollArea>
+            <ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
+              {renderFileTree(nodes, bucketName)}
+            </ul>
+          </ScrollArea>
         ) : (
           <EmptyState />
         )}
-      </div>
+      </ScrollArea>
     </nav>
   );
 };
