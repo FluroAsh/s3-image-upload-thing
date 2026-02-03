@@ -3,20 +3,17 @@
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { BucketList } from "./bucket/list";
 import { useBuckets } from "@/lib/query";
-import { useSearchParams } from "next/navigation";
 import { LucideDatabase, LucideSettings } from "lucide-react";
 import { BucketSearch } from "./bucket/search";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
+import { useActiveBucket } from "@/hooks/useActiveBucket";
 
 export const Sidebar = () => {
   const { data: bucketData, isLoading, isError, error } = useBuckets();
 
   const { bucketSearchTerm } = useExplorer().state;
-  const searchParams = useSearchParams();
-
-  const activeBucket =
-    searchParams.get("bucket") || bucketData?.buckets?.[0]?.Name;
+  const { activeBucketName } = useActiveBucket();
 
   const totalCount = bucketData?.totalCount ?? 0;
   const totalObjectCount = bucketData?.totalObjectCount ?? 0;
@@ -59,7 +56,7 @@ export const Sidebar = () => {
       <ScrollArea className="flex-1 min-h-0">
         <BucketList
           buckets={filteredBuckets}
-          bucketName={activeBucket}
+          bucketName={activeBucketName}
           isLoading={isLoading}
           isError={isError}
           error={error}

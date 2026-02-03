@@ -35,8 +35,8 @@ export const FolderSelect = ({
   folderPathRef: MutableRefObject<string>;
 }) => {
   const qc = useQueryClient();
-  const { bucketName } = useActiveBucket();
-  const { data: nodes } = useFileTree(bucketName);
+  const { activeBucketName } = useActiveBucket();
+  const { data: nodes } = useFileTree(activeBucketName);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [folderStack, setFolderStack] = useState<TreeNode[]>([]);
@@ -74,7 +74,7 @@ export const FolderSelect = ({
 
       // Add the new folder to the query cache until the next refetch
       qc.setQueryData(
-        ["fileTree", bucketName],
+        ["fileTree", activeBucketName],
         (oldData: TreeNode[] | undefined) => {
           if (!oldData) return [newFolder];
           // Add the new folder to the current active folder's children
@@ -108,7 +108,7 @@ export const FolderSelect = ({
       <div className="mb-4 flex justify-between items-center">
         <div className="text-neutral-300">
           <span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white">
-            {currentPath ? currentPath : bucketName}
+            {currentPath ? currentPath : activeBucketName}
           </span>
         </div>
 
@@ -168,7 +168,7 @@ export const FolderSelect = ({
                 </span>
               ) : (
                 <span className="text-neutral-300">
-                  No folders found in {bucketName}
+                  No folders found in {activeBucketName}
                 </span>
               )}
             </div>
