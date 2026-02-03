@@ -53,13 +53,14 @@ const EmptyState = () => (
 );
 
 const NoSearchResults = () => (
-  <div className="flex flex-col items-center justify-center p-12 h-full text-center">
+  <div className="flex flex-col items-center justify-center p-12 h-full text-center text-balance">
     <div className="size-12 rounded-full bg-neutral-800/50 flex items-center justify-center mb-3">
       <LucideSearchX className="size-5 stroke-neutral-400" />
     </div>
-    <p className="text-neutral-300 font-medium mb-1">
-      No buckets matched your search. Try adjusting your search terms.
+    <p className="text-neutral-300 font-medium mb-2">
+      No buckets matched your search.
     </p>
+    <p className="text-xs text-neutral-500">Try adjusting your search terms</p>
   </div>
 );
 

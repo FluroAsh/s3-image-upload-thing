@@ -45,14 +45,14 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
 };
 
 const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center size-full p-8 text-center">
+  <div className="flex flex-col items-center justify-center size-full p-8 text-center text-balance">
     <div className="size-16 rounded-full bg-slate-700/50 flex items-center justify-center mb-4">
       <LucideFile className="size-8 text-sky-400" />
     </div>
     <h3 className="text-lg font-medium text-neutral-100 mb-2">
       No file selected
     </h3>
-    <p className="text-sm text-slate-300 max-w-sm">
+    <p className="text-slate-300 text-xs">
       Select a file or image from the explorer to view its details and preview
     </p>
   </div>
