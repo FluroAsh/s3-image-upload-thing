@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from "react";
 
-import { LucideChevronRight, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from "lucide-react";
+import {
+	LucideChevronRight,
+	LucideDownload,
+	LucideFile,
+	LucideFolderClosed,
+	LucideFolderOpen,
+	LucideImages,
+	LucidePencil,
+	LucideTrash,
+} from "lucide-react";
 
 import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
@@ -10,6 +19,13 @@ import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "../ui/context-menu";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
 import { extractFilename, getDepthPadding } from "./utils";
@@ -84,13 +100,34 @@ export const FileTree = () => {
 
 	return (
 		<ul>
-			{visibleNodes.map((node) => {
-				return node.isFolder && node.isImageCollection && node.variants ? (
-					<ImageCollection key={node.id} variants={node.variants} node={node} previewSize="large" />
-				) : (
-					<Node key={node.id} node={node} toggleExpanded={toggleExpanded} isExpanded={expanded[node.id]} />
-				);
-			})}
+			{visibleNodes.map((node) => (
+				<li key={node.id}>
+					<ContextMenu>
+						<ContextMenuTrigger>
+							{node.isFolder && node.isImageCollection && node.variants ? (
+								<ImageCollection variants={node.variants} node={node} previewSize="large" />
+							) : (
+								<Node node={node} toggleExpanded={toggleExpanded} isExpanded={expanded[node.id]} />
+							)}
+						</ContextMenuTrigger>
+						<ContextMenuContent>
+							<ContextMenuItem>
+								<LucideTrash className="size-4 mr-2 stroke-red-500 flex-shrink-0" />
+								<span className="text-red-500">Delete</span>
+							</ContextMenuItem>
+							<ContextMenuSeparator />
+							<ContextMenuItem>
+								<LucidePencil className="size-4 mr-2 stroke-neutral-100 flex-shrink-0" />
+								<span className="text-neutral-100">Rename</span>
+							</ContextMenuItem>
+							<ContextMenuItem>
+								<LucideDownload className="size-4 mr-2 stroke-sky-500 flex-shrink-0" />
+								<span className="text-sky-500">Download</span>
+							</ContextMenuItem>
+						</ContextMenuContent>
+					</ContextMenu>
+				</li>
+			))}
 		</ul>
 	);
 };
