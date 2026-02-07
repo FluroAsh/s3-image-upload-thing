@@ -9,10 +9,10 @@ import * as path from "path";
 import { type FormatEnum } from "sharp";
 
 import { TIME } from "@/shared/constants";
-import { DEFAULT_FILE_TYPE } from "@/shared/constants/image";
 import type { ImageVariants } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
 
+import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 import { UploadResult } from "./upload-pipeline";
 
 // ---------------------------------------------------------------------------

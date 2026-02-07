@@ -1,5 +1,7 @@
 import type { ImageVariant } from "@/shared/types/image";
 
+export const DEFAULT_FILE_TYPE = "webp";
+
 /**
  * Ordered list of variants produced for each uploaded image.
  * Defines "what" we generate; processor defines "how."

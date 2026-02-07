@@ -1,5 +1,3 @@
-export const DEFAULT_FILE_TYPE = "webp";
-
 /** RAW photo formats (e.g. for future Darktable pipeline). */
 export const PHOTO_FORMATS = ["NEF"];
 
