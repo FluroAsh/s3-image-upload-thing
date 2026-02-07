@@ -1,5 +1,7 @@
 # S3 Image Upload Thing
 
+![Dashboard screenshot](README-screenshot.png)
+
 A self-hosted, single-tenant S3 file management and image processing application designed for homelab and personal use. Upload images, automatically generate optimized variants (thumbnail, medium, large), and manage your S3 buckets without touching the AWS console.
 
 ## Features
