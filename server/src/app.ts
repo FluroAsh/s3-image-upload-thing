@@ -3,27 +3,13 @@
 
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { bodyLimit } from "hono/body-limit";
-
-import s3 from "./features/s3/route";
-import image from "./features/image/route";
+import storage from "./modules/storage/routes";
 
 const port = process.env.PORT || 3002;
 
 const app = new Hono();
-const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
 
-app.use(
-  "*",
-  cors(),
-  bodyLimit({
-    maxSize,
-    onError: (c) => c.json({ error: "Request body too large" }, 413),
-  })
-);
-
-app.route("/s3", s3);
-app.route("/image", image);
+app.use("*", cors());
 
 // Health check endpoint (infrastructure/monitoring - not a feature)
 app.get("/health", (c) =>
@@ -36,6 +22,8 @@ app.get("/health", (c) =>
     200
   )
 );
+
+app.route("/storage", storage);
 
 // app.doc("/doc", {
 //   openapi: "3.0.0",
@@ -52,5 +40,5 @@ console.log(`Server started on port ${port}`);
 export default {
   port,
   fetch: app.fetch,
-  maxRequestBodySize: maxSize,
+  // maxRequestBodySize: maxSize,
 };

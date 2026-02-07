@@ -1,4 +1,4 @@
-import * as sharp from 'sharp'
+import * as sharp from "sharp";
 
 export type OutputOptions =
   | sharp.OutputOptions
@@ -10,4 +10,4 @@ export type OutputOptions =
   | sharp.JxlOptions
   | sharp.GifOptions
   | sharp.Jp2Options
-  | sharp.TiffOptions
+  | sharp.TiffOptions;
