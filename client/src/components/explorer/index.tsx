@@ -122,9 +122,11 @@ const ImageCollection = ({
     }.amazonaws.com/${currentPath}/${resizedVariant?.name || ""}`;
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={`Open image collection ${node.name}`}
       className={cn(
-        "flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
+        "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
         activeFile.fileName === node.name
           ? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
@@ -145,7 +147,7 @@ const ImageCollection = ({
           {variants.length}
         </span>
       </div>
-    </div>
+    </button>
   );
 };
 
@@ -158,7 +160,9 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   const Icon = getFileIcon(remoteURL) || LucideFile;
 
   return (
-    <div
+    <button
+      type="button"
+      aria-label={`Open file ${node.name}`}
       className={cn(
         "flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
         activeFile.fileName === node.name
@@ -175,7 +179,7 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
           {node.size}
         </span>
       )}
-    </div>
+    </button>
   );
 };
 
@@ -200,7 +204,7 @@ const Node = ({
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
         className={cn(
-          "flex w-full items-center text-left text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
+          "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
           "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
           DEPTH_PADDING_MAP[node.depth],
         )}
@@ -226,6 +230,7 @@ const Node = ({
 
       {/* Recursively render subtree descendants */}
       <div
+        aria-hidden={!isExpanded}
         className={`transition-opacity duration-75 overflow-hidden ${
           isExpanded ? "opacity-100 max-h-none" : "opacity-0 max-h-0"
         }`}
