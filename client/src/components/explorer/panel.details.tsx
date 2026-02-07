@@ -1,16 +1,16 @@
 import {
   LucideExternalLink,
+  LucideFile,
   LucideImage,
   LucideLink,
-  LucideFile,
 } from "lucide-react";
 
-import { getVariantType, replaceFileSegment } from "./utils";
 import { isImageFile, isVideoFile } from "@/lib/helpers";
+import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "@/types/api";
 
-import { useExplorer } from "@/lib/providers/explorer-provider";
 import { ScrollArea } from "../ui/scroll-area";
+import { getVariantType, replaceFileSegment } from "./utils";
 
 type ActiveVariantProps = {
   variant: TreeNode;

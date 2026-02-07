@@ -1,7 +1,9 @@
 import { ListObjectsCommand } from "@aws-sdk/client-s3";
-import { S3Object, buildFileTree } from "../services/s3-operations";
 import { Context } from "hono";
+
 import { WithS3Client } from "@/shared/middleware/with-s3-client";
+
+import { S3Object, buildFileTree } from "../services/s3-operations";
 
 export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance } = ctx.var;
@@ -9,7 +11,7 @@ export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
 
   try {
     const listResponse = await s3Instance.send(
-      new ListObjectsCommand({ Bucket: bucketName })
+      new ListObjectsCommand({ Bucket: bucketName }),
     );
 
     if (!listResponse.Contents) {
@@ -27,7 +29,7 @@ export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
     console.error(e);
     return ctx.json(
       { error: e instanceof Error ? e.message : "Failed to get bucket" },
-      500
+      500,
     );
   }
 };

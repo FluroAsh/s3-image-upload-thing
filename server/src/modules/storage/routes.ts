@@ -1,13 +1,14 @@
-import {
-  withS3ClientMiddlware,
-  type WithS3Client,
-} from "@/shared/middleware/with-s3-client";
-
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { uploadImagesHandler } from "./handlers/upload";
-import { listBucketsHandler } from "./handlers/list-buckets";
+
+import {
+  type WithS3Client,
+  withS3ClientMiddlware,
+} from "@/shared/middleware/with-s3-client";
+
 import { getBucketHandler } from "./handlers/get-bucket";
+import { listBucketsHandler } from "./handlers/list-buckets";
+import { uploadImagesHandler } from "./handlers/upload";
 
 const storage = new Hono<WithS3Client>();
 
@@ -18,7 +19,7 @@ storage.use(
   bodyLimit({
     maxSize,
     onError: (c) => c.json({ error: "Request body too large" }, 413),
-  })
+  }),
 );
 
 storage.post("/upload", uploadImagesHandler);

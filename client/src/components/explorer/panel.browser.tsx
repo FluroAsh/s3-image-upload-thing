@@ -1,11 +1,11 @@
-import { LucideFolder, LucideLoader2, LucideDatabase } from "lucide-react";
+import { LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
 
-import { useFileTree } from "@/lib/query";
-import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useHasMounted } from "@/hooks/useHasMounted";
+import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useFileTree } from "@/lib/query";
 
-import { renderFileTree } from "./index";
 import { ScrollArea } from "../ui/scroll-area";
+import { renderFileTree } from "./index";
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center p-8 text-center">

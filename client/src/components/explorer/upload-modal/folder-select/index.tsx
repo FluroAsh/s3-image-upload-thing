@@ -1,4 +1,3 @@
-import { type MutableRefObject, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   LucideArrowLeft,
@@ -7,16 +6,18 @@ import {
   LucideSearch,
 } from "lucide-react";
 
-import type { TreeNode } from "@/types/api";
+import { type MutableRefObject, useState } from "react";
+
 import { useActiveBucket } from "@/hooks/useActiveBucket";
 import { useFileTree } from "@/lib/query";
+import type { TreeNode } from "@/types/api";
 
 import { Folder } from "./folder";
 
 const findCurrentFolders = (
   activeNode: TreeNode | undefined,
   rootNodes: TreeNode[] | undefined,
-  searchQuery: string
+  searchQuery: string,
 ) => {
   const folders = activeNode
     ? activeNode.children.filter((node) => node.isFolder)
@@ -24,7 +25,7 @@ const findCurrentFolders = (
 
   return searchQuery
     ? folders.filter((node) =>
-        node.name.toLowerCase().includes(searchQuery.toLowerCase())
+        node.name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : folders;
 };
@@ -83,14 +84,14 @@ export const FolderSelect = ({
 
           if (parentFolder) {
             const parentIndex = updatedData.findIndex(
-              (node) => node.name === parentFolder.name
+              (node) => node.name === parentFolder.name,
             );
             if (parentIndex !== -1) {
               updatedData[parentIndex].children.push(newFolder);
             }
           }
           return updatedData;
-        }
+        },
       );
 
       setFolderStack((prev) => [...prev, newFolder]);

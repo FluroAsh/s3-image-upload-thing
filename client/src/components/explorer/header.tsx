@@ -1,6 +1,7 @@
 "use client";
 
 import { LucideCloud } from "lucide-react";
+
 import { UploadTrigger } from "./upload-modal";
 import { UploadProvider } from "./upload-modal/provider";
 

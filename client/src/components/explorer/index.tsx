@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   LucideChevronRight,
   LucideFile,
@@ -8,20 +7,22 @@ import {
   LucideFolderOpen,
   LucideImages,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-import type { TreeNode } from "@/types/api";
-import { type ImageVariant } from "@/types/images";
+import { useState } from "react";
+
 import { getFileIcon } from "@/lib/helpers";
-import { getImageCollection } from "./utils";
-import { DEPTH_PADDING_MAP } from "./constants";
-
 import {
   ExplorerProvider,
   useExplorer,
 } from "@/lib/providers/explorer-provider";
-import { Sidebar } from "./layout.sidebar";
+import { cn } from "@/lib/utils";
+import type { TreeNode } from "@/types/api";
+import { type ImageVariant } from "@/types/images";
+
+import { DEPTH_PADDING_MAP } from "./constants";
 import { MainContent } from "./layout.main-content";
+import { Sidebar } from "./layout.sidebar";
+import { getImageCollection } from "./utils";
 
 export const ExplorerLayout = ({
   bucketName,
@@ -62,7 +63,7 @@ export const ExplorerLayout = ({
 export const renderFileTree = (
   nodes: TreeNode[],
   bucketName: string,
-  prevPath = ""
+  prevPath = "",
 ) => (
   <ul>
     {nodes.map((node, idx) => {
@@ -70,7 +71,7 @@ export const renderFileTree = (
 
       const { isImageCollection, variants } = getImageCollection(
         node.isFolder,
-        node
+        node,
       );
       const props = { node, bucketName, currentPath };
 
@@ -127,7 +128,7 @@ const ImageCollection = ({
         activeFile.fileName === node.name
           ? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-        DEPTH_PADDING_MAP[node.depth]
+        DEPTH_PADDING_MAP[node.depth],
       )}
       onClick={() => {
         setActiveFile({
@@ -163,7 +164,7 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
         activeFile.fileName === node.name
           ? "bg-sky-600 text-neutral-100 border border-sky-500"
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-        DEPTH_PADDING_MAP[node.depth]
+        DEPTH_PADDING_MAP[node.depth],
       )}
       onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
     >
@@ -198,7 +199,7 @@ const Node = ({
         className={cn(
           "flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
           "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-          DEPTH_PADDING_MAP[node.depth]
+          DEPTH_PADDING_MAP[node.depth],
         )}
         onClick={() => setIsExpanded((prev) => !prev)}
       >

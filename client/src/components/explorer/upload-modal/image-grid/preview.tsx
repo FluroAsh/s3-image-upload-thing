@@ -1,5 +1,6 @@
-import { cn } from "@/lib/utils";
 import { LucideX } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 
 type ImageGridProps = {
   items: File[];
@@ -44,7 +45,7 @@ export const ImagePreview = ({ image, onRemoveClick }: ImageProps) => {
       <button
         className={cn(
           "absolute z-10 size-[28px] -top-3 -right-3 bg-red-500/70 hover:bg-red-500/90 backdrop-blur-sm rounded-full grid place-items-center",
-          "transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg border border-white/20"
+          "transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg border border-white/20",
         )}
         onClick={onRemoveClick}
         title="Remove image"

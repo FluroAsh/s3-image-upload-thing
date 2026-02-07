@@ -1,13 +1,14 @@
 import sharp, { type FormatEnum } from "sharp";
 
-import { readableSize } from "@/shared/utils/helpers";
-import type { ImageVariant, ProcessedImage } from "@/shared/types/image";
 import type { OutputOptions } from "@/modules/storage/processors/tools/sharp";
+import type { ImageVariant, ProcessedImage } from "@/shared/types/image";
+import { readableSize } from "@/shared/utils/helpers";
+
 import {
-  VARIANT_NAMES,
-  VARIANT_WIDTH,
-  VARIANT_QUALITY,
   VARIANT_EFFORT,
+  VARIANT_NAMES,
+  VARIANT_QUALITY,
+  VARIANT_WIDTH,
 } from "./config";
 
 const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer =>
@@ -25,7 +26,7 @@ const createImageVariant = async (
   width: number | null,
   variant: ImageVariant,
   source: ProcessedImage,
-  sourceMetadata: { width: number; height: number; size: number }
+  sourceMetadata: { width: number; height: number; size: number },
 ): Promise<{ buffer: Buffer; size: string } | null> => {
   const outputFormat: keyof FormatEnum = "webp";
   const outputOptions = getOutputOptions(variant);
@@ -33,7 +34,7 @@ const createImageVariant = async (
 
   if (width !== null && width > sourceMetadata.width) {
     console.log(
-      `||== ⏭️  "${source.fileName}" | ${variant} | skipped (would upscale from ${sourceMetadata.width}px to ${width}px) ==||`
+      `||== ⏭️  "${source.fileName}" | ${variant} | skipped (would upscale from ${sourceMetadata.width}px to ${width}px) ==||`,
     );
     return null;
   }
@@ -57,14 +58,14 @@ const createImageVariant = async (
       `||== ⚠️  "${
         source.fileName
       }" | ${variant} | processed size (${compressedSize}) larger than source (${readableSize(
-        sourceMetadata.size
-      )}), using source ==||`
+        sourceMetadata.size,
+      )}), using source ==||`,
     );
     return { buffer: sourceBuffer, size: readableSize(sourceMetadata.size) };
   }
 
   console.log(
-    `||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${compressedSize} ==||`
+    `||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${compressedSize} ==||`,
   );
   return { buffer: processedBuffer, size: compressedSize };
 };
@@ -74,7 +75,7 @@ const createImageVariant = async (
  * Uses largest available variant as fallback when a variant is skipped (e.g. upscale).
  */
 export const createImageVariants = async (
-  sourceImage: ProcessedImage
+  sourceImage: ProcessedImage,
 ): Promise<Record<ImageVariant, { buffer: Buffer; size: string }>> => {
   const sourceBuffer = ensureBuffer(sourceImage.buffer);
   const metadata = await sharp(sourceBuffer).metadata();
@@ -87,7 +88,7 @@ export const createImageVariants = async (
   console.log(
     `||== 📊 "${sourceImage.fileName}" | Source: ${sourceMetadata.width}x${
       sourceMetadata.height
-    } (${readableSize(sourceMetadata.size)}) ==||`
+    } (${readableSize(sourceMetadata.size)}) ==||`,
   );
 
   const variantResults = await Promise.all(
@@ -96,9 +97,9 @@ export const createImageVariants = async (
         VARIANT_WIDTH[variant],
         variant,
         sourceImage,
-        sourceMetadata
-      )
-    )
+        sourceMetadata,
+      ),
+    ),
   );
 
   const result: Record<string, { buffer: Buffer; size: string }> = {};
@@ -116,7 +117,7 @@ export const createImageVariants = async (
       }
     } else if (largestVariant) {
       console.log(
-        `||== 🔄 "${sourceImage.fileName}" | ${variant} | using fallback (largest available variant) ==||`
+        `||== 🔄 "${sourceImage.fileName}" | ${variant} | using fallback (largest available variant) ==||`,
       );
       result[variant] = largestVariant;
     }

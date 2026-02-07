@@ -1,10 +1,9 @@
-import * as path from "path";
-
-import { ImageVariants } from "@/shared/types/image";
-
 import fileSize from "file-size";
 import * as fs from "fs";
 import * as os from "os";
+import * as path from "path";
+
+import { ImageVariants } from "@/shared/types/image";
 
 export const getFileType = (fileName: string) => path.parse(fileName).ext;
 
@@ -22,7 +21,7 @@ export const writeToDesktop = (image: ImageVariants) => {
   const baseFolderPath = path.join(
     desktopPath,
     "image-uploads",
-    path.parse(image.fileName).name
+    path.parse(image.fileName).name,
   );
 
   // Create directory if it doesn't exist
@@ -41,7 +40,7 @@ export const writeToDesktop = (image: ImageVariants) => {
   Object.entries(image.variations).forEach(([variant, { buffer }]) => {
     const variantPath = path.join(
       baseFolderPath,
-      `${variant}-${path.parse(image.fileName).name}.webp`
+      `${variant}-${path.parse(image.fileName).name}.webp`,
     );
     fs.writeFileSync(variantPath, new Uint8Array(buffer));
     console.log(`${variant} variant written to: ${variantPath}`);

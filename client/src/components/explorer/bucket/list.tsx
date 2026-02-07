@@ -1,14 +1,15 @@
 "use client";
 
-import type { Bucket } from "@/types/api";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
 import {
   LucideAlertTriangle,
   LucideDatabase,
   LucideLoader2,
   LucideSearchX,
 } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+
+import type { Bucket } from "@/types/api";
 
 import { BucketCard } from "./card";
 

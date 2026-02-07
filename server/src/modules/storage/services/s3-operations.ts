@@ -1,17 +1,18 @@
 import {
-  S3Client,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import * as path from "path";
 import { type FormatEnum } from "sharp";
 
-import { DEFAULT_FILE_TYPE } from "@/shared/constants/image";
 import { TIME } from "@/shared/constants";
+import { DEFAULT_FILE_TYPE } from "@/shared/constants/image";
 import type { ImageVariants } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
+
 import { UploadResult } from "./upload-pipeline";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ export type FileTreeNode = {
 
 export const getBucketStats = async (
   s3Client: S3Client,
-  bucketName: string
+  bucketName: string,
 ): Promise<BucketStats> => {
   const stats: BucketStats = { objectCount: 0, totalSize: 0 };
   let continuationToken: string | undefined;
@@ -103,7 +104,7 @@ const addPresignedUrls = async (
   nodes: FileTreeNode[],
   s3Client: S3Client,
   bucketName: string,
-  pathPrefix: string = ""
+  pathPrefix: string = "",
 ): Promise<FileTreeNode[]> =>
   Promise.all(
     nodes.map(async (node) => {
@@ -115,7 +116,7 @@ const addPresignedUrls = async (
             node.children,
             s3Client,
             bucketName,
-            fullPath
+            fullPath,
           ),
         };
       }
@@ -133,7 +134,7 @@ const addPresignedUrls = async (
         console.error(`Failed to generate presigned URL for ${fullPath}:`, err);
         return node;
       }
-    })
+    }),
   );
 
 export const buildFileTree = async ({
@@ -180,7 +181,7 @@ export const buildFileTree = async ({
 const generatePresignedUrl = async (
   s3Instance: S3Client,
   bucketName: string,
-  key: string
+  key: string,
 ): Promise<string> => {
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
   // @ts-expect-error - nested @smithy type mismatch
@@ -195,7 +196,7 @@ export const uploadImages = async (
     format: keyof FormatEnum;
     bucketName: string;
     region: string;
-  }
+  },
 ): Promise<UploadResult[]> => {
   const { fileName } = image;
   const { format, bucketName, destination } = options;
@@ -216,13 +217,13 @@ export const uploadImages = async (
             Bucket: bucketName,
             Key: key,
             ContentType: "image/webp",
-          })
+          }),
         );
 
         const imageURL = await generatePresignedUrl(
           s3Instance,
           bucketName,
-          key
+          key,
         );
 
         return {
@@ -232,7 +233,7 @@ export const uploadImages = async (
           size,
           ETag: putResponse.ETag,
         };
-      }
-    )
+      },
+    ),
   );
 };

@@ -1,13 +1,15 @@
 "use client";
 
-import { useExplorer } from "@/lib/providers/explorer-provider";
-import { BucketList } from "./bucket/list";
-import { useBuckets } from "@/lib/query";
 import { LucideDatabase, LucideSettings } from "lucide-react";
-import { BucketSearch } from "./bucket/search";
-import { Separator } from "../ui/separator";
-import { ScrollArea } from "../ui/scroll-area";
+
 import { useActiveBucket } from "@/hooks/useActiveBucket";
+import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useBuckets } from "@/lib/query";
+
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
+import { BucketList } from "./bucket/list";
+import { BucketSearch } from "./bucket/search";
 
 export const Sidebar = () => {
   const { data: bucketData, isLoading, isError, error } = useBuckets();
@@ -21,7 +23,7 @@ export const Sidebar = () => {
 
   // Filter buckets based on search term
   const filteredBuckets = buckets.filter((bucket) =>
-    bucket.Name?.toLowerCase().includes(bucketSearchTerm.toLowerCase())
+    bucket.Name?.toLowerCase().includes(bucketSearchTerm.toLowerCase()),
   );
 
   return (

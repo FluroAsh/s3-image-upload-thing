@@ -18,11 +18,11 @@ const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
         "shrink-0 bg-neutral-700",
         orientation === "horizontal" && "h-px w-full",
         orientation === "vertical" && "h-full w-px",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 
 Separator.displayName = "Separator";

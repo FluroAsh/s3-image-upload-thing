@@ -1,4 +1,5 @@
 import { LucideUpload } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -7,11 +8,10 @@ import {
 } from "@/components/ui/dialog";
 
 import { EUploadState, type UploadState, useUpload } from "./provider";
-
-import { UploadScreen } from "./screen.upload";
-import { ProcessingScreen } from "./screen.processing";
-import { ErrorScreen } from "./screen.error";
 import { CompleteScreen } from "./screen.complete";
+import { ErrorScreen } from "./screen.error";
+import { ProcessingScreen } from "./screen.processing";
+import { UploadScreen } from "./screen.upload";
 
 const MODAL_SCREENS: Record<
   UploadState,

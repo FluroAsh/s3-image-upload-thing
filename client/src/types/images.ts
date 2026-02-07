@@ -1,1 +1,6 @@
-export type ImageVariant = 'placeholder' | 'small' | 'medium' | 'large' | 'lossless'
+export type ImageVariant =
+  | "placeholder"
+  | "small"
+  | "medium"
+  | "large"
+  | "lossless";

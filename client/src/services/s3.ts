@@ -10,7 +10,7 @@ export const getBuckets = async (): Promise<BucketsResponse> => {
 
 export const getFileTree = async (bucketName: string): Promise<TreeNode[]> => {
   const { tree = [] } = await ofetch<{ tree: TreeNode[] }>(
-    `/storage/buckets/${bucketName}`
+    `/storage/buckets/${bucketName}`,
   );
   return tree;
 };

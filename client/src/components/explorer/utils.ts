@@ -30,7 +30,7 @@ export const getImageCollection = (isFolder: boolean, node: TreeNode) => {
     variants.every(
       (variant) =>
         extractFilename(variant.name) === node.name &&
-        variant.children.length === 0
+        variant.children.length === 0,
     );
 
   return { isImageCollection, variants };

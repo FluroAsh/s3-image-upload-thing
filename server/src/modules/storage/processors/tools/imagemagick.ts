@@ -14,7 +14,7 @@ export const enhanceImageColors = async (
     vibrance?: number; // Vibrance adjustment (higher = more vibrant colors)
     colorSpace?: string; // Target colorspace (sRGB, Adobe RGB, etc.)
     bitDepth?: number; // Output bit depth (8, 16)
-  }
+  },
 ): Promise<Buffer> => {
   const {
     profile = "",
@@ -60,7 +60,7 @@ export const enhanceImageColors = async (
         "-evaluate",
         "multiply",
         vibrance.toString(),
-        "+channel"
+        "+channel",
       );
     }
 
@@ -75,7 +75,7 @@ export const enhanceImageColors = async (
     if (convertProcess.status !== 0) {
       console.error(`ImageMagick error: ${convertProcess.stderr}`);
       throw new Error(
-        `ImageMagick processing failed: ${convertProcess.stderr}`
+        `ImageMagick processing failed: ${convertProcess.stderr}`,
       );
     }
 

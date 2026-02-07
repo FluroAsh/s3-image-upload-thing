@@ -1,11 +1,13 @@
 import { useSearchParams } from "next/navigation";
+
 import { useRef, useState } from "react";
 
 import { useBuckets, useMutateUpload } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { EUploadState, useUpload } from "./provider";
-import { UploadImageGrid } from "./image-grid";
+
 import { FolderSelect } from "./folder-select";
+import { UploadImageGrid } from "./image-grid";
+import { EUploadState, useUpload } from "./provider";
 
 // TODO: modify strucutre to allow for custom properties prior to submission
 // eg: "isRenaming"...
@@ -24,7 +26,7 @@ const SubmitButton = ({
   <button
     className={cn(
       "bg-neutral-300 px-4 py-2 rounded-sm text-neutral-900",
-      !hasImages && "bg-neutral-600 text-neutral-400"
+      !hasImages && "bg-neutral-600 text-neutral-400",
     )}
     onClick={onClick}
     disabled={!hasImages}

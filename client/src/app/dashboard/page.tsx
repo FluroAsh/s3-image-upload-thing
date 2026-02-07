@@ -1,12 +1,12 @@
-import type { Bucket } from "@/types/api";
-import { getBuckets, getFileTree } from "@/services/s3";
-import { ExplorerLayout } from "@/components/explorer";
-
 import {
-  dehydrate,
   HydrationBoundary,
   QueryClient,
+  dehydrate,
 } from "@tanstack/react-query";
+
+import { ExplorerLayout } from "@/components/explorer";
+import { getBuckets, getFileTree } from "@/services/s3";
+import type { Bucket } from "@/types/api";
 
 export const dynamic = "force-dynamic";
 

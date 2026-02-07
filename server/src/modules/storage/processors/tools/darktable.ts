@@ -1,8 +1,9 @@
-import { readableSize } from "@/shared/utils/helpers";
 import * as child_process from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+
+import { readableSize } from "@/shared/utils/helpers";
 
 type DarktableImageFormat = "tif" | "png" | "jpeg";
 type Options = { format: DarktableImageFormat };
@@ -10,7 +11,7 @@ type Options = { format: DarktableImageFormat };
 /** This will return the ACTUAL raw image buffer, not the embedded JPEG preview. */
 export const processNefWithDarktable = async (
   buffer: Buffer,
-  options: Options = { format: "tif" }
+  options: Options = { format: "tif" },
 ) => {
   const { format = "tif" } = options;
 
@@ -21,7 +22,7 @@ export const processNefWithDarktable = async (
   try {
     fs.writeFileSync(inputPath, buffer as any);
     console.log(
-      `||== Processing RAW image with darktable-cli to format "${format.toUpperCase()}" ==||`
+      `||== Processing RAW image with darktable-cli to format "${format.toUpperCase()}" ==||`,
     );
 
     const args = [
@@ -43,10 +44,10 @@ export const processNefWithDarktable = async (
       console.error(
         `darktable-cli error || [code ${dtProcess.status}]: ${
           dtProcess.stderr || "No stderr output"
-        }`
+        }`,
       );
       throw new Error(
-        `Failed to process NEF with darktable-cli [exit code: ${dtProcess.status}]`
+        `Failed to process NEF with darktable-cli [exit code: ${dtProcess.status}]`,
       );
     }
 
@@ -84,14 +85,14 @@ function cleanupFiles(inputPath: string, outputPath: string, tempDir: string) {
 
 function locateOutputFile(tempDir: string, expectedOutputPath: string) {
   console.log(
-    `Expected output file not found at "${expectedOutputPath}", checking for alternatives...`
+    `Expected output file not found at "${expectedOutputPath}", checking for alternatives...`,
   );
 
   const files = fs.readdirSync(tempDir);
   console.log("Files in temp directory:", files);
 
   const outputFile = files.find(
-    (file) => file !== "input.nef" && file.startsWith("output")
+    (file) => file !== "input.nef" && file.startsWith("output"),
   );
 
   if (outputFile) {
@@ -101,7 +102,7 @@ function locateOutputFile(tempDir: string, expectedOutputPath: string) {
     // Read the found file
     const processedBuffer = fs.readFileSync(actualOutputPath);
     console.log(
-      `✅ Successfully processed NEF (${readableSize(processedBuffer.length)})`
+      `✅ Successfully processed NEF (${readableSize(processedBuffer.length)})`,
     );
     return processedBuffer;
   } else {

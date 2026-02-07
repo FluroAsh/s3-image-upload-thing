@@ -1,19 +1,32 @@
-import { FileVariant, FileVariants, Variant } from '@/types/api'
-import { useUpload } from './provider'
+import { FileVariant, FileVariants, Variant } from "@/types/api";
 
-const Header = ({ imageCount, groupCount }: { imageCount: number; groupCount: number }) => {
+import { useUpload } from "./provider";
+
+const Header = ({
+  imageCount,
+  groupCount,
+}: {
+  imageCount: number;
+  groupCount: number;
+}) => {
   return (
     <p className="text-base text-neutral-300 mt-2 mb-4 font-medium">
-      Successfully uploaded {imageCount} {imageCount === 1 ? 'variant' : 'variants'} across {groupCount}{' '}
-      {groupCount === 1 ? 'image' : 'images'}.
+      Successfully uploaded {imageCount}{" "}
+      {imageCount === 1 ? "variant" : "variants"} across {groupCount}{" "}
+      {groupCount === 1 ? "image" : "images"}.
     </p>
-  )
-}
+  );
+};
 
 const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
   return groups.map((fileGroup, i) => (
-    <div key={`group-${i}`} className="bg-neutral-800 rounded-lg p-3 border border-neutral-700">
-      <h4 className="text-sm font-medium text-neutral-200 mb-2">Group {i + 1}</h4>
+    <div
+      key={`group-${i}`}
+      className="bg-neutral-800 rounded-lg p-3 border border-neutral-700"
+    >
+      <h4 className="text-sm font-medium text-neutral-200 mb-2">
+        Group {i + 1}
+      </h4>
 
       <div className="space-y-2">
         {fileGroup.map((file, i) => (
@@ -21,16 +34,16 @@ const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
         ))}
       </div>
     </div>
-  ))
-}
+  ));
+};
 
 const variantSizeLabel: Record<Variant, string> = {
-  placeholder: 'plch',
-  small: 'sm',
-  medium: 'md',
-  large: 'lg',
-  lossless: 'loss'
-}
+  placeholder: "plch",
+  small: "sm",
+  medium: "md",
+  large: "lg",
+  lossless: "loss",
+};
 
 const FileItem = ({ file }: { file: FileVariant }) => {
   return (
@@ -46,27 +59,32 @@ const FileItem = ({ file }: { file: FileVariant }) => {
       >
         {file.fileName}
       </a>
-      <span className="text-xs text-neutral-300 whitespace-nowrap">{file.size}</span>
+      <span className="text-xs text-neutral-300 whitespace-nowrap">
+        {file.size}
+      </span>
     </div>
-  )
-}
+  );
+};
 
 export const CompleteScreen = () => {
-  const { uploadResponse } = useUpload()
-  const files = uploadResponse?.files || []
-  
+  const { uploadResponse } = useUpload();
+  const files = uploadResponse?.files || [];
+
   // Group files by fileName (each image has multiple variants)
-  const groupedFiles = files.reduce((acc, file) => {
-    if (!acc[file.fileName]) {
-      acc[file.fileName] = []
-    }
-    acc[file.fileName].push(file)
-    return acc
-  }, {} as Record<string, FileVariant[]>)
-  
-  const groups = Object.values(groupedFiles)
-  const groupCount = groups.length
-  const imageCount = files.length
+  const groupedFiles = files.reduce(
+    (acc, file) => {
+      if (!acc[file.fileName]) {
+        acc[file.fileName] = [];
+      }
+      acc[file.fileName].push(file);
+      return acc;
+    },
+    {} as Record<string, FileVariant[]>,
+  );
+
+  const groups = Object.values(groupedFiles);
+  const groupCount = groups.length;
+  const imageCount = files.length;
 
   return (
     <div>
@@ -75,5 +93,5 @@ export const CompleteScreen = () => {
         <FileGroup groups={groups} />
       </div>
     </div>
-  )
-}
+  );
+};

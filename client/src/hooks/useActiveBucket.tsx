@@ -1,5 +1,6 @@
-import { useBuckets } from "@/lib/query";
 import { useSearchParams } from "next/navigation";
+
+import { useBuckets } from "@/lib/query";
 
 export const useActiveBucket = () => {
   const { data: bucketData } = useBuckets();
@@ -8,7 +9,7 @@ export const useActiveBucket = () => {
 
   if (!activeBucketName) {
     throw new Error(
-      "No active bucket found. Please check you have properly configured your env variables."
+      "No active bucket found. Please check you have properly configured your env variables.",
     );
   }
 

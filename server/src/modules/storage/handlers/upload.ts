@@ -1,5 +1,7 @@
-import { WithS3Client } from "@/shared/middleware/with-s3-client";
 import { Context } from "hono";
+
+import { WithS3Client } from "@/shared/middleware/with-s3-client";
+
 import { runUploadPipeline } from "../services/upload-pipeline";
 
 /**
@@ -32,9 +34,8 @@ const parseUploadRequest = async (ctx: Context<WithS3Client>) => {
 export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
   try {
     const { s3Instance, region } = ctx.var;
-    const { bucketName, destination, fileEntries } = await parseUploadRequest(
-      ctx
-    );
+    const { bucketName, destination, fileEntries } =
+      await parseUploadRequest(ctx);
 
     if (fileEntries.length === 0) {
       return ctx.json({ error: "No files uploaded" }, 400);
@@ -65,7 +66,7 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
         error: errorMessage,
         details: error instanceof Error ? error.stack : undefined,
       },
-      500
+      500,
     );
   }
 };

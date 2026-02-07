@@ -1,15 +1,17 @@
 import { LucidePlus, LucideUpload } from "lucide-react";
+
 import { useRef } from "react";
 
-import { ImagePreview, PreviewGrid } from "./preview";
 import { cn } from "@/lib/utils";
+
+import { ImagePreview, PreviewGrid } from "./preview";
 
 const AddImageButton = ({ onClick }: { onClick: () => void }) => (
   <button
     onClick={onClick}
     className={cn(
       "h-[120px] border-2 border-dashed border-neutral-500 rounded-md hover:bg-neutral-500/10",
-      "transition-colors hover:text-neutral-300 text-neutral-500"
+      "transition-colors hover:text-neutral-300 text-neutral-500",
     )}
   >
     <div className="grid place-items-center gap-1">
@@ -23,7 +25,7 @@ const ImagePlaceholder = ({ onClick }: { onClick: () => void }) => (
   <div
     className={cn(
       "border-neutral-500 border-2 border-dashed grid place-items-center hover:cursor-pointer h-full rounded-md",
-      "transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-neutral-500/10"
+      "transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-neutral-500/10",
     )}
     onClick={onClick}
   >

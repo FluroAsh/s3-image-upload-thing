@@ -1,11 +1,12 @@
-import { type UploadSuccess } from "@/types/api";
 import {
-  createContext,
   type Dispatch,
   type SetStateAction,
+  createContext,
   useContext,
   useState,
 } from "react";
+
+import { type UploadSuccess } from "@/types/api";
 
 export enum EUploadState {
   Idle = "Idle",
@@ -28,10 +29,10 @@ const UploadContext = createContext<UploadProviderContext | null>(null);
 
 export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
   const [uploadState, setUploadState] = useState<UploadState>(
-    EUploadState.Idle
+    EUploadState.Idle,
   );
   const [uploadResponse, setUploadResponse] = useState<UploadSuccess | null>(
-    null
+    null,
   );
 
   const resetState = () => {

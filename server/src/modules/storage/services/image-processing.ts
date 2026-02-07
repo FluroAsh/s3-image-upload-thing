@@ -1,5 +1,6 @@
-import { readableSize } from "@/shared/utils/helpers";
 import type { ProcessedImage } from "@/shared/types/image";
+import { readableSize } from "@/shared/utils/helpers";
+
 import { createImageVariants as createVariants } from "../processors/variants/processor";
 
 /**
@@ -8,7 +9,7 @@ import { createImageVariants as createVariants } from "../processors/variants/pr
  * @returns Promise resolving to array of ProcessedImage objects
  */
 export const prepareImages = async (
-  files: [string, string | File][]
+  files: [string, string | File][],
 ): Promise<ProcessedImage[]> => {
   const processedImages = await Promise.all(
     files.map(async ([fieldName, file]): Promise<ProcessedImage | null> => {
@@ -23,11 +24,11 @@ export const prepareImages = async (
         fileType: file.type,
         size: readableSize(file.size),
       };
-    })
+    }),
   );
 
   return processedImages.filter(
-    (image): image is ProcessedImage => image !== null
+    (image): image is ProcessedImage => image !== null,
   );
 };
 

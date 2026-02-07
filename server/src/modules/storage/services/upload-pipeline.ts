@@ -1,8 +1,9 @@
 import type { S3Client } from "@aws-sdk/client-s3";
 
-import { prepareImages, createImageVariants } from "./image-processing";
-import { uploadImages } from "./s3-operations";
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
+
+import { createImageVariants, prepareImages } from "./image-processing";
+import { uploadImages } from "./s3-operations";
 
 export type UploadPipelineParams = {
   fileEntries: [string, string | File][];
@@ -25,7 +26,7 @@ export type UploadResult = {
  * Kept in pipeline as orchestration glue between image-processing and S3 upload.
  */
 const processImage = async (
-  sourceImage: ProcessedImage
+  sourceImage: ProcessedImage,
 ): Promise<ImageVariants> => {
   const { fieldName, fileName, fileType, size } = sourceImage;
   const variations = await createImageVariants(sourceImage);
@@ -52,13 +53,13 @@ const processImage = async (
  * Returns a flat list of upload results (one per variant per image).
  */
 export const runUploadPipeline = async (
-  params: UploadPipelineParams
+  params: UploadPipelineParams,
 ): Promise<UploadResult[]> => {
   const { fileEntries, bucketName, destination, s3Instance, region } = params;
 
   const preparedImages = await prepareImages(fileEntries);
   const processedImages = await Promise.all(
-    preparedImages.map((image) => processImage(image))
+    preparedImages.map((image) => processImage(image)),
   );
 
   const uploadResults = await Promise.all(
@@ -68,8 +69,8 @@ export const runUploadPipeline = async (
         destination,
         bucketName,
         region,
-      })
-    )
+      }),
+    ),
   );
 
   return uploadResults.flat();

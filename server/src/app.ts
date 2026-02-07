@@ -1,8 +1,8 @@
 // import { swaggerUI } from '@hono/swagger-ui'
 // import { OpenAPIHono } from '@hono/zod-openapi'
-
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+
 import storage from "./modules/storage/routes";
 
 const port = process.env.PORT || 3002;
@@ -19,8 +19,8 @@ app.get("/health", (c) =>
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
     },
-    200
-  )
+    200,
+  ),
 );
 
 app.route("/storage", storage);
