@@ -1,0 +1,11 @@
+{
+  "name": "s3-image-upload-thing",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write \"client/**/*.{ts,tsx,js,jsx,json,css,md}\" \"server/**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "prettier": "^3.4.2"
+  }
+}
