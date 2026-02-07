@@ -195,15 +195,18 @@ const Node = ({
 
   return node.isFolder ? (
     <>
-      <div
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
         className={cn(
-          "flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
+          "flex w-full items-center text-left text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
           "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
           DEPTH_PADDING_MAP[node.depth],
         )}
         onClick={() => setIsExpanded((prev) => !prev)}
       >
-        <div className="inline-flex mr-2">
+        <span className="inline-flex mr-2">
           <LucideChevronRight
             className={`size-4 mr-2 transition duration-75', ${
               isExpanded
@@ -212,14 +215,14 @@ const Node = ({
             }`}
           />
           <FolderIcon className="size-4 mr-2 stroke-sky-400" />
-        </div>
+        </span>
         <span className="text-sm font-medium truncate">{node.name}</span>
         {node.children && node.children.length > 0 && (
           <span className="ml-auto text-xs text-slate-400 flex-shrink-0">
             {node.children.length}
           </span>
         )}
-      </div>
+      </button>
 
       {/* Recursively render subtree descendants */}
       <div
