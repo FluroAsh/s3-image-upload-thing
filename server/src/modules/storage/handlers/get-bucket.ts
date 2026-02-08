@@ -1,9 +1,9 @@
-import { ListObjectsCommand } from "@aws-sdk/client-s3";
+import { ListObjectsCommand, type _Object } from "@aws-sdk/client-s3";
 import { Context } from "hono";
 
 import { WithS3Client } from "@/shared/middleware/with-s3-client";
 
-import { S3Object, buildFileTree } from "../services/s3-operations";
+import { constructFileTree } from "../services/s3-operations";
 
 export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance } = ctx.var;
@@ -14,15 +14,15 @@ export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
       new ListObjectsCommand({ Bucket: bucketName }),
     );
 
-    if (!listResponse.Contents) {
-      return ctx.json({ message: "No objects found" }, 200);
-    }
-
-    const fileTree = await buildFileTree({
-      objects: listResponse.Contents as S3Object[],
+    const fileTree = await constructFileTree({
+      objects: listResponse.Contents ?? [],
       s3Client: s3Instance,
       bucketName,
     });
+
+    if (!fileTree.length) {
+      return ctx.json({ message: "No objects found" }, 404);
+    }
 
     return ctx.json({ tree: fileTree });
   } catch (e) {
