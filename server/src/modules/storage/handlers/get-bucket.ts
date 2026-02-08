@@ -1,9 +1,9 @@
-import { ListObjectsCommand, type _Object } from "@aws-sdk/client-s3";
+import { ListObjectsCommand } from "@aws-sdk/client-s3";
 import { Context } from "hono";
 
 import { WithS3Client } from "@/shared/middleware/with-s3-client";
 
-import { constructFileTree } from "../services/s3-operations";
+import { constructFileTree } from "../services/file-tree";
 
 export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
   const { s3Instance } = ctx.var;
@@ -14,10 +14,8 @@ export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
       new ListObjectsCommand({ Bucket: bucketName }),
     );
 
-    const fileTree = await constructFileTree({
+    const fileTree = constructFileTree({
       objects: listResponse.Contents ?? [],
-      s3Client: s3Instance,
-      bucketName,
     });
 
     if (!fileTree.length) {

@@ -1,7 +1,7 @@
 import { type Bucket } from "@aws-sdk/client-s3";
 import { format } from "date-fns";
 
-import type { BucketStats } from "@/modules/storage/services/s3-operations";
+import type { BucketStats } from "@/shared/types/s3";
 
 import { readableSize } from "./helpers";
 
