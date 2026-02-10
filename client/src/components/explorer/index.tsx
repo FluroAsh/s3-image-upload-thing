@@ -227,6 +227,50 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
   );
 };
 
+const Folder = ({
+  node,
+  isExpanded,
+  toggleExpanded,
+}: {
+  node: TreeNode;
+  isExpanded: boolean;
+  toggleExpanded: (id: string) => void;
+}) => {
+  const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed;
+
+  return (
+    <button
+      type="button"
+      aria-expanded={isExpanded}
+      aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
+      className={cn(
+        "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
+        "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
+        DEPTH_PADDING_MAP[node.depth],
+      )}
+      onClick={() => toggleExpanded(node.id)}
+    >
+      <span className="inline-flex mr-2">
+        <LucideChevronRight
+          className={`size-4 mr-2 transition duration-75', ${
+            isExpanded
+              ? "stroke-slate-400 rotate-90"
+              : "rotate-0 stroke-sky-400"
+          }`}
+        />
+        <FolderIcon className="size-4 mr-2 stroke-sky-400" />
+      </span>
+      <span className="text-sm font-medium truncate">{node.name}</span>
+
+      {node.childCount > 0 && (
+        <span className="ml-auto text-xs text-slate-400 flex-shrink-0">
+          {node.childCount}
+        </span>
+      )}
+    </button>
+  );
+};
+
 const Node = ({
   node,
   toggleExpanded,
@@ -236,43 +280,13 @@ const Node = ({
   bucketName: string;
   toggleExpanded: (id: string) => void;
   isExpanded: boolean;
-}) => {
-  const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed;
-
-  return node.isFolder ? (
-    <>
-      <button
-        type="button"
-        aria-expanded={isExpanded}
-        aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
-        className={cn(
-          "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-          "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-          DEPTH_PADDING_MAP[node.depth],
-        )}
-        onClick={() => toggleExpanded(node.id)}
-      >
-        <span className="inline-flex mr-2">
-          <LucideChevronRight
-            className={`size-4 mr-2 transition duration-75', ${
-              isExpanded
-                ? "stroke-slate-400 rotate-90"
-                : "rotate-0 stroke-sky-400"
-            }`}
-          />
-          <FolderIcon className="size-4 mr-2 stroke-sky-400" />
-        </span>
-        <span className="text-sm font-medium truncate">{node.name}</span>
-
-        {/* Number of children (ie for a folder) */}
-        {node.childCount > 0 && (
-          <span className="ml-auto text-xs text-slate-400 flex-shrink-0">
-            {node.childCount}
-          </span>
-        )}
-      </button>
-    </>
+}) =>
+  node.isFolder ? (
+    <Folder
+      node={node}
+      isExpanded={isExpanded}
+      toggleExpanded={toggleExpanded}
+    />
   ) : (
     <File node={node} remoteURL={node.presignedUrl} />
   );
-};
