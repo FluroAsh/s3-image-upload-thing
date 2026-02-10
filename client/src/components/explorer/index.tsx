@@ -8,7 +8,7 @@ import {
   LucideImages,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { getFileIcon } from "@/lib/helpers";
 import {
@@ -22,7 +22,7 @@ import { type ImageVariant } from "@/types/images";
 import { DEPTH_PADDING_MAP } from "./constants";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { getImageCollection } from "./utils";
+import { extractFilename } from "./utils";
 
 export const ExplorerLayout = ({
   bucketName,
@@ -41,59 +41,95 @@ export const ExplorerLayout = ({
   );
 };
 
-/**
- * Renders a file tree structure from a given array of TreeNode objects.
- *
- * This function recursively maps through the provided nodes to generate a nested unordered list (<ul><li>) representing the file tree.
- * It handles both folders and image variants, rendering them with the appropriate components.
- *
- * Image variants will *not* recursively render their children, as they are intended to display a collection of image variants (e.g., thumbnail, medium, large).
- *
- * @example
- * // Example usage:
- * const fileTree = [
- *   { name: 'folder1', isFolder: true, children: [...] },
- *   { name: 'image1.jpg', isFolder: false },
- *   { name: 'image2_large.jpg', isFolder: false },
- *   { name: 'image2_small.jpg', isFolder: false },
- * ];
- *
- * <Explorer nodes={fileTree} bucketName="my-bucket" />
- */
-export const renderFileTree = (
-  nodes: TreeNode[],
-  bucketName: string,
-  prevPath = "",
-) => (
-  <ul>
-    {nodes.map((node, idx) => {
-      const currentPath = prevPath ? `${prevPath}/${node.name}` : node.name;
+type RenderTreeNode = TreeNode & {
+  isImageCollection?: boolean;
+  variants?: TreeNode[];
+};
 
-      const { isImageCollection, variants } = getImageCollection(
-        node.isFolder,
-        node,
-      );
-      const props = { node, bucketName, currentPath };
+const MIN_IMAGE_COLLECTION_SIZE = 1;
 
-      return (
-        <li key={idx}>
-          {isImageCollection ? (
-            <ImageCollection size="large" variants={variants} {...props} />
-          ) : (
-            <Node {...props} />
-          )}
-        </li>
-      );
-    })}
-  </ul>
-);
+export const FileTree = ({
+  childMap,
+  bucketName,
+}: {
+  childMap: Map<string, TreeNode[]>;
+  bucketName: string;
+}) => {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const toggleExpanded = (id: string) => {
+    setExpanded((prev) => {
+      const newState = { ...prev };
+      const prevState = !!prev[id];
+      newState[id] = !prevState;
+      return newState;
+    });
+  };
+
+  // TODO: Tidy this up...
+  const visibleNodes = useMemo(() => {
+    const nodes: RenderTreeNode[] = [];
+
+    const renderChildrenByFolder = (parentId: string) => {
+      (childMap.get(parentId) || []).map((node) => {
+        if (node.isFolder && node.childCount >= MIN_IMAGE_COLLECTION_SIZE) {
+          const children = childMap.get(node.id);
+          // Folder object name should always be the same as the variant object name (minus variant prefix and .ext)
+          const isImageCollection = children?.every(
+            (child) => extractFilename(child.name) === node.name,
+          );
+
+          if (isImageCollection) {
+            nodes.push({
+              ...node,
+              isImageCollection: true,
+              variants: children,
+            });
+
+            return;
+          }
+        }
+
+        nodes.push(node); // Root level folder nodes
+        if (expanded[node.id]) {
+          renderChildrenByFolder(node.id);
+        }
+      });
+    };
+
+    renderChildrenByFolder(""); // "" maps the root nodes, and children
+    return nodes;
+  }, [childMap, expanded]);
+
+  return (
+    <ul>
+      {visibleNodes.map((node) => {
+        return node.isFolder && node.isImageCollection ? (
+          <ImageCollection
+            key={node.id}
+            variants={node.variants!}
+            node={node}
+            previewSize="large"
+          />
+        ) : (
+          <Node
+            key={node.id}
+            node={node}
+            toggleExpanded={toggleExpanded}
+            bucketName={bucketName}
+            isExpanded={expanded[node.id]}
+          />
+        );
+      })}
+    </ul>
+  );
+};
 
 type ImageVariantProps = {
   node: TreeNode;
   variants: TreeNode[];
-  currentPath: string;
   /** Used for setting the desired size for the image preview in the Explorer's "active" panel — by default this is "large". */
-  size?: ImageVariant;
+  previewSize?: ImageVariant;
 };
 
 /**
@@ -103,8 +139,7 @@ type ImageVariantProps = {
 const ImageCollection = ({
   variants,
   node,
-  currentPath,
-  size = "large",
+  previewSize = "large",
 }: ImageVariantProps) => {
   const {
     actions: { setActiveFile },
@@ -112,14 +147,18 @@ const ImageCollection = ({
   } = useExplorer();
 
   // Find the variant node that matches the desired size
-  const resizedVariant = variants.find((v) => v.name.includes(size));
+  const resizedVariant =
+    variants.find((variant) => variant.name.startsWith(previewSize)) ||
+    variants[variants.length - 1];
 
-  // Use presigned URL if available, otherwise fall back to constructing URL
+  // TODO: Presigned URL should be fetched on-demand from BE using a (TBC - will be created) separate endpoint...
+  // (Just pass the full object path - node.id)
+  // ⚠️ Currently this will always be undefined - hence "/undefined"
   const remoteURL =
     resizedVariant?.presignedUrl ||
     `https://${bucketName}.s3.${
       process.env.NEXT_PUBLIC_S3_REGION
-    }.amazonaws.com/${currentPath}/${resizedVariant?.name || ""}`;
+    }.amazonaws.com/${resizedVariant?.id}`;
 
   return (
     <button
@@ -127,7 +166,7 @@ const ImageCollection = ({
       aria-label={`Open image collection ${node.name}`}
       className={cn(
         "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-        activeFile.fileName === node.name
+        remoteURL && activeFile.fileName === node.name
           ? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
         DEPTH_PADDING_MAP[node.depth],
@@ -164,13 +203,16 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
       type="button"
       aria-label={`Open file ${node.name}`}
       className={cn(
-        "flex items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
-        activeFile.fileName === node.name
+        "flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
+        remoteURL && activeFile.fileName === node.name
           ? "bg-sky-600 text-neutral-100 border border-sky-500"
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
         DEPTH_PADDING_MAP[node.depth],
       )}
-      onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
+      onClick={() => {
+        console.log("set active file", { remoteURL, fileName: node.name });
+        setActiveFile({ remoteURL, fileName: node.name });
+      }}
     >
       <Icon className="size-4 mr-2 stroke-sky-400" />
       <span className="text-sm truncate">{node.name}</span>
@@ -179,22 +221,21 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
           {node.size}
         </span>
       )}
+      {/* TODO: Add an error icon/popover if the remoteURL is undefined/empty */}
     </button>
   );
 };
 
-/** Render a single node in the file tree, and recursively render its children if it is a folder. */
 const Node = ({
   node,
-  bucketName,
-  currentPath,
+  toggleExpanded,
+  isExpanded,
 }: {
   node: TreeNode;
   bucketName: string;
-  currentPath: string;
+  toggleExpanded: (id: string) => void;
+  isExpanded: boolean;
 }) => {
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-
   const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed;
 
   return node.isFolder ? (
@@ -208,7 +249,7 @@ const Node = ({
           "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
           DEPTH_PADDING_MAP[node.depth],
         )}
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={() => toggleExpanded(node.id)}
       >
         <span className="inline-flex mr-2">
           <LucideChevronRight
@@ -221,26 +262,16 @@ const Node = ({
           <FolderIcon className="size-4 mr-2 stroke-sky-400" />
         </span>
         <span className="text-sm font-medium truncate">{node.name}</span>
-        {node.children && node.children.length > 0 && (
+
+        {/* Number of children (ie for a folder) */}
+        {node.childCount > 0 && (
           <span className="ml-auto text-xs text-slate-400 flex-shrink-0">
-            {node.children.length}
+            {node.childCount}
           </span>
         )}
       </button>
-
-      {/* Recursively render subtree descendants */}
-      <div
-        aria-hidden={!isExpanded}
-        className={`transition-opacity duration-75 overflow-hidden ${
-          isExpanded ? "opacity-100 max-h-none" : "opacity-0 max-h-0"
-        }`}
-      >
-        {node.children &&
-          node.children.length > 0 &&
-          renderFileTree(node.children, bucketName, currentPath)}
-      </div>
     </>
   ) : (
-    <File node={node} remoteURL={node.presignedUrl || ""} />
+    <File node={node} remoteURL={node.presignedUrl} />
   );
 };

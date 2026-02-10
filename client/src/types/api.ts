@@ -34,10 +34,12 @@ export type Bucket = {
 };
 
 export type TreeNode = {
+  id: string;
+  parentId: string;
   name: string;
-  isFolder: boolean;
   depth: number;
-  children: TreeNode[];
-  size?: string;
-  presignedUrl?: string;
+  isFolder: boolean;
+  childCount: number;
+  size: string;
+  presignedUrl: string;
 };
