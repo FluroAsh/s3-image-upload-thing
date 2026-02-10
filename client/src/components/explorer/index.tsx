@@ -73,9 +73,10 @@ export const FileTree = ({
     const renderChildrenByFolder = (parentId: string) => {
       (childMap.get(parentId) || []).map((node) => {
         if (node.isFolder && node.childCount >= MIN_IMAGE_COLLECTION_SIZE) {
-          const children = childMap.get(node.id);
+          const children = childMap.get(node.id) ?? [];
+
           // Folder object name should always be the same as the variant object name (minus variant prefix and .ext)
-          const isImageCollection = children?.every(
+          const isImageCollection = children.every(
             (child) => extractFilename(child.name) === node.name,
           );
 
