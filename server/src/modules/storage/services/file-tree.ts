@@ -7,6 +7,7 @@ import { readableSize } from "@/shared/utils/helpers";
 // Key parsing & sorting
 // ---------------------------------------------------------------------------
 
+/** Used to parse the key of an S3 object into its segments, name, depth, isFolder, and parentId. */
 const parseKey = (key: string) => {
   const segments = key.split("/").filter(Boolean);
   const parentSegments = segments.slice(0, -1);
