@@ -68,14 +68,16 @@ export const getBucketStats = async (
 // Upload
 // ---------------------------------------------------------------------------
 
-const generatePresignedUrl = async (
+export const generatePresignedUrl = async (
   s3Instance: S3Client,
   bucketName: string,
   key: string,
 ): Promise<string> => {
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
   // @ts-expect-error - nested @smithy type mismatch between S3Client and presigner
-  return getSignedUrl(s3Instance, command, { expiresIn: TIME.ONE_HOUR });
+  return getSignedUrl(s3Instance, command, {
+    expiresIn: TIME.ONE_HOUR_IN_SECONDS,
+  });
 };
 
 export const uploadImages = async (

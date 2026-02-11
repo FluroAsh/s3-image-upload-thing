@@ -8,6 +8,7 @@ import {
 
 import { getBucketHandler } from "./handlers/get-bucket";
 import { listBucketsHandler } from "./handlers/list-buckets";
+import { presignedUrlsHandler } from "./handlers/presigned-urls";
 import { uploadImagesHandler } from "./handlers/upload";
 
 const storage = new Hono<WithS3Client>();
@@ -26,6 +27,7 @@ storage.post("/upload", uploadImagesHandler);
 
 storage.get("/buckets", listBucketsHandler);
 storage.get("/buckets/:bucketName", getBucketHandler);
+storage.post("/presigned-urls", presignedUrlsHandler);
 
 // -------------------------------------//
 // ---- Single "Bucket" Operations ---- //
