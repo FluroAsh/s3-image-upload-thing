@@ -1,5 +1,3 @@
-"use server";
-
 import ofetch from "@/lib/ofetch";
 import type { BucketsResponse, TreeNode } from "@/types/api";
 

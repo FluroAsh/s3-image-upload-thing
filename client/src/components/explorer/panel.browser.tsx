@@ -75,7 +75,7 @@ export const BrowserPanel = () => {
         ) : flatNodeList ? (
           <ScrollArea>
             <ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
-              <FileTree childMap={childMap} bucketName={bucketName} />
+              <FileTree childMap={childMap} />
             </ul>
           </ScrollArea>
         ) : (

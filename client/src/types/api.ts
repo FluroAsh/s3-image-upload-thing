@@ -43,3 +43,13 @@ export type TreeNode = {
   size: string;
   presignedUrl: string;
 };
+
+export type PresignedUrlEntry = {
+  key: string;
+  url: string;
+};
+
+export type PresignedUrlsResponse = {
+  urls: PresignedUrlEntry[];
+  errors?: { key: string; error: string }[];
+};

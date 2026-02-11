@@ -15,6 +15,7 @@ import {
   ExplorerProvider,
   useExplorer,
 } from "@/lib/providers/explorer-provider";
+import { usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { TreeNode } from "@/types/api";
 import { type ImageVariant } from "@/types/images";
@@ -50,10 +51,8 @@ const MIN_IMAGE_COLLECTION_SIZE = 1;
 
 export const FileTree = ({
   childMap,
-  bucketName,
 }: {
   childMap: Map<string, TreeNode[]>;
-  bucketName: string;
 }) => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -117,7 +116,6 @@ export const FileTree = ({
             key={node.id}
             node={node}
             toggleExpanded={toggleExpanded}
-            bucketName={bucketName}
             isExpanded={expanded[node.id]}
           />
         );
@@ -147,19 +145,15 @@ const ImageCollection = ({
     state: { bucketName, activeFile },
   } = useExplorer();
 
+  const variantKeys = variants.map((v) => v.id);
+  const { data: presignedUrls } = usePresignedUrls(variantKeys, bucketName);
+
   // Find the variant node that matches the desired size
   const resizedVariant =
     variants.find((variant) => variant.name.startsWith(previewSize)) ||
     variants[variants.length - 1];
 
-  // TODO: Presigned URL should be fetched on-demand from BE using a (TBC - will be created) separate endpoint...
-  // (Just pass the full object path - node.id)
-  // ⚠️ Currently this will always be undefined - hence "/undefined"
-  const remoteURL =
-    resizedVariant?.presignedUrl ||
-    `https://${bucketName}.s3.${
-      process.env.NEXT_PUBLIC_S3_REGION
-    }.amazonaws.com/${resizedVariant?.id}`;
+  const remoteURL = presignedUrls?.[resizedVariant?.id] ?? "";
 
   return (
     <button
@@ -191,13 +185,16 @@ const ImageCollection = ({
   );
 };
 
-const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
+const File = ({ node }: { node: TreeNode }) => {
   const {
     actions: { setActiveFile },
-    state: { activeFile },
+    state: { bucketName, activeFile },
   } = useExplorer();
 
-  const Icon = getFileIcon(remoteURL) || LucideFile;
+  const { data: presignedUrls } = usePresignedUrls([node.id], bucketName);
+  const remoteURL = presignedUrls?.[node.id] ?? "";
+
+  const Icon = getFileIcon(node.name) || LucideFile;
 
   return (
     <button
@@ -210,10 +207,7 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
           : "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
         DEPTH_PADDING_MAP[node.depth],
       )}
-      onClick={() => {
-        console.log("set active file", { remoteURL, fileName: node.name });
-        setActiveFile({ remoteURL, fileName: node.name });
-      }}
+      onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
     >
       <Icon className="size-4 mr-2 stroke-sky-400" />
       <span className="text-sm truncate">{node.name}</span>
@@ -222,7 +216,6 @@ const File = ({ node, remoteURL }: { node: TreeNode; remoteURL: string }) => {
           {node.size}
         </span>
       )}
-      {/* TODO: Add an error icon/popover if the remoteURL is undefined/empty */}
     </button>
   );
 };
@@ -277,7 +270,6 @@ const Node = ({
   isExpanded,
 }: {
   node: TreeNode;
-  bucketName: string;
   toggleExpanded: (id: string) => void;
   isExpanded: boolean;
 }) =>
@@ -288,5 +280,5 @@ const Node = ({
       toggleExpanded={toggleExpanded}
     />
   ) : (
-    <File node={node} remoteURL={node.presignedUrl} />
+    <File node={node} />
   );
