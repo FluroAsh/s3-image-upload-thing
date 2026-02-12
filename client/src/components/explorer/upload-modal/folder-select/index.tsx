@@ -14,14 +14,14 @@ import type { TreeNode } from "@/types/api";
 
 import { Folder } from "./folder";
 
+const isFolder = (node: TreeNode) => node.isFolder;
+
 const findCurrentFolders = (
-  activeNode: TreeNode | undefined,
-  rootNodes: TreeNode[] | undefined,
+  childMap: Map<string, TreeNode[]>,
+  activeNodeId: string,
   searchQuery: string,
 ) => {
-  const folders = activeNode
-    ? activeNode.children.filter((node) => node.isFolder)
-    : rootNodes?.filter((node) => node.isFolder) || [];
+  const folders = (childMap.get(activeNodeId) ?? []).filter(isFolder);
 
   return searchQuery
     ? folders.filter((node) =>
@@ -37,15 +37,19 @@ export const FolderSelect = ({
 }) => {
   const qc = useQueryClient();
   const { activeBucketName } = useActiveBucket();
-  const { data: nodes } = useFileTree(activeBucketName);
+  const { childMap } = useFileTree(activeBucketName);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [folderStack, setFolderStack] = useState<TreeNode[]>([]);
 
   const activeFolder = folderStack[folderStack.length - 1] || undefined;
-  const currentPath = folderStack.map((node) => node.name).join("/");
+  const activeNodeId = activeFolder?.id ?? ""; // "" is the root parent
 
-  const currentFolders = findCurrentFolders(activeFolder, nodes, searchQuery);
+  const currentFolders = findCurrentFolders(
+    childMap,
+    activeNodeId,
+    searchQuery,
+  );
 
   const handleBack = () => {
     setFolderStack((prev) => {
@@ -65,51 +69,42 @@ export const FolderSelect = ({
 
   const handleCreateFolder = () => {
     const newFolderName = prompt("Enter new folder name:");
-    if (newFolderName) {
-      const newFolder: TreeNode = {
-        name: newFolderName,
-        isFolder: true,
-        depth: activeFolder ? activeFolder.depth + 1 : 0,
-        children: [],
-      };
+    if (!newFolderName) return;
 
-      // Add the new folder to the query cache until the next refetch
-      qc.setQueryData(
-        ["fileTree", activeBucketName],
-        (oldData: TreeNode[] | undefined) => {
-          if (!oldData) return [newFolder];
-          // Add the new folder to the current active folder's children
-          const updatedData = [...oldData];
-          const parentFolder = folderStack[folderStack.length - 1];
+    const newFolder: TreeNode = {
+      id: activeNodeId
+        ? `${activeNodeId}/${newFolderName}`
+        : `${newFolderName}/`,
+      parentId: activeNodeId,
+      name: newFolderName,
+      isFolder: true,
+      depth: activeFolder ? activeFolder.depth + 1 : 0,
+      childCount: 0,
+      size: "",
+      presignedUrl: "",
+    };
 
-          if (parentFolder) {
-            const parentIndex = updatedData.findIndex(
-              (node) => node.name === parentFolder.name,
-            );
-            if (parentIndex !== -1) {
-              updatedData[parentIndex].children.push(newFolder);
-            }
-          }
-          return updatedData;
-        },
-      );
+    // Optimistically add to the query cache until next refetch
+    qc.setQueryData(
+      ["fileTree", activeBucketName],
+      (oldData: TreeNode[] | undefined) =>
+        oldData ? [...oldData, newFolder] : [newFolder],
+    );
 
-      setFolderStack((prev) => [...prev, newFolder]);
-      folderPathRef.current = [
-        ...folderStack.map((n) => n.name),
-        newFolderName,
-      ].join("/");
-    }
+    setFolderStack((prev) => [...prev, newFolder]);
+    folderPathRef.current = [
+      ...folderStack.map((n) => n.name),
+      newFolderName,
+    ].join("/");
   };
 
-  // TODO: Clean up this component and create more atomic components
   return (
     // Header
     <div className="mb-4">
       <div className="mb-4 flex justify-between items-center">
         <div className="text-neutral-300">
           <span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white">
-            {currentPath ? currentPath : activeBucketName}
+            {activeNodeId ? activeNodeId : activeBucketName}
           </span>
         </div>
 
@@ -122,7 +117,7 @@ export const FolderSelect = ({
         </button>
       </div>
 
-      {/* Search/Navigaton */}
+      {/* Search/Navigation */}
       <div className="flex gap-x-2 mb-4">
         <div className="relative w-full">
           <input
@@ -146,11 +141,11 @@ export const FolderSelect = ({
 
       {currentFolders.length > 0 ? (
         <div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-neutral-500">
-          {currentFolders.map((folder, i) => (
+          {currentFolders.map((folderNode) => (
             <Folder
-              key={`${folder.name}-${i}`}
-              name={folder.name}
-              onClick={() => handleFolderSelect(folder)}
+              key={folderNode.id}
+              name={folderNode.name}
+              onClick={() => handleFolderSelect(folderNode)}
             />
           ))}
         </div>

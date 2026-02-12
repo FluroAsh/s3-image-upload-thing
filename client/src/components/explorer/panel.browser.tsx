@@ -1,11 +1,8 @@
 import { LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
 
-import { useMemo } from "react";
-
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
-import type { TreeNode } from "@/types/api";
 
 import { ScrollArea } from "../ui/scroll-area";
 import { FileTree } from "./index";
@@ -49,21 +46,7 @@ export const BrowserPanel = () => {
   const { data: flatNodeList, isLoading } = useFileTree(bucketName);
   const hasMounted = useHasMounted();
 
-  const shouldShowLoading = !hasMounted || isLoading; // Should show loading during SSR/hydration, or when actually loading
-
-  // ℹ️ NOTE: This is a temporary pre-processing solution as we're fetching the entire tree upfront, this will be optimised later
-  // as we add lazy loading based on folder expansion/user interaction
-  const childMap = useMemo(() => {
-    const map = new Map<string, TreeNode[]>(); // Collection of children, mapped to parents (folder)
-
-    flatNodeList?.forEach((node) => {
-      const children = map.get(node.parentId) || [];
-      children.push(node);
-      map.set(node.parentId, children);
-    });
-
-    return map;
-  }, [flatNodeList]);
+  const shouldShowLoading = !hasMounted || isLoading;
 
   return (
     <nav className="flex flex-col flex-1 bg-slate-900 border-r border-slate-700">
@@ -75,7 +58,7 @@ export const BrowserPanel = () => {
         ) : flatNodeList ? (
           <ScrollArea>
             <ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
-              <FileTree childMap={childMap} />
+              <FileTree />
             </ul>
           </ScrollArea>
         ) : (
