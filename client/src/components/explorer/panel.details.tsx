@@ -77,6 +77,7 @@ export const DetailsPanel = () => {
   }
 
   const Icon = isImage ? LucideImage : LucideFile;
+  const previewURLText = remoteURL.split("?")[0];
 
   return (
     <ScrollArea
@@ -112,7 +113,7 @@ export const DetailsPanel = () => {
           href={remoteURL}
         >
           <span className="text-sm text-neutral-100 break-all flex-1">
-            {remoteURL}
+            {previewURLText}
           </span>
           <LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
         </a>
