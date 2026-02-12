@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useMemo } from "react";
+
 import {
   fetchPresignedUrl,
   setBatcherBucket,
@@ -14,11 +16,27 @@ export const useBuckets = () =>
     queryFn: getBuckets,
   });
 
-export const useFileTree = (bucketName: string) =>
-  useQuery<TreeNode[]>({
+export const useFileTree = (bucketName: string) => {
+  const query = useQuery<TreeNode[]>({
     queryKey: ["fileTree", bucketName],
     queryFn: () => getFileTree(bucketName),
   });
+
+  // NOTE: This is temporary until we add lazy/progressive loading for the file tree
+  // based on expansion state
+  const childMap = useMemo(() => {
+    const map = new Map<string, TreeNode[]>();
+    query.data?.forEach((node) => {
+      const siblings = map.get(node.parentId) || [];
+      siblings.push(node);
+      map.set(node.parentId, siblings);
+    });
+
+    return map;
+  }, [query.data]);
+
+  return { ...query, childMap };
+};
 
 export const useMutateUpload = (bucketName: string) => {
   const qc = useQueryClient();
@@ -35,6 +53,7 @@ export const useMutateUpload = (bucketName: string) => {
 };
 
 const FIFTY_MINUTES_MS = 50 * 60 * 1000;
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 /**
  * Fetches presigned URLs for a list of S3 object keys.
@@ -58,5 +77,6 @@ export const usePresignedUrls = (keys: string[], bucketName: string) => {
     },
     enabled: sortedKeys.length > 0,
     staleTime: FIFTY_MINUTES_MS,
+    gcTime: FIVE_MINUTES_MS,
   });
 };
