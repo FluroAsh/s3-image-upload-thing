@@ -102,10 +102,10 @@ export const FileTree = () => {
   return (
     <ul>
       {visibleNodes.map((node) => {
-        return node.isFolder && node.isImageCollection ? (
+        return node.isFolder && node.isImageCollection && node.variants ? (
           <ImageCollection
             key={node.id}
-            variants={node.variants!}
+            variants={node.variants}
             node={node}
             previewSize="large"
           />
@@ -143,15 +143,17 @@ const ImageCollection = ({
     state: { bucketName, activeFile },
   } = useExplorer();
 
-  const variantKeys = variants.map((v) => v.id);
-  const { data: presignedUrls } = usePresignedUrls(variantKeys, bucketName);
+  const { data: presignedUrls = {} } = usePresignedUrls(
+    variants.map((v) => v.id),
+    bucketName,
+  );
 
   // Find the variant node that matches the desired size
   const resizedVariant =
     variants.find((variant) => variant.name.startsWith(previewSize)) ||
     variants[variants.length - 1];
 
-  const remoteURL = presignedUrls?.[resizedVariant?.id] ?? "";
+  const remoteURL = presignedUrls[resizedVariant.id];
 
   return (
     <button
@@ -166,9 +168,12 @@ const ImageCollection = ({
       )}
       onClick={() => {
         setActiveFile({
-          remoteURL,
+          remoteURL: presignedUrls[resizedVariant.id],
           fileName: node.name,
-          variants,
+          variants: variants.map((variant) => ({
+            ...variant,
+            presignedUrl: presignedUrls[variant.id],
+          })),
         });
       }}
     >

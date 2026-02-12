@@ -6,5 +6,5 @@ export const getVariantType = (fileName: string) => {
   return variant ? `${variant[0].toUpperCase()}${variant.slice(1)}` : "";
 };
 
-export const replaceFileSegment = (filename: string, value: string) =>
-  filename.replace(/[^/]+$/, value);
+// export const replaceFileSegment = (filename: string, value: string) =>
+//   filename.replace(/[^/]+$/, value);

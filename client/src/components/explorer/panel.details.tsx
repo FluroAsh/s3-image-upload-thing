@@ -10,7 +10,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "@/types/api";
 
 import { ScrollArea } from "../ui/scroll-area";
-import { getVariantType, replaceFileSegment } from "./utils";
+import { getVariantType } from "./utils";
 
 type ActiveVariantProps = {
   variant: TreeNode;
@@ -18,16 +18,12 @@ type ActiveVariantProps = {
 };
 
 const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
-  // Use presigned URL if available, otherwise construct URL
-  const variantURL =
-    variant.presignedUrl || replaceFileSegment(remoteURL, variant.name);
-
   return (
     <li className="group">
       <a
         target="_blank"
         className="flex items-center justify-between p-3 rounded-lg bg-slate-700/40 hover:bg-slate-700/70 border border-slate-600/50 hover:border-sky-500/50 transition-all duration-200"
-        href={variantURL}
+        href={remoteURL}
       >
         <div className="flex items-center gap-3">
           <div className="size-2 rounded-full bg-sky-400"></div>
@@ -176,7 +172,7 @@ export const DetailsPanel = () => {
               <ActiveVariant
                 key={`variant-${variant.name}`}
                 variant={variant}
-                remoteURL={remoteURL}
+                remoteURL={variant.presignedUrl}
               />
             ))}
           </ul>
