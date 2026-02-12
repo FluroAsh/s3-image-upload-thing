@@ -15,7 +15,7 @@ import {
   ExplorerProvider,
   useExplorer,
 } from "@/lib/providers/explorer-provider";
-import { usePresignedUrls } from "@/lib/query";
+import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { TreeNode } from "@/types/api";
 import { type ImageVariant } from "@/types/images";
@@ -49,11 +49,9 @@ type RenderTreeNode = TreeNode & {
 
 const MIN_IMAGE_COLLECTION_SIZE = 1;
 
-export const FileTree = ({
-  childMap,
-}: {
-  childMap: Map<string, TreeNode[]>;
-}) => {
+export const FileTree = () => {
+  const { bucketName } = useExplorer().state;
+  const { childMap } = useFileTree(bucketName);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggleExpanded = (id: string) => {
@@ -194,7 +192,8 @@ const File = ({ node }: { node: TreeNode }) => {
   const { data: presignedUrls } = usePresignedUrls([node.id], bucketName);
   const remoteURL = presignedUrls?.[node.id] ?? "";
 
-  const Icon = getFileIcon(node.name) || LucideFile;
+  const generatedRemotePathname = `https://${bucketName}.s3.amazonaws.com/${node.id}`;
+  const Icon = getFileIcon(generatedRemotePathname) || LucideFile;
 
   return (
     <button
