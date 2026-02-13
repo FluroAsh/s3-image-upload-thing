@@ -1,6 +1,6 @@
-import type { TreeNode } from "@shared/types";
-
 import { createContext, useContext, useReducer } from "react";
+
+import type { TreeNode } from "@shared/types";
 
 export type State = {
   bucketName: string;

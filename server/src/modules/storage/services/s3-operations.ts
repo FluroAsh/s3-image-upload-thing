@@ -8,11 +8,11 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import * as path from "path";
 import { type FormatEnum } from "sharp";
 
+import type { FileVariant } from "@shared/types";
+
 import { TIME } from "@/shared/constants";
 import type { ImageVariants } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
-
-import type { FileVariant } from "@shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 

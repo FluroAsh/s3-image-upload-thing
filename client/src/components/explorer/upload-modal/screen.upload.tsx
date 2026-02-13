@@ -1,5 +1,4 @@
 import { useSearchParams } from "next/navigation";
-
 import { useRef, useState } from "react";
 
 import { useBuckets, useMutateUpload } from "@/lib/query";

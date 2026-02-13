@@ -4,9 +4,10 @@ import {
   dehydrate,
 } from "@tanstack/react-query";
 
+import type { Bucket } from "@shared/types";
+
 import { ExplorerLayout } from "@/components/explorer";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type { Bucket } from "@shared/types";
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,7 @@
-import type { S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 import type { FileVariant } from "@shared/types";
+
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 
 import { createImageVariants, prepareImages } from "./image-processing";
