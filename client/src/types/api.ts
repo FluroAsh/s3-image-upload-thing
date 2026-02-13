@@ -33,16 +33,16 @@ export type Bucket = {
   totalSizeHuman: string;
 };
 
-export type TreeNode = {
-  id: string;
-  parentId: string;
-  name: string;
-  depth: number;
-  isFolder: boolean;
-  childCount: number;
-  size: string;
-  presignedUrl: string;
-};
+// export type TreeNode = {
+//   id: string;
+//   parentId: string;
+//   name: string;
+//   depth: number;
+//   isFolder: boolean;
+//   childCount: number;
+//   size: string;
+//   presignedUrl: string;
+// };
 
 export type PresignedUrlEntry = {
   key: string;

@@ -1,3 +1,4 @@
+import type { TreeNode } from "@shared/types/api";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   LucideArrowLeft,
@@ -10,7 +11,6 @@ import { type MutableRefObject, useState } from "react";
 
 import { useActiveBucket } from "@/hooks/useActiveBucket";
 import { useFileTree } from "@/lib/query";
-import type { TreeNode } from "@/types/api";
 
 import { Folder } from "./folder";
 

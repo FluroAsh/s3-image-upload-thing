@@ -1,3 +1,4 @@
+import type { TreeNode } from "@shared/types/api";
 import {
   LucideExternalLink,
   LucideFile,
@@ -7,7 +8,6 @@ import {
 
 import { isImageFile, isVideoFile } from "@/lib/helpers";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import type { TreeNode } from "@/types/api";
 
 import { ScrollArea } from "../ui/scroll-area";
 import { getVariantType } from "./utils";

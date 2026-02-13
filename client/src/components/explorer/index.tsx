@@ -1,5 +1,6 @@
 "use client";
 
+import { TreeNode } from "@shared/types/api";
 import {
   LucideChevronRight,
   LucideFile,
@@ -17,7 +18,6 @@ import {
 } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import type { TreeNode } from "@/types/api";
 import { type ImageVariant } from "@/types/images";
 
 import { DEPTH_PADDING_MAP } from "./constants";

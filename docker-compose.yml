@@ -4,8 +4,8 @@ services:
   s3-upload-client:
     container_name: s3-upload-client
     build:
-      context: ./client
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./client/Dockerfile
       args:
         - API_URL=http://s3-upload-server:5101
         - NEXT_PUBLIC_S3_REGION=ap-southeast-2
@@ -20,8 +20,8 @@ services:
   s3-upload-server:
     container_name: s3-upload-server
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./server/Dockerfile
     restart: unless-stopped
     env_file:
       - ./server/.env
