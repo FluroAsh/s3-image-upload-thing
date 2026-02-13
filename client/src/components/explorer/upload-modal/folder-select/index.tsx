@@ -1,4 +1,4 @@
-import type { TreeNode } from "@shared/types/api";
+import type { TreeNode } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   LucideArrowLeft,

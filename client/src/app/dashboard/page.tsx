@@ -6,7 +6,7 @@ import {
 
 import { ExplorerLayout } from "@/components/explorer";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type { Bucket } from "@/types/api";
+import type { Bucket } from "@shared/types";
 
 export const dynamic = "force-dynamic";
 

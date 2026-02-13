@@ -1,6 +1,7 @@
 import type { _Object } from "@aws-sdk/client-s3";
+import type { TreeNode } from "@shared/types";
 
-import type { FileTreeNode, ValidObject } from "@/shared/types/s3";
+import type { ValidObject } from "@/shared/types/s3";
 import { readableSize } from "@/shared/utils/helpers";
 
 // ---------------------------------------------------------------------------
@@ -25,7 +26,7 @@ const parseKey = (key: string) => {
 const naturalSort = (a: string, b: string): number =>
   a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 
-const sortNodes = (a: FileTreeNode, b: FileTreeNode): number => {
+const sortNodes = (a: TreeNode, b: TreeNode): number => {
   if (a.depth !== b.depth) return a.depth - b.depth;
   if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
   return naturalSort(a.name, b.name);
@@ -89,7 +90,7 @@ const createNode = (
   key: string,
   childrenMap: Map<string, string[]>,
   size?: number,
-): FileTreeNode => {
+): TreeNode => {
   const { parentId, name, depth, isFolder } = parseKey(key);
 
   return {
@@ -115,7 +116,7 @@ export const constructFileTree = ({
   objects,
 }: {
   objects: _Object[];
-}): FileTreeNode[] => {
+}): TreeNode[] => {
   const validObjects = objects.filter(
     (obj): obj is ValidObject => obj.Key !== undefined,
   );

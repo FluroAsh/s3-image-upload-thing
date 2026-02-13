@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { type UploadSuccess } from "@/types/api";
+import type { UploadSuccess } from "@shared/types";
 
 export enum EUploadState {
   Idle = "Idle",

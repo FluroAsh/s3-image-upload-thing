@@ -1,4 +1,4 @@
-import type { TreeNode } from "@shared/types/api";
+import type { TreeNode } from "@shared/types";
 
 import { createContext, useContext, useReducer } from "react";
 

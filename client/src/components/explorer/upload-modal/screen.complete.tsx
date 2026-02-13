@@ -1,4 +1,4 @@
-import { FileVariant, FileVariants, Variant } from "@/types/api";
+import type { FileVariant, FileVariants, ImageVariant } from "@shared/types";
 
 import { useUpload } from "./provider";
 
@@ -37,7 +37,7 @@ const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
   ));
 };
 
-const variantSizeLabel: Record<Variant, string> = {
+const variantSizeLabel: Record<ImageVariant, string> = {
   placeholder: "plch",
   small: "sm",
   medium: "md",

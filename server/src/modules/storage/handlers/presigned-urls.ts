@@ -1,3 +1,4 @@
+import type { PresignedUrlEntry, PresignedUrlError } from "@shared/types";
 import { Context } from "hono";
 
 import { WithS3Client } from "@/shared/middleware/with-s3-client";
@@ -7,9 +8,6 @@ import { generatePresignedUrl } from "../services/s3-operations";
 // NOTE: Not enforcing a hard limit yet, it doesn't make sense to limit this
 // until we have better error handling in the browser
 // const MAX_KEYS_LIMIT = 100;
-
-type PresignedUrlResult = { key: string; url: string };
-type PresignedUrlError = { key: string; error: string };
 
 /**
  * Generates presigned URLs for a batch of S3 object keys.
@@ -43,7 +41,7 @@ export const presignedUrlsHandler = async (ctx: Context<WithS3Client>) => {
     })),
   );
 
-  const urls: PresignedUrlResult[] = [];
+  const urls: PresignedUrlEntry[] = [];
   const errors: PresignedUrlError[] = [];
 
   results.forEach((result, i) => {

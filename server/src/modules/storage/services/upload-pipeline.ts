@@ -1,5 +1,6 @@
 import type { S3Client } from "@aws-sdk/client-s3";
 
+import type { FileVariant } from "@shared/types";
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 
 import { createImageVariants, prepareImages } from "./image-processing";
@@ -11,14 +12,6 @@ export type UploadPipelineParams = {
   destination: string;
   s3Instance: S3Client;
   region: string;
-};
-
-export type UploadResult = {
-  variant: string;
-  fileName: string;
-  imageURL: string;
-  size: string;
-  ETag: string | undefined;
 };
 
 /**
@@ -54,7 +47,7 @@ const processImage = async (
  */
 export const runUploadPipeline = async (
   params: UploadPipelineParams,
-): Promise<UploadResult[]> => {
+): Promise<FileVariant[]> => {
   const { fileEntries, bucketName, destination, s3Instance, region } = params;
 
   const preparedImages = await prepareImages(fileEntries);

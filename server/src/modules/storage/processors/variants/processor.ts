@@ -1,7 +1,8 @@
 import sharp, { type FormatEnum } from "sharp";
 
 import type { OutputOptions } from "@/modules/storage/processors/tools/sharp";
-import type { ImageVariant, ProcessedImage } from "@/shared/types/image";
+import type { ImageVariant } from "@shared/types";
+import type { ProcessedImage } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
 
 import {

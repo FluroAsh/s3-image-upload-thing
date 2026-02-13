@@ -1,7 +1,6 @@
-import type { TreeNode } from "@shared/types/api";
+import type { BucketsResponse, TreeNode } from "@shared/types";
 
 import ofetch from "@/lib/ofetch";
-import type { BucketsResponse } from "@/types/api";
 
 export const getBuckets = async (): Promise<BucketsResponse> => {
   const data = await ofetch<BucketsResponse>("/storage/buckets");

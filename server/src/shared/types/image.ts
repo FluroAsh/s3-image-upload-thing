@@ -1,3 +1,7 @@
+import type { ImageVariant } from "@shared/types";
+
+export type { ImageVariant };
+
 export type ProcessedImage = {
   fieldName: string;
   buffer: ArrayBuffer | Buffer;
@@ -5,13 +9,6 @@ export type ProcessedImage = {
   fileType: string;
   size: string;
 };
-
-export type ImageVariant =
-  | "placeholder"
-  | "small"
-  | "medium"
-  | "large"
-  | "lossless";
 
 export type ImageVariants = {
   fieldName: string;

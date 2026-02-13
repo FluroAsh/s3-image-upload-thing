@@ -1,4 +1,4 @@
-import type { TreeNode } from "@shared/types/api";
+import type { TreeNode } from "@shared/types";
 import {
   LucideExternalLink,
   LucideFile,
@@ -173,7 +173,7 @@ export const DetailsPanel = () => {
               <ActiveVariant
                 key={`variant-${variant.name}`}
                 variant={variant}
-                remoteURL={variant.presignedUrl}
+                remoteURL={variant.presignedUrl ?? ""}
               />
             ))}
           </ul>

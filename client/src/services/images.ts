@@ -1,5 +1,5 @@
 import ofetch from "@/lib/ofetch";
-import * as API from "@/types/api";
+import * as API from "@shared/types";
 
 export const postUploadImages = async (formData: FormData) => {
   try {

@@ -12,8 +12,9 @@ import { TIME } from "@/shared/constants";
 import type { ImageVariants } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 
+import type { FileVariant } from "@shared/types";
+
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
-import { UploadResult } from "./upload-pipeline";
 
 // ---------------------------------------------------------------------------
 // S3 client
@@ -89,7 +90,7 @@ export const uploadImages = async (
     bucketName: string;
     region: string;
   },
-): Promise<UploadResult[]> => {
+): Promise<FileVariant[]> => {
   const { fileName } = image;
   const { format, bucketName, destination } = options;
   const baseName = path.parse(fileName).name;
@@ -124,7 +125,7 @@ export const uploadImages = async (
           imageURL,
           size,
           ETag: putResponse.ETag,
-        };
+        } as FileVariant;
       },
     ),
   );

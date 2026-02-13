@@ -9,7 +9,7 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 
-import type { Bucket } from "@/types/api";
+import type { Bucket } from "@shared/types";
 
 import { BucketCard } from "./card";
 

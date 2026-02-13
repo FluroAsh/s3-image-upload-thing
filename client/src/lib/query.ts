@@ -1,4 +1,4 @@
-import type { TreeNode } from "@shared/types/api";
+import type { BucketsResponse, TreeNode } from "@shared/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useMemo } from "react";
@@ -9,7 +9,6 @@ import {
 } from "@/lib/presigned-url-batcher";
 import { postUploadImages } from "@/services/images";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type { BucketsResponse } from "@/types/api";
 
 export const useBuckets = () =>
   useQuery<BucketsResponse, Error>({
