@@ -98,7 +98,6 @@ export const generatePresignedUrl = async (
     presignClientCache.set(bucketRegion, regionalClient);
   }
 
-  // @ts-expect-error - nested @smithy type mismatch between S3Client and presigner
   return getSignedUrl(regionalClient, command, {
     expiresIn: TIME.ONE_HOUR_IN_SECONDS,
   });
