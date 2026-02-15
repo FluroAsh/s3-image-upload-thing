@@ -3,8 +3,9 @@ import {
   QueryClient,
   dehydrate,
 } from "@tanstack/react-query";
+import { redirect } from "next/navigation";
 
-import type { Bucket } from "@shared/types";
+import type { BucketsResponse } from "@shared/types";
 
 import { ExplorerLayout } from "@/components/explorer";
 import { loadDashboardParams } from "@/lib/search-params";
@@ -19,18 +20,20 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { bucket } = await loadDashboardParams(searchParams);
+  const { bucket, region } = await loadDashboardParams(searchParams);
 
   await qc.prefetchQuery({
     queryKey: ["buckets"],
     queryFn: getBuckets,
   });
 
-  const buckets = qc.getQueryData<Bucket[]>(["buckets"]);
-  const activeBucket = bucket || buckets?.[0]?.Name;
+  const data = qc.getQueryData<BucketsResponse>(["buckets"]);
+  const activeBucket = bucket || data?.buckets?.[0]?.Name || "";
+  const activeRegion = region || data?.buckets?.[0]?.BucketRegion || "";
 
-  if (!activeBucket || !buckets) {
-    return null;
+  // if bucket or region param is not provided, user should be redirected to their first bucket
+  if ((!bucket || !region) && activeBucket && activeRegion) {
+    redirect(`/dashboard?bucket=${activeBucket}&region=${activeRegion}`);
   }
 
   await qc.prefetchQuery({
