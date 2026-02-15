@@ -16,6 +16,12 @@ import type { BucketStats } from "@/shared/types/s3";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 
+if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
+  throw new Error(
+    "Jingle jingle, you're missing keys! Please ensure ACCESS_KEY_ID and SECRET_ACCESS_KEY are set in the environment variables.",
+  );
+}
+
 // ---------------------------------------------------------------------------
 // S3 client
 // - A singleton is created due to the single-tenant nature of the application
@@ -29,8 +35,8 @@ export const s3Client = new S3Client({
   // Rather than having to create nwe S3 isntances, for EACH region on the AWS account
   followRegionRedirects: true,
   credentials: {
-    accessKeyId: process.env.ACCESS_KEY_ID!,
-    secretAccessKey: process.env.SECRET_ACCESS_KEY!,
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
   },
 });
 
