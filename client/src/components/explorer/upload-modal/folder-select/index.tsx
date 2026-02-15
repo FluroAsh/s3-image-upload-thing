@@ -9,7 +9,7 @@ import { type MutableRefObject, useState } from "react";
 
 import type { TreeNode } from "@shared/types";
 
-import { useActiveBucket } from "@/hooks/useActiveBucket";
+import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 
 import { Folder } from "./folder";
@@ -36,7 +36,7 @@ export const FolderSelect = ({
   folderPathRef: MutableRefObject<string>;
 }) => {
   const qc = useQueryClient();
-  const { activeBucketName } = useActiveBucket();
+  const { bucketName: activeBucketName } = useExplorer().state;
   const { childMap } = useFileTree(activeBucketName);
 
   const [searchQuery, setSearchQuery] = useState<string>("");

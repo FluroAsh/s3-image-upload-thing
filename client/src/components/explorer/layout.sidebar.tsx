@@ -2,7 +2,6 @@
 
 import { LucideDatabase, LucideSettings } from "lucide-react";
 
-import { useActiveBucket } from "@/hooks/useActiveBucket";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets } from "@/lib/query";
 
@@ -14,8 +13,8 @@ import { BucketSearch } from "./bucket/search";
 export const Sidebar = () => {
   const { data: bucketData, isLoading, isError, error } = useBuckets();
 
-  const { bucketSearchTerm } = useExplorer().state;
-  const { activeBucketName } = useActiveBucket();
+  const { bucketSearchTerm, bucketName: activeBucketName } =
+    useExplorer().state;
 
   const totalCount = bucketData?.totalCount ?? 0;
   const totalObjectCount = bucketData?.totalObjectCount ?? 0;

@@ -7,6 +7,7 @@ import {
 import type { Bucket } from "@shared/types";
 
 import { ExplorerLayout } from "@/components/explorer";
+import { loadDashboardParams } from "@/lib/search-params";
 import { getBuckets, getFileTree } from "@/services/s3";
 
 export const dynamic = "force-dynamic";
@@ -16,15 +17,17 @@ const qc = new QueryClient();
 export default async function Page({
   searchParams,
 }: {
-  searchParams?: Promise<{ [key: string]: string | undefined }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const { bucket } = await loadDashboardParams(searchParams);
+
   await qc.prefetchQuery({
     queryKey: ["buckets"],
     queryFn: getBuckets,
   });
 
   const buckets = qc.getQueryData<Bucket[]>(["buckets"]);
-  const activeBucket = (await searchParams)?.bucket || buckets?.[0]?.Name;
+  const activeBucket = bucket || buckets?.[0]?.Name;
 
   if (!activeBucket || !buckets) {
     return null;

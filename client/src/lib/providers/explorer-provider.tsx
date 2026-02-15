@@ -1,7 +1,9 @@
-import { useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
 import { createContext, useContext, useReducer } from "react";
 
 import type { TreeNode } from "@shared/types";
+
+import { dashboardSearchParams } from "@/lib/search-params";
 
 type ReducerState = {
   bucketSearchTerm: string;
@@ -12,7 +14,7 @@ type ReducerState = {
   };
 };
 
-export type ReturnState = ReducerState & {
+export type State = ReducerState & {
   bucketName: string;
   bucketRegion: string;
 };
@@ -47,10 +49,6 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
   }
 };
 
-const ExplorerContext = createContext<
-  { state: ReturnState; actions: Actions } | undefined
->(undefined);
-
 export type Actions = {
   setBucketSearchTerm: (searchTerm: string) => void;
   setActiveFile: ({
@@ -65,13 +63,19 @@ export type Actions = {
   resetActiveState: () => void;
 };
 
+const ExplorerContext = createContext<
+  { state: State; actions: Actions } | undefined
+>(undefined);
+
 export const ExplorerProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const searchParams = useSearchParams();
+  const [{ bucket: bucketName, region: bucketRegion }] = useQueryStates(
+    dashboardSearchParams,
+  );
 
   const actions: Actions = {
     setBucketSearchTerm: (searchTerm) =>
@@ -90,9 +94,6 @@ export const ExplorerProvider = ({
         payload: { remoteURL: "", fileName: "", variants: [] },
       }),
   };
-
-  const bucketName = searchParams.get("bucket") ?? "";
-  const bucketRegion = searchParams.get("region") ?? "";
 
   return (
     <ExplorerContext.Provider

@@ -6,10 +6,11 @@ import {
   LucideLoader2,
   LucideSearchX,
 } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useQueryStates } from "nuqs";
 
 import type { Bucket } from "@shared/types";
+
+import { dashboardSearchParams } from "@/lib/search-params";
 
 import { BucketCard } from "./card";
 
@@ -73,9 +74,7 @@ export const BucketList = ({
   error,
   searchTerm = "",
 }: BucketListProps) => {
-  const router = useRouter();
-  const pathName = usePathname();
-  const searchParams = useSearchParams();
+  const [, setParams] = useQueryStates(dashboardSearchParams);
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState message={error?.message} />;
@@ -84,10 +83,9 @@ export const BucketList = ({
   if (buckets.length === 0 && searchTerm) return <NoSearchResults />;
 
   const handleBucketClick = (name: string, region: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("bucket", encodeURIComponent(name));
-    params.set("region", encodeURIComponent(region));
-    router.replace(`${pathName}?${params.toString()}`);
+    // Nuqs updates (shallow update) query params client-side, avoiding extra server fetches and keeping navigation fast.
+    // SSR is used only on initial load; interactivity stays smooth for switching buckets.
+    setParams({ bucket: name, region });
   };
 
   return (
