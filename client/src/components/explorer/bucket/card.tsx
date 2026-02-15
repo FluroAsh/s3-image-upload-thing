@@ -44,7 +44,7 @@ export const BucketCard = ({
           }`}
         >
           <LucideDatabase
-            className={`size-4 transition-colors ${
+            className={`size-4 transition-colors shrink-0 ${
               isActive ? "text-sky-200" : "text-sky-400"
             }`}
           />
