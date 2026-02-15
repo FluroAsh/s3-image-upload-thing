@@ -110,6 +110,8 @@ export const fetchPresignedUrl = (key: string): Promise<string> =>
     pendingResolvers.set(key, { resolve, reject });
 
     if (!flushTimer) {
-      flushTimer = setTimeout(flush, BATCH_DELAY_MS);
+      // Use next macrotask so React Query-triggered loads
+      // across render/effects batch together
+      flushTimer = setTimeout(flush, 0);
     }
   });
