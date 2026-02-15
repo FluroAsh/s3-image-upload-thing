@@ -1,16 +1,14 @@
 import { ListObjectsCommand } from "@aws-sdk/client-s3";
 import { Context } from "hono";
 
-import { WithS3Client } from "@/shared/middleware/with-s3-client";
-
 import { constructFileTree } from "../services/file-tree";
+import { s3Client } from "../services/s3-operations";
 
-export const getBucketHandler = async (ctx: Context<WithS3Client>) => {
-  const { s3Instance } = ctx.var;
+export const getBucketHandler = async (ctx: Context) => {
   const bucketName = ctx.req.param("bucketName");
 
   try {
-    const listResponse = await s3Instance.send(
+    const listResponse = await s3Client.send(
       new ListObjectsCommand({ Bucket: bucketName }),
     );
 

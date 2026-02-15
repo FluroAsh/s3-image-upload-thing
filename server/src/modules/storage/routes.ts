@@ -1,21 +1,15 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
-import {
-  type WithS3Client,
-  withS3ClientMiddlware,
-} from "@/shared/middleware/with-s3-client";
-
 import { getBucketHandler } from "./handlers/get-bucket";
 import { listBucketsHandler } from "./handlers/list-buckets";
 import { presignedUrlsHandler } from "./handlers/presigned-urls";
 import { uploadImagesHandler } from "./handlers/upload";
 
-const storage = new Hono<WithS3Client>();
+const storage = new Hono();
 
 const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
 
-storage.use("*", withS3ClientMiddlware);
 storage.use(
   bodyLimit({
     maxSize,
@@ -40,7 +34,7 @@ storage.post("/bucket/:bucketName", async (c) => {
 });
 
 storage.put("/bucket/:bucketName", async (c) => {
-  // Update a bucket properties (e.g., name, region, etc.)
+  // Update a bucket properties (e.g., name, etc.)
 });
 
 storage.delete("/bucket/:bucketName", async (c) => {
@@ -52,7 +46,6 @@ storage.delete("/bucket/:bucketName", async (c) => {
 // -------------------------------------//
 storage.get("/bucket/:bucketName/object/:name", async (ctx) => {
   // TODO: Get "type" of object (e.g., image, text, etc.)
-  const { s3Instance, region } = ctx.var;
   const bucketName = ctx.req.param("bucketName");
   const objectKey = ctx.req.param("name");
 

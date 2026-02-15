@@ -1,5 +1,3 @@
-import { S3Client } from "@aws-sdk/client-s3";
-
 import type { FileVariant } from "@shared/types";
 
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
@@ -11,8 +9,6 @@ export type UploadPipelineParams = {
   fileEntries: [string, string | File][];
   bucketName: string;
   destination: string;
-  s3Instance: S3Client;
-  region: string;
 };
 
 /**
@@ -49,7 +45,7 @@ const processImage = async (
 export const runUploadPipeline = async (
   params: UploadPipelineParams,
 ): Promise<FileVariant[]> => {
-  const { fileEntries, bucketName, destination, s3Instance, region } = params;
+  const { fileEntries, bucketName, destination } = params;
 
   const preparedImages = await prepareImages(fileEntries);
   const processedImages = await Promise.all(
@@ -58,11 +54,10 @@ export const runUploadPipeline = async (
 
   const uploadResults = await Promise.all(
     processedImages.map((image) =>
-      uploadImages(s3Instance, image, {
+      uploadImages(image, {
         format: "webp",
         destination,
         bucketName,
-        region,
       }),
     ),
   );

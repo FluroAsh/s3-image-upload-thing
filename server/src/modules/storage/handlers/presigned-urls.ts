@@ -2,8 +2,6 @@ import { Context } from "hono";
 
 import type { PresignedUrlEntry, PresignedUrlError } from "@shared/types";
 
-import { WithS3Client } from "@/shared/middleware/with-s3-client";
-
 import { generatePresignedUrl } from "../services/s3-operations";
 
 // NOTE: Not enforcing a hard limit yet, it doesn't make sense to limit this
@@ -14,8 +12,7 @@ import { generatePresignedUrl } from "../services/s3-operations";
  * Generates presigned URLs for a batch of S3 object keys.
  * Uses `Promise.allSettled` to return partial results when individual keys fail.
  */
-export const presignedUrlsHandler = async (ctx: Context<WithS3Client>) => {
-  const { s3Instance } = ctx.var;
+export const presignedUrlsHandler = async (ctx: Context) => {
   const bucketName = ctx.req.query("bucket");
 
   if (!bucketName) {
@@ -38,7 +35,7 @@ export const presignedUrlsHandler = async (ctx: Context<WithS3Client>) => {
   const results = await Promise.allSettled(
     body.keys.map(async (key) => ({
       key,
-      url: await generatePresignedUrl(s3Instance, bucketName, key),
+      url: await generatePresignedUrl(bucketName, key),
     })),
   );
 

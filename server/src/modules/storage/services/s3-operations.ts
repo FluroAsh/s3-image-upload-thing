@@ -18,23 +18,27 @@ import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 
 // ---------------------------------------------------------------------------
 // S3 client
+// - A singleton is created due to the single-tenant nature of the application
+// - Region only needs to be specified once during initialization, as S3 is a globally
+//   available service, it's only used to optimise S3 operations, such as presigning URLs.
 // ---------------------------------------------------------------------------
 
-export const createInstance = (region: string) =>
-  new S3Client({
-    region,
-    credentials: {
-      accessKeyId: process.env.ACCESS_KEY_ID!,
-      secretAccessKey: process.env.SECRET_ACCESS_KEY!,
-    },
-  });
+export const s3Client = new S3Client({
+  region: process.env.AWS_REGION ?? "us-east-1",
+  // Use this option so we only need a single S3 instance for all regions
+  // Rather than having to create nwe S3 isntances, for EACH region on the AWS account
+  followRegionRedirects: true,
+  credentials: {
+    accessKeyId: process.env.ACCESS_KEY_ID!,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY!,
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Bucket stats
 // ---------------------------------------------------------------------------
 
 export const getBucketStats = async (
-  s3Client: S3Client,
   bucketName: string,
 ): Promise<BucketStats> => {
   const stats: BucketStats = { objectCount: 0, totalSize: 0 };
@@ -42,12 +46,13 @@ export const getBucketStats = async (
 
   try {
     do {
-      const command = new ListObjectsV2Command({
-        Bucket: bucketName,
-        ContinuationToken: continuationToken,
-      });
+      const res = await s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: bucketName,
+          ContinuationToken: continuationToken,
+        }),
+      );
 
-      const res = await s3Client.send(command);
       if (res.Contents) {
         for (const obj of res.Contents) {
           stats.objectCount += 1;
@@ -70,25 +75,22 @@ export const getBucketStats = async (
 // ---------------------------------------------------------------------------
 
 export const generatePresignedUrl = async (
-  s3Instance: S3Client,
   bucketName: string,
   key: string,
 ): Promise<string> => {
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
   // @ts-expect-error - nested @smithy type mismatch between S3Client and presigner
-  return getSignedUrl(s3Instance, command, {
+  return getSignedUrl(s3Client, command, {
     expiresIn: TIME.ONE_HOUR_IN_SECONDS,
   });
 };
 
 export const uploadImages = async (
-  s3Instance: S3Client,
   image: ImageVariants,
   options: {
     destination: string;
     format: keyof FormatEnum;
     bucketName: string;
-    region: string;
   },
 ): Promise<FileVariant[]> => {
   const { fileName } = image;
@@ -104,7 +106,7 @@ export const uploadImages = async (
           ? `${destination}/${baseName}/${fileNameKey}`
           : `${baseName}/${fileNameKey}`;
 
-        const putResponse = await s3Instance.send(
+        const putResponse = await s3Client.send(
           new PutObjectCommand({
             Body: buffer,
             Bucket: bucketName,
@@ -113,11 +115,7 @@ export const uploadImages = async (
           }),
         );
 
-        const imageURL = await generatePresignedUrl(
-          s3Instance,
-          bucketName,
-          key,
-        );
+        const imageURL = await generatePresignedUrl(bucketName, key);
 
         return {
           variant,

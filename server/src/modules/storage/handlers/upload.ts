@@ -1,14 +1,12 @@
 import { Context } from "hono";
 
-import { WithS3Client } from "@/shared/middleware/with-s3-client";
-
 import { runUploadPipeline } from "../services/upload-pipeline";
 
 /**
  * Validates and extracts request body parameters
  * @returns Parsed request body with validated parameters
  */
-const parseUploadRequest = async (ctx: Context<WithS3Client>) => {
+const parseUploadRequest = async (ctx: Context) => {
   const body = await ctx.req.parseBody({ all: true });
   const { bucketName, images, destination = "" } = body;
 
@@ -31,9 +29,8 @@ const parseUploadRequest = async (ctx: Context<WithS3Client>) => {
   };
 };
 
-export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
+export const uploadImagesHandler = async (ctx: Context) => {
   try {
-    const { s3Instance, region } = ctx.var;
     const { bucketName, destination, fileEntries } =
       await parseUploadRequest(ctx);
 
@@ -45,8 +42,6 @@ export const uploadImagesHandler = async (ctx: Context<WithS3Client>) => {
       fileEntries,
       bucketName,
       destination,
-      s3Instance,
-      region,
     });
 
     return ctx.json({
