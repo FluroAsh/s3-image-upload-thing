@@ -29,7 +29,7 @@ export const Sidebar = () => {
     <aside className="min-w-[300px] max-w-[300px] h-full bg-neutral-900 flex flex-col border-r border-neutral-700">
       <header className="flex flex-col shrink-0">
         <div className="flex items-center gap-2 p-4">
-          <div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center flex-1">
+          <div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
             <LucideDatabase className="size-4 stroke-sky-400" />
           </div>
           <span className="text-neutral-100 font-semibold">Buckets</span>
