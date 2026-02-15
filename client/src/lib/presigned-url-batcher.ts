@@ -13,6 +13,8 @@ import ofetch from "@/lib/ofetch";
  * invokes each hook's `queryFn` in separate microtasks — so a microtask flush fires
  * before later hooks have registered their keys. A small delay ensures all queries
  * from the same render cycle are captured in one batch.
+ *
+ * Original Graphql dataloader source: https://github.com/graphql/dataloader/blob/main/src/index.js
  */
 
 type Resolver = {
