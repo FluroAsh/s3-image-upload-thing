@@ -1,16 +1,20 @@
+import { useSearchParams } from "next/navigation";
 import { createContext, useContext, useReducer } from "react";
 
 import type { TreeNode } from "@shared/types";
 
-export type State = {
-  bucketName: string;
-  bucketRegion: string;
+type ReducerState = {
   bucketSearchTerm: string;
   activeFile: {
     remoteURL: string;
     fileName: string;
     variants?: TreeNode[];
   };
+};
+
+export type ReturnState = ReducerState & {
+  bucketName: string;
+  bucketRegion: string;
 };
 
 export type Action =
@@ -23,9 +27,7 @@ export type Action =
       payload: { remoteURL: string; fileName: string; variants?: TreeNode[] };
     };
 
-const initialState: State = {
-  bucketName: "",
-  bucketRegion: "",
+const initialState: ReducerState = {
   bucketSearchTerm: "",
   activeFile: {
     remoteURL: "",
@@ -34,7 +36,7 @@ const initialState: State = {
   },
 };
 
-const reducer = (state: State, action: Action): State => {
+const reducer = (state: ReducerState, action: Action): ReducerState => {
   switch (action.type) {
     case "SET_BUCKET_SEARCH_TERM":
       return { ...state, bucketSearchTerm: action.payload };
@@ -46,7 +48,7 @@ const reducer = (state: State, action: Action): State => {
 };
 
 const ExplorerContext = createContext<
-  { state: State; actions: Actions } | undefined
+  { state: ReturnState; actions: Actions } | undefined
 >(undefined);
 
 export type Actions = {
@@ -64,15 +66,12 @@ export type Actions = {
 };
 
 export const ExplorerProvider = ({
-  bucketName,
-  bucketRegion,
   children,
 }: {
-  bucketName: string;
-  bucketRegion: string;
   children: React.ReactNode;
 }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const searchParams = useSearchParams();
 
   const actions: Actions = {
     setBucketSearchTerm: (searchTerm) =>
@@ -91,6 +90,9 @@ export const ExplorerProvider = ({
         payload: { remoteURL: "", fileName: "", variants: [] },
       }),
   };
+
+  const bucketName = searchParams.get("bucket") ?? "";
+  const bucketRegion = searchParams.get("region") ?? "";
 
   return (
     <ExplorerContext.Provider

@@ -24,20 +24,11 @@ import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
 import { extractFilename } from "./utils";
 
-export const ExplorerLayout = ({
-  bucketName,
-  bucketRegion,
-}: {
-  bucketName: string | undefined;
-  bucketRegion: string | undefined;
-}) => {
+export const ExplorerLayout = () => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
 
   return (
-    <ExplorerProvider
-      bucketName={bucketName ?? ""}
-      bucketRegion={bucketRegion ?? ""}
-    >
+    <ExplorerProvider>
       <div id="explorer-container" className="flex overflow-hidden size-full">
         <Sidebar />
         <MainContent />

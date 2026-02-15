@@ -25,8 +25,6 @@ export default async function Page({
 
   const buckets = qc.getQueryData<Bucket[]>(["buckets"]);
   const activeBucket = (await searchParams)?.bucket || buckets?.[0]?.Name;
-  const activeBucketRegion =
-    (await searchParams)?.region || buckets?.[0]?.BucketRegion;
 
   if (!activeBucket || !buckets) {
     return null;
@@ -42,10 +40,7 @@ export default async function Page({
   return (
     <HydrationBoundary state={dehydratedState}>
       <div className="h-screen overflow-hidden">
-        <ExplorerLayout
-          bucketName={activeBucket}
-          bucketRegion={activeBucketRegion}
-        />
+        <ExplorerLayout />
       </div>
     </HydrationBoundary>
   );
