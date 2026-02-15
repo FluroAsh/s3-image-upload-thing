@@ -83,9 +83,10 @@ export const BucketList = ({
   if (buckets.length === 0 && !searchTerm) return <EmptyState />;
   if (buckets.length === 0 && searchTerm) return <NoSearchResults />;
 
-  const handleBucketClick = (name: string) => {
+  const handleBucketClick = (name: string, region: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("bucket", encodeURIComponent(name));
+    params.set("region", encodeURIComponent(region));
     router.push(`${pathName}?${params.toString()}`);
   };
 
@@ -93,14 +94,16 @@ export const BucketList = ({
     <div className="flex flex-col gap-2 p-4" aria-label="Bucket List">
       {buckets.map((bucket) => (
         <BucketCard
-          key={bucket.Name}
+          key={`${bucket.Name}-${bucket.BucketRegion}`}
           isActive={bucket.Name === bucketName}
           name={bucket.Name}
           region={bucket.BucketRegion}
           formattedCreationDate={bucket.formattedCreationDate}
           totalSizeHuman={bucket.totalSizeHuman}
           objectCount={bucket.objectCount}
-          handleClick={() => handleBucketClick(bucket.Name)}
+          handleClick={() =>
+            handleBucketClick(bucket.Name, bucket.BucketRegion)
+          }
         />
       ))}
     </div>

@@ -29,16 +29,17 @@ if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 //   available service, it's only used to optimise S3 operations, such as presigning URLs.
 // ---------------------------------------------------------------------------
 
-export const s3Client = new S3Client({
-  region: process.env.AWS_REGION ?? "us-east-1",
-  // Use this option so we only need a single S3 instance for all regions
-  // Rather than having to create nwe S3 isntances, for EACH region on the AWS account
-  followRegionRedirects: true,
-  credentials: {
-    accessKeyId: process.env.ACCESS_KEY_ID,
-    secretAccessKey: process.env.SECRET_ACCESS_KEY,
-  },
-});
+const createS3Client = (region: string = "us-east-1") =>
+  new S3Client({
+    region,
+    followRegionRedirects: true,
+    credentials: {
+      accessKeyId: process.env.ACCESS_KEY_ID!,
+      secretAccessKey: process.env.SECRET_ACCESS_KEY!,
+    },
+  });
+
+export const s3Client = createS3Client(process.env.AWS_REGION ?? "us-east-1");
 
 // ---------------------------------------------------------------------------
 // Bucket stats
@@ -80,13 +81,24 @@ export const getBucketStats = async (
 // Upload
 // ---------------------------------------------------------------------------
 
+const presignClientCache = new Map<string, S3Client>();
+
 export const generatePresignedUrl = async (
   bucketName: string,
+  bucketRegion: string,
   key: string,
 ): Promise<string> => {
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
+
+  let regionalClient = presignClientCache.get(bucketRegion) ?? s3Client;
+
+  if (!regionalClient) {
+    regionalClient = createS3Client(bucketRegion);
+    presignClientCache.set(bucketRegion, regionalClient);
+  }
+
   // @ts-expect-error - nested @smithy type mismatch between S3Client and presigner
-  return getSignedUrl(s3Client, command, {
+  return getSignedUrl(regionalClient, command, {
     expiresIn: TIME.ONE_HOUR_IN_SECONDS,
   });
 };
@@ -97,10 +109,11 @@ export const uploadImages = async (
     destination: string;
     format: keyof FormatEnum;
     bucketName: string;
+    bucketRegion: string;
   },
 ): Promise<FileVariant[]> => {
   const { fileName } = image;
-  const { format, bucketName, destination } = options;
+  const { format, bucketRegion, bucketName, destination } = options;
   const baseName = path.parse(fileName).name;
   const formatExt = format ?? DEFAULT_FILE_TYPE;
 
@@ -121,7 +134,11 @@ export const uploadImages = async (
           }),
         );
 
-        const imageURL = await generatePresignedUrl(bucketName, key);
+        const imageURL = await generatePresignedUrl(
+          bucketName,
+          bucketRegion,
+          key,
+        );
 
         return {
           variant,

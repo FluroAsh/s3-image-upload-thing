@@ -60,8 +60,12 @@ const FIVE_MINUTES_MS = 5 * 60 * 1000;
  * Under the hood, calls from multiple components in the same render cycle
  * are batched into a single network request via the presigned URL batcher.
  */
-export const usePresignedUrls = (keys: string[], bucketName: string) => {
-  setBatcherBucket(bucketName); // Keep the batcher in sync with the active bucket
+export const usePresignedUrls = (
+  keys: string[],
+  bucketName: string,
+  bucketRegion: string,
+) => {
+  setBatcherBucket(bucketName, bucketRegion); // Keep the batcher in sync with the active bucket
 
   const sortedKeys = [...keys].sort();
 

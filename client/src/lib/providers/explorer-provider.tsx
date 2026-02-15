@@ -4,6 +4,7 @@ import type { TreeNode } from "@shared/types";
 
 export type State = {
   bucketName: string;
+  bucketRegion: string;
   bucketSearchTerm: string;
   activeFile: {
     remoteURL: string;
@@ -24,6 +25,7 @@ export type Action =
 
 const initialState: State = {
   bucketName: "",
+  bucketRegion: "",
   bucketSearchTerm: "",
   activeFile: {
     remoteURL: "",
@@ -63,9 +65,11 @@ export type Actions = {
 
 export const ExplorerProvider = ({
   bucketName,
+  bucketRegion,
   children,
 }: {
   bucketName: string;
+  bucketRegion: string;
   children: React.ReactNode;
 }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -90,7 +94,7 @@ export const ExplorerProvider = ({
 
   return (
     <ExplorerContext.Provider
-      value={{ state: { ...state, bucketName }, actions }}
+      value={{ state: { ...state, bucketName, bucketRegion }, actions }}
     >
       {children}
     </ExplorerContext.Provider>

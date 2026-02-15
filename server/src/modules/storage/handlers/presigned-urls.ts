@@ -14,9 +14,10 @@ import { generatePresignedUrl } from "../services/s3-operations";
  */
 export const presignedUrlsHandler = async (ctx: Context) => {
   const bucketName = ctx.req.query("bucket");
+  const bucketRegion = ctx.req.query("region");
 
-  if (!bucketName) {
-    return ctx.json({ error: "Missing 'bucket' query parameter" }, 400);
+  if (!bucketName || !bucketRegion) {
+    return ctx.json({ error: "Missing expected parameters" }, 400);
   }
 
   const body = await ctx.req.json<{ keys: string[] }>();
@@ -35,7 +36,7 @@ export const presignedUrlsHandler = async (ctx: Context) => {
   const results = await Promise.allSettled(
     body.keys.map(async (key) => ({
       key,
-      url: await generatePresignedUrl(bucketName, key),
+      url: await generatePresignedUrl(bucketName, bucketRegion, key),
     })),
   );
 

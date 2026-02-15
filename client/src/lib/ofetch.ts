@@ -14,12 +14,6 @@ const baseURL = isServer
   ? process.env.API_URL || "http://localhost:3002"
   : "/proxy";
 
-const ofetchInstance = ofetch.create({
-  baseURL,
-  headers: {
-    "x-amz-bucket-region":
-      process.env.NEXT_PUBLIC_S3_REGION || "ap-southeast-2",
-  },
-});
+const ofetchInstance = ofetch.create({ baseURL });
 
 export default ofetchInstance;

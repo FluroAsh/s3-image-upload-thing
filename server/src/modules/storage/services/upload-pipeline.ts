@@ -7,6 +7,7 @@ import { uploadImages } from "./s3-operations";
 
 export type UploadPipelineParams = {
   fileEntries: [string, string | File][];
+  bucketRegion: string;
   bucketName: string;
   destination: string;
 };
@@ -45,7 +46,7 @@ const processImage = async (
 export const runUploadPipeline = async (
   params: UploadPipelineParams,
 ): Promise<FileVariant[]> => {
-  const { fileEntries, bucketName, destination } = params;
+  const { fileEntries, bucketRegion, bucketName, destination } = params;
 
   const preparedImages = await prepareImages(fileEntries);
   const processedImages = await Promise.all(
@@ -58,6 +59,7 @@ export const runUploadPipeline = async (
         format: "webp",
         destination,
         bucketName,
+        bucketRegion,
       }),
     ),
   );

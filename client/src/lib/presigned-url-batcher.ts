@@ -26,9 +26,11 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** The bucket name must be set before fetching — set by the hook layer. */
 let activeBucket = "";
+let activeBucketRegion = "";
 
-export const setBatcherBucket = (bucket: string) => {
+export const setBatcherBucket = (bucket: string, region: string) => {
   activeBucket = bucket;
+  activeBucketRegion = region;
 };
 
 const flush = async () => {
@@ -42,7 +44,7 @@ const flush = async () => {
 
   try {
     const { urls, errors } = await ofetch<PresignedUrlsResponse>(
-      `/storage/presigned-urls?bucket=${activeBucket}`,
+      `/storage/presigned-urls?bucket=${activeBucket}&region=${activeBucketRegion}`,
       {
         method: "POST",
         body: { keys },

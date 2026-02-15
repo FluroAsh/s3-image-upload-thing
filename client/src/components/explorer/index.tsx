@@ -26,13 +26,18 @@ import { extractFilename } from "./utils";
 
 export const ExplorerLayout = ({
   bucketName,
+  bucketRegion,
 }: {
   bucketName: string | undefined;
+  bucketRegion: string | undefined;
 }) => {
   // TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
 
   return (
-    <ExplorerProvider bucketName={bucketName ?? ""}>
+    <ExplorerProvider
+      bucketName={bucketName ?? ""}
+      bucketRegion={bucketRegion ?? ""}
+    >
       <div id="explorer-container" className="flex overflow-hidden size-full">
         <Sidebar />
         <MainContent />
@@ -139,12 +144,16 @@ const ImageCollection = ({
 }: ImageVariantProps) => {
   const {
     actions: { setActiveFile },
-    state: { bucketName, activeFile },
+    state: { bucketName, bucketRegion, activeFile },
   } = useExplorer();
+
+  console.log("bucketRegion", bucketRegion);
+  console.log("bucketName", bucketName);
 
   const { data: presignedUrls = {} } = usePresignedUrls(
     variants.map((v) => v.id),
     bucketName,
+    bucketRegion,
   );
 
   // Find the variant node that matches the desired size
@@ -190,10 +199,14 @@ const ImageCollection = ({
 const File = ({ node }: { node: TreeNode }) => {
   const {
     actions: { setActiveFile },
-    state: { bucketName, activeFile },
+    state: { bucketName, bucketRegion, activeFile },
   } = useExplorer();
 
-  const { data: presignedUrls } = usePresignedUrls([node.id], bucketName);
+  const { data: presignedUrls } = usePresignedUrls(
+    [node.id],
+    bucketName,
+    bucketRegion,
+  );
   const remoteURL = presignedUrls?.[node.id] ?? "";
 
   const generatedRemotePathname = `https://${bucketName}.s3.amazonaws.com/${node.id}`;

@@ -8,15 +8,15 @@ import { runUploadPipeline } from "../services/upload-pipeline";
  */
 const parseUploadRequest = async (ctx: Context) => {
   const body = await ctx.req.parseBody({ all: true });
-  const { bucketName, images, destination = "" } = body;
+  const { bucketName, bucketRegion, images, destination = "" } = body;
 
-  if (!bucketName || typeof bucketName !== "string") {
+  // TODO: We should add Zod validaton here for improved type inference/validation
+  if (!bucketName || typeof bucketName !== "string")
     throw new Error("Bucket name is required");
-  }
+  if (!bucketRegion || typeof bucketRegion !== "string")
+    throw new Error("Bucket region is required");
 
-  if (!images) {
-    throw new Error("No images provided");
-  }
+  if (!images) throw new Error("No images provided");
 
   // Transform images Buffer into the same format whether or not it's a single image, or multiple
   const imageArray = Array.isArray(images) ? images : [images];
@@ -24,6 +24,7 @@ const parseUploadRequest = async (ctx: Context) => {
 
   return {
     bucketName,
+    bucketRegion,
     destination: destination as string,
     fileEntries,
   };
@@ -31,7 +32,7 @@ const parseUploadRequest = async (ctx: Context) => {
 
 export const uploadImagesHandler = async (ctx: Context) => {
   try {
-    const { bucketName, destination, fileEntries } =
+    const { bucketName, bucketRegion, destination, fileEntries } =
       await parseUploadRequest(ctx);
 
     if (fileEntries.length === 0) {
@@ -41,6 +42,7 @@ export const uploadImagesHandler = async (ctx: Context) => {
     const uploadResults = await runUploadPipeline({
       fileEntries,
       bucketName,
+      bucketRegion,
       destination,
     });
 
