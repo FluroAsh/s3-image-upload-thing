@@ -147,9 +147,6 @@ const ImageCollection = ({
     state: { bucketName, bucketRegion, activeFile },
   } = useExplorer();
 
-  console.log("bucketRegion", bucketRegion);
-  console.log("bucketName", bucketName);
-
   const { data: presignedUrls = {} } = usePresignedUrls(
     variants.map((v) => v.id),
     bucketName,

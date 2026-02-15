@@ -24,9 +24,10 @@ if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 
 // ---------------------------------------------------------------------------
 // S3 client
-// - A singleton is created due to the single-tenant nature of the application
-// - Region only needs to be specified once during initialization, as S3 is a globally
-//   available service, it's only used to optimise S3 operations, such as presigning URLs.
+// - Base client uses `followRegionRedirects` for general operations (list, get, put)
+//   so a single instance handles all regions transparently.
+// - Presigned URLs embed the regional endpoint in the signed string, so they require
+//   a region-specific client. These are lazily created and cached below.
 // ---------------------------------------------------------------------------
 
 const createS3Client = (region: string = "us-east-1") =>
@@ -78,7 +79,7 @@ export const getBucketStats = async (
 };
 
 // ---------------------------------------------------------------------------
-// Upload
+// Presigned URLs
 // ---------------------------------------------------------------------------
 
 const presignClientCache = new Map<string, S3Client>();
@@ -90,7 +91,7 @@ export const generatePresignedUrl = async (
 ): Promise<string> => {
   const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
 
-  let regionalClient = presignClientCache.get(bucketRegion) ?? s3Client;
+  let regionalClient = presignClientCache.get(bucketRegion);
 
   if (!regionalClient) {
     regionalClient = createS3Client(bucketRegion);
