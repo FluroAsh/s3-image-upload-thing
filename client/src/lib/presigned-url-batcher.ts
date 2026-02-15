@@ -81,9 +81,6 @@ const flush = async () => {
   }
 };
 
-/** Batch window in ms — allows all queries from the same render cycle to register. */
-const BATCH_DELAY_MS = 10;
-
 /**
  * Request a presigned URL for a single S3 object key.
  * Calls within the batch window are automatically collected into one request.
