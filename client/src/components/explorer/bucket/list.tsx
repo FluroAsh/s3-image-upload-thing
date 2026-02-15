@@ -87,7 +87,7 @@ export const BucketList = ({
     const params = new URLSearchParams(searchParams.toString());
     params.set("bucket", encodeURIComponent(name));
     params.set("region", encodeURIComponent(region));
-    router.push(`${pathName}?${params.toString()}`);
+    router.replace(`${pathName}?${params.toString()}`);
   };
 
   return (
