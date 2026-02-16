@@ -41,13 +41,16 @@ export const Sidebar = () => {
 				<Separator />
 			</header>
 
-			<div aria-label="Bucket Collection Summary" className="shrink-0">
+			<section className="shrink-0" aria-labelledby="bucket-collection-summary-heading">
 				<div className="p-4">
+					<h2 id="bucket-collection-summary-heading" className="sr-only">
+						Bucket Collection Summary
+					</h2>
 					<p className="text-sm text-neutral-300">Total Buckets: {isLoading ? "..." : totalCount}</p>
 					<p className="text-sm text-neutral-300">Total Files: {isLoading ? "..." : totalObjectCount}</p>
 				</div>
 				<Separator />
-			</div>
+			</section>
 
 			<ScrollArea className="flex-1 min-h-0">
 				<BucketList
@@ -60,8 +63,10 @@ export const Sidebar = () => {
 				/>
 			</ScrollArea>
 
-			<footer className="p-3 border-t border-neutral-700 shrink-0" aria-label="Account Settings">
+			<footer className="p-3 border-t border-neutral-700 shrink-0">
+				<span className="sr-only">Account Settings</span>
 				<button
+					type="button"
 					onClick={() => console.log("Open settings modal")}
 					className="w-full justify-start gap-2 text-sm hover:bg-sky-900/30 hover:[text,fill]-sky-400 transition-colors hover:cursor-pointer rounded-md p-2"
 				>
