@@ -3,6 +3,7 @@ import {
   QueryClient,
   dehydrate,
 } from "@tanstack/react-query";
+import { LucideCircleAlert } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import type { BucketsResponse } from "@shared/types";
@@ -14,6 +15,48 @@ import { getBuckets, getFileTree } from "@/services/s3";
 export const dynamic = "force-dynamic";
 
 const qc = new QueryClient();
+
+const initialQueryState = (
+  data: BucketsResponse,
+  requestedBucket: string,
+  requestedRegion: string,
+) => {
+  const defaultBucket = data.buckets[0];
+  const fallback = {
+    activeBucket: defaultBucket.Name,
+    activeRegion: defaultBucket.BucketRegion,
+  };
+
+  if (!requestedBucket) return fallback;
+
+  const found = data.buckets.find((bucket) => bucket.Name === requestedBucket);
+  if (!found) return fallback;
+
+  if (requestedRegion && found.BucketRegion !== requestedRegion) {
+    return fallback;
+  }
+
+  return {
+    activeBucket: found.Name,
+    activeRegion: found.BucketRegion,
+  };
+};
+
+const NoBucketsFound = () => {
+  return (
+    <div className="flex flex-col items-center justify-center h-full">
+      <div className="size-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-3 ">
+        <LucideCircleAlert className="size-5 stroke-amber-500" />
+      </div>
+      <p className="text-neutral-300 font-medium mb-1">
+        Unable to retrieve buckets
+      </p>
+      <p className="text-sm text-neutral-500">
+        To get started, you need to create S3 buckets in your AWS account.
+      </p>
+    </div>
+  );
+};
 
 export default async function Page({
   searchParams,
@@ -28,11 +71,19 @@ export default async function Page({
   });
 
   const data = qc.getQueryData<BucketsResponse>(["buckets"]);
-  const activeBucket = bucket || data?.buckets?.[0]?.Name || "";
-  const activeRegion = region || data?.buckets?.[0]?.BucketRegion || "";
 
-  // if bucket or region param is not provided, user should be redirected to their first bucket
-  if ((!bucket || !region) && activeBucket && activeRegion) {
+  if (!data) {
+    return <NoBucketsFound />;
+  }
+
+  const { activeBucket, activeRegion } = initialQueryState(
+    data,
+    bucket,
+    region,
+  );
+
+  // Partial search params is not allowed, redirect to the expected bucket/region
+  if (!bucket || !region) {
     redirect(`/dashboard?bucket=${activeBucket}&region=${activeRegion}`);
   }
 
