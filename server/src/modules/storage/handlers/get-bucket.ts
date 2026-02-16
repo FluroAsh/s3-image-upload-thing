@@ -2,13 +2,18 @@ import { ListObjectsCommand } from "@aws-sdk/client-s3";
 import { Context } from "hono";
 
 import { constructFileTree } from "../services/file-tree";
-import { s3Client } from "../services/s3-operations";
+import { getRegionalClient } from "../services/s3-operations";
 
 export const getBucketHandler = async (ctx: Context) => {
   const bucketName = ctx.req.param("bucketName");
+  const bucketRegion = ctx.req.query("region");
+
+  if (!bucketRegion) {
+    return ctx.json({ error: "Missing required 'region' query parameter" }, 400);
+  }
 
   try {
-    const listResponse = await s3Client.send(
+    const listResponse = await getRegionalClient(bucketRegion).send(
       new ListObjectsCommand({ Bucket: bucketName }),
     );
 

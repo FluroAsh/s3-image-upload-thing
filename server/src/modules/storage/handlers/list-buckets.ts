@@ -32,9 +32,10 @@ export const listBucketsHandler = async (ctx: Context) => {
 
     const bucketsWithStats = await Promise.all(
       bucketsForPage.map(async (bucket) => {
-        const stats = bucket.Name
-          ? await getBucketStats(bucket.Name)
-          : undefined;
+        const stats =
+          bucket.Name && bucket.BucketRegion
+            ? await getBucketStats(bucket.Name, bucket.BucketRegion)
+            : undefined;
         return transformBucket(bucket, stats);
       }),
     );

@@ -36,8 +36,8 @@ export const FolderSelect = ({
   folderPathRef: MutableRefObject<string>;
 }) => {
   const qc = useQueryClient();
-  const { bucketName: activeBucketName } = useExplorer().state;
-  const { childMap } = useFileTree(activeBucketName);
+  const { bucketName: activeBucketName, bucketRegion } = useExplorer().state;
+  const { childMap } = useFileTree(activeBucketName, bucketRegion);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [folderStack, setFolderStack] = useState<TreeNode[]>([]);

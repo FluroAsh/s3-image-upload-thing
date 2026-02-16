@@ -89,7 +89,7 @@ export default async function Page({
 
   await qc.prefetchQuery({
     queryKey: ["fileTree", activeBucket],
-    queryFn: () => getFileTree(activeBucket),
+    queryFn: () => getFileTree(activeBucket, activeRegion),
   });
 
   const dehydratedState = dehydrate(qc);

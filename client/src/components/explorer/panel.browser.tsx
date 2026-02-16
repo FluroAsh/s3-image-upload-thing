@@ -42,8 +42,8 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 );
 
 export const BrowserPanel = () => {
-  const { bucketName } = useExplorer().state;
-  const { data: flatNodeList, isLoading } = useFileTree(bucketName);
+  const { bucketName, bucketRegion } = useExplorer().state;
+  const { data: flatNodeList, isLoading } = useFileTree(bucketName, bucketRegion);
   const hasMounted = useHasMounted();
 
   const shouldShowLoading = !hasMounted || isLoading;

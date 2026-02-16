@@ -45,8 +45,8 @@ type RenderTreeNode = TreeNode & {
 const MIN_IMAGE_COLLECTION_SIZE = 1;
 
 export const FileTree = () => {
-  const { bucketName } = useExplorer().state;
-  const { childMap } = useFileTree(bucketName);
+  const { bucketName, bucketRegion } = useExplorer().state;
+  const { childMap } = useFileTree(bucketName, bucketRegion);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggleExpanded = (id: string) => {

@@ -16,10 +16,10 @@ export const useBuckets = () =>
     queryFn: getBuckets,
   });
 
-export const useFileTree = (bucketName: string) => {
+export const useFileTree = (bucketName: string, bucketRegion: string) => {
   const query = useQuery<TreeNode[]>({
     queryKey: ["fileTree", bucketName],
-    queryFn: () => getFileTree(bucketName),
+    queryFn: () => getFileTree(bucketName, bucketRegion),
   });
 
   // NOTE: This is temporary until we add lazy/progressive loading for the file tree
