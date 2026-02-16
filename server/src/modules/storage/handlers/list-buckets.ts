@@ -14,6 +14,10 @@ export const listBucketsHandler = async (ctx: Context) => {
   );
   const page = Math.max(1, Number(ctx.req.query("page")) || 1);
 
+  console.log("hey")
+  
+  
+  
   try {
     const res = await s3Client.send(
       new ListBucketsCommand({

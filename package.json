@@ -2,14 +2,15 @@
   "name": "s3-image-upload-thing",
   "private": true,
   "scripts": {
-    "format": "prettier --write \"client/**/*.{ts,tsx,js,jsx,json,css,md}\" \"server/**/*.{ts,tsx,js,json,md}\"",
     "dev": "concurrently -n client,server -c cyan,yellow \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "npm run dev --prefix client",
-    "dev:server": "cd server && bun run dev"
+    "dev:server": "cd server && bun run dev",
+    "format": "biome format --write client/ server/",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write client/ server/"
   },
   "devDependencies": {
-    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "concurrently": "^9.1.2",
-    "prettier": "^3.4.2"
+    "@biomejs/biome": "2.4.1",
+    "concurrently": "^9.1.2"
   }
 }
