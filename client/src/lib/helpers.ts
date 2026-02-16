@@ -1,17 +1,12 @@
-import {
-  LucideImage,
-  LucideImages,
-  LucideListVideo,
-  LucideVideo,
-} from "lucide-react";
+import { LucideImage, LucideImages, LucideListVideo, LucideVideo } from "lucide-react";
 
 const getPathname = (remoteURL: string) => {
-  try {
-    const url = new URL(remoteURL);
-    return url.pathname;
-  } catch (e) {
-    console.error(`Unable to parse URL: ${remoteURL}`, e);
-  }
+	try {
+		const url = new URL(remoteURL);
+		return url.pathname;
+	} catch (e) {
+		console.error(`Unable to parse URL: ${remoteURL}`, e);
+	}
 };
 
 /**
@@ -20,43 +15,27 @@ const getPathname = (remoteURL: string) => {
  * @returns A function that checks if a URL matches any of the extensions
  */
 const endsWithExt =
-  (extensions: string[]) =>
-  (remoteURL: string | null): boolean => {
-    if (!remoteURL) return false;
+	(extensions: string[]) =>
+	(remoteURL: string | null): boolean => {
+		if (!remoteURL) return false;
 
-    const pathname = getPathname(remoteURL);
-    const lowerPathname = pathname?.toLowerCase() || "";
+		const pathname = getPathname(remoteURL);
+		const lowerPathname = pathname?.toLowerCase() || "";
 
-    return extensions.some((ext) => lowerPathname.endsWith(ext));
-  };
+		return extensions.some((ext) => lowerPathname.endsWith(ext));
+	};
 
-export const isImageFile = endsWithExt([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".webp",
-]);
+export const isImageFile = endsWithExt([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"]);
 
-export const isVideoFile = endsWithExt([
-  ".mp4",
-  ".avi",
-  ".mov",
-  ".wmv",
-  ".flv",
-  ".webm",
-  ".mkv",
-  ".m4v",
-]);
+export const isVideoFile = endsWithExt([".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv", ".m4v"]);
 
 export const getFileIcon = (remoteURL: string | null, multiple?: boolean) => {
-  switch (true) {
-    case isVideoFile(remoteURL):
-      return multiple ? LucideListVideo : LucideVideo;
-    case isImageFile(remoteURL):
-      return multiple ? LucideImages : LucideImage;
-    default:
-      return undefined;
-  }
+	switch (true) {
+		case isVideoFile(remoteURL):
+			return multiple ? LucideListVideo : LucideVideo;
+		case isImageFile(remoteURL):
+			return multiple ? LucideImages : LucideImage;
+		default:
+			return undefined;
+	}
 };

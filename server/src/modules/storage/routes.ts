@@ -11,10 +11,10 @@ const storage = new Hono();
 const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
 
 storage.use(
-  bodyLimit({
-    maxSize,
-    onError: (c) => c.json({ error: "Request body too large" }, 413),
-  }),
+	bodyLimit({
+		maxSize,
+		onError: (c) => c.json({ error: "Request body too large" }, 413),
+	}),
 );
 
 storage.post("/upload", uploadImagesHandler);
@@ -29,42 +29,42 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 // TODO: Complete bucket operations
 
 storage.post("/bucket/:bucketName", async (c) => {
-  // Upload object(s) to a bucket (upload image(s))
-  // Upload into a bucket subdirectory if specified
+	// Upload object(s) to a bucket (upload image(s))
+	// Upload into a bucket subdirectory if specified
 });
 
 storage.put("/bucket/:bucketName", async (c) => {
-  // Update a bucket properties (e.g., name, etc.)
+	// Update a bucket properties (e.g., name, etc.)
 });
 
 storage.delete("/bucket/:bucketName", async (c) => {
-  // TODO: Delete a bucket
+	// TODO: Delete a bucket
 });
 
 // -------------------------------------//
 // ---- Single "Object" Operations ---- //
 // -------------------------------------//
 storage.get("/bucket/:bucketName/object/:name", async (ctx) => {
-  // TODO: Get "type" of object (e.g., image, text, etc.)
-  const bucketName = ctx.req.param("bucketName");
-  const objectKey = ctx.req.param("name");
+	// TODO: Get "type" of object (e.g., image, text, etc.)
+	const bucketName = ctx.req.param("bucketName");
+	const objectKey = ctx.req.param("name");
 
-  console.log(`Getting object: ${objectKey} from bucket: ${bucketName}`);
+	console.log(`Getting object: ${objectKey} from bucket: ${bucketName}`);
 
-  // fetch the presigned URL via the AWS SDK
-  // const url = await getImage(bucketName, objectKey)
-  // return c.json({ url })
+	// fetch the presigned URL via the AWS SDK
+	// const url = await getImage(bucketName, objectKey)
+	// return c.json({ url })
 
-  return ctx.json({ url: "https://via.placeholder.com/150" });
+	return ctx.json({ url: "https://via.placeholder.com/150" });
 });
 
 storage.delete("/bucket/:bucketName/object/:name", async (c) => {
-  // TODO: Delete an object from a bucket
+	// TODO: Delete an object from a bucket
 });
 
 storage.put("/bucket/:bucketName/object/:name", async (c) => {
-  // TODO: Update an object in a bucket
-  // (ie replace the object with a new one)
+	// TODO: Update an object in a bucket
+	// (ie replace the object with a new one)
 });
 
 export default storage;

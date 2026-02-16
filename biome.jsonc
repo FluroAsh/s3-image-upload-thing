@@ -1,18 +1,14 @@
 {
-  "formatter": {
-    "enabled": true,
-    "lineWidth": 120
-  },
-  "json": {
-    "formatter": {
-      "enabled": true
-    }
-  },
-  "files": {
-    "includes": [
-      "client/**/*.{ts,tsx,js,jsx,json}",
-      "server/**/*.{ts,tsx,js,json}",
-      "!!**/.next/**"
-    ]
-  }
+	"formatter": {
+		"enabled": true,
+		"lineWidth": 120
+	},
+	"json": {
+		"formatter": {
+			"enabled": true
+		}
+	},
+	"files": {
+		"includes": ["client/**/*.{ts,tsx,js,jsx,json}", "server/**/*.{ts,tsx,js,json}", "!!**/.next"]
+	}
 }

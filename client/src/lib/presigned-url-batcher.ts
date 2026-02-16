@@ -18,8 +18,8 @@ import ofetch from "@/lib/ofetch";
  */
 
 type Resolver = {
-  resolve: (url: string) => void;
-  reject: (error: Error) => void;
+	resolve: (url: string) => void;
+	reject: (error: Error) => void;
 };
 
 let pendingKeys: string[] = [];
@@ -31,54 +31,53 @@ let activeBucket = "";
 let activeBucketRegion = "";
 
 export const setBatcherBucket = (bucket: string, region: string) => {
-  activeBucket = bucket;
-  activeBucketRegion = region;
+	activeBucket = bucket;
+	activeBucketRegion = region;
 };
 
 const flush = async () => {
-  const keys = [...pendingKeys];
-  const resolvers = new Map(pendingResolvers);
+	const keys = [...pendingKeys];
+	const resolvers = new Map(pendingResolvers);
 
-  // Reset state immediately so new calls during the fetch start a fresh batch
-  pendingKeys = [];
-  pendingResolvers = new Map();
-  flushTimer = null;
+	// Reset state immediately so new calls during the fetch start a fresh batch
+	pendingKeys = [];
+	pendingResolvers = new Map();
+	flushTimer = null;
 
-  try {
-    const { urls, errors } = await ofetch<PresignedUrlsResponse>(
-      `/storage/presigned-urls?bucket=${activeBucket}&region=${activeBucketRegion}`,
-      {
-        method: "POST",
-        body: { keys },
-      },
-    );
+	try {
+		const { urls, errors } = await ofetch<PresignedUrlsResponse>(
+			`/storage/presigned-urls?bucket=${activeBucket}&region=${activeBucketRegion}`,
+			{
+				method: "POST",
+				body: { keys },
+			},
+		);
 
-    // Resolve successful URLs
-    for (const { key, url } of urls) {
-      resolvers.get(key)?.resolve(url);
-      resolvers.delete(key);
-    }
+		// Resolve successful URLs
+		for (const { key, url } of urls) {
+			resolvers.get(key)?.resolve(url);
+			resolvers.delete(key);
+		}
 
-    // Reject any keys that had errors
-    if (errors) {
-      for (const { key, error } of errors) {
-        resolvers.get(key)?.reject(new Error(error));
-        resolvers.delete(key);
-      }
-    }
+		// Reject any keys that had errors
+		if (errors) {
+			for (const { key, error } of errors) {
+				resolvers.get(key)?.reject(new Error(error));
+				resolvers.delete(key);
+			}
+		}
 
-    // Reject any remaining unresolved keys (shouldn't happen, but safety net)
-    for (const [key, { reject }] of resolvers) {
-      reject(new Error(`No presigned URL returned for key: ${key}`));
-    }
-  } catch (error) {
-    // If the entire request fails, reject all pending resolvers
-    const message =
-      error instanceof Error ? error.message : "Presigned URL batch failed";
-    for (const [, { reject }] of resolvers) {
-      reject(new Error(message));
-    }
-  }
+		// Reject any remaining unresolved keys (shouldn't happen, but safety net)
+		for (const [key, { reject }] of resolvers) {
+			reject(new Error(`No presigned URL returned for key: ${key}`));
+		}
+	} catch (error) {
+		// If the entire request fails, reject all pending resolvers
+		const message = error instanceof Error ? error.message : "Presigned URL batch failed";
+		for (const [, { reject }] of resolvers) {
+			reject(new Error(message));
+		}
+	}
 };
 
 /**
@@ -86,29 +85,29 @@ const flush = async () => {
  * Calls within the batch window are automatically collected into one request.
  */
 export const fetchPresignedUrl = (key: string): Promise<string> =>
-  new Promise((resolve, reject) => {
-    // If this key is already pending, chain onto the existing resolver
-    if (pendingResolvers.has(key)) {
-      const existing = pendingResolvers.get(key)!;
-      pendingResolvers.set(key, {
-        resolve: (url) => {
-          existing.resolve(url);
-          resolve(url);
-        },
-        reject: (err) => {
-          existing.reject(err);
-          reject(err);
-        },
-      });
-      return;
-    }
+	new Promise((resolve, reject) => {
+		// If this key is already pending, chain onto the existing resolver
+		if (pendingResolvers.has(key)) {
+			const existing = pendingResolvers.get(key)!;
+			pendingResolvers.set(key, {
+				resolve: (url) => {
+					existing.resolve(url);
+					resolve(url);
+				},
+				reject: (err) => {
+					existing.reject(err);
+					reject(err);
+				},
+			});
+			return;
+		}
 
-    pendingKeys.push(key);
-    pendingResolvers.set(key, { resolve, reject });
+		pendingKeys.push(key);
+		pendingResolvers.set(key, { resolve, reject });
 
-    if (!flushTimer) {
-      // Use next macrotask so React Query-triggered loads
-      // across render/effects batch together
-      flushTimer = setTimeout(flush, 0);
-    }
-  });
+		if (!flushTimer) {
+			// Use next macrotask so React Query-triggered loads
+			// across render/effects batch together
+			flushTimer = setTimeout(flush, 0);
+		}
+	});

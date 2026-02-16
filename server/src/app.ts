@@ -13,14 +13,14 @@ app.use("*", cors());
 
 // Health check endpoint (infrastructure/monitoring - not a feature)
 app.get("/health", (c) =>
-  c.json(
-    {
-      status: "OK",
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor(process.uptime()),
-    },
-    200,
-  ),
+	c.json(
+		{
+			status: "OK",
+			timestamp: new Date().toISOString(),
+			uptime: Math.floor(process.uptime()),
+		},
+		200,
+	),
 );
 
 app.route("/storage", storage);
@@ -38,7 +38,7 @@ app.route("/storage", storage);
 console.log(`Server started on port ${port}`);
 
 export default {
-  port,
-  fetch: app.fetch,
-  // maxRequestBodySize: maxSize,
+	port,
+	fetch: app.fetch,
+	// maxRequestBodySize: maxSize,
 };

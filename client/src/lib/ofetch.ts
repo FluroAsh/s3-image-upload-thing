@@ -10,9 +10,7 @@ import { ofetch } from "ofetch";
  * without hardcoding URLs or requiring rebuilds when the backend location changes.
  */
 const isServer = typeof window === "undefined";
-const baseURL = isServer
-  ? process.env.API_URL || "http://localhost:3002"
-  : "/proxy";
+const baseURL = isServer ? process.env.API_URL || "http://localhost:3002" : "/proxy";
 
 const ofetchInstance = ofetch.create({ baseURL });
 

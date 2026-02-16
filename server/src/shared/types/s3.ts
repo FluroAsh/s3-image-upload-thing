@@ -4,6 +4,6 @@ import type { _Object } from "@aws-sdk/client-s3";
 export type ValidObject = _Object & { Key: string };
 
 export type BucketStats = {
-  objectCount: number;
-  totalSize: number;
+	objectCount: number;
+	totalSize: number;
 };

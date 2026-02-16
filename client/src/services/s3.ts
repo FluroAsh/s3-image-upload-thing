@@ -3,16 +3,11 @@ import type { BucketsResponse, TreeNode } from "@shared/types";
 import ofetch from "@/lib/ofetch";
 
 export const getBuckets = async (): Promise<BucketsResponse> => {
-  const data = await ofetch<BucketsResponse>("/storage/buckets");
-  return data;
+	const data = await ofetch<BucketsResponse>("/storage/buckets");
+	return data;
 };
 
-export const getFileTree = async (
-  bucketName: string,
-  bucketRegion: string,
-): Promise<TreeNode[]> => {
-  const { tree = [] } = await ofetch<{ tree: TreeNode[] }>(
-    `/storage/buckets/${bucketName}?region=${bucketRegion}`,
-  );
-  return tree;
+export const getFileTree = async (bucketName: string, bucketRegion: string): Promise<TreeNode[]> => {
+	const { tree = [] } = await ofetch<{ tree: TreeNode[] }>(`/storage/buckets/${bucketName}?region=${bucketRegion}`);
+	return tree;
 };

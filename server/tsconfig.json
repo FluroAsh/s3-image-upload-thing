@@ -1,15 +1,15 @@
 {
-  "compilerOptions": {
-    "strict": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
-    "esModuleInterop": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"]
-    }
-  },
-  "include": ["**/*.ts", "../shared/**/*.ts"],
-  "exclude": ["node_modules"]
+	"compilerOptions": {
+		"strict": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx",
+		"esModuleInterop": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["./src/*"],
+			"@shared/*": ["../shared/*"]
+		}
+	},
+	"include": ["**/*.ts", "../shared/**/*.ts"],
+	"exclude": ["node_modules"]
 }
