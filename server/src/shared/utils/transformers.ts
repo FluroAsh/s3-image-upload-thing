@@ -7,6 +7,7 @@ import type { BucketStats } from "@/shared/types/s3";
 
 import { readableSize } from "./helpers";
 
+/** Transform an AWS S3 bucket object into a normalized Bucket type, for consumption in the client application. */
 export const transformBucket = (
   bucket: AwsBucket,
   stats?: BucketStats,
