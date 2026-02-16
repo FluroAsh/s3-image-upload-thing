@@ -14,8 +14,6 @@ import { getBuckets, getFileTree } from "@/services/s3";
 
 export const dynamic = "force-dynamic";
 
-const qc = new QueryClient();
-
 const initialQueryState = (
   data: BucketsResponse,
   requestedBucket: string,
@@ -63,14 +61,16 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const queryClient = new QueryClient();
+
   const { bucket, region } = await loadDashboardParams(searchParams);
 
-  await qc.prefetchQuery({
+  await queryClient.prefetchQuery({
     queryKey: ["buckets"],
     queryFn: getBuckets,
   });
 
-  const data = qc.getQueryData<BucketsResponse>(["buckets"]);
+  const data = queryClient.getQueryData<BucketsResponse>(["buckets"]);
 
   if (!data) {
     return <NoBucketsFound />;
@@ -87,12 +87,12 @@ export default async function Page({
     redirect(`/dashboard?bucket=${activeBucket}&region=${activeRegion}`);
   }
 
-  await qc.prefetchQuery({
+  await queryClient.prefetchQuery({
     queryKey: ["fileTree", activeBucket],
     queryFn: () => getFileTree(activeBucket, activeRegion),
   });
 
-  const dehydratedState = dehydrate(qc);
+  const dehydratedState = dehydrate(queryClient);
 
   return (
     <HydrationBoundary state={dehydratedState}>
