@@ -1,8 +1,7 @@
-import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
+import type { BucketsResponse } from "@shared/types";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { LucideCircleAlert } from "lucide-react";
 import { redirect } from "next/navigation";
-
-import type { BucketsResponse } from "@shared/types";
 
 import { ExplorerLayout } from "@/components/explorer";
 import { loadDashboardParams } from "@/lib/search-params";

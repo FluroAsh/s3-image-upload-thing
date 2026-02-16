@@ -1,7 +1,6 @@
+import type { TreeNode } from "@shared/types";
 import { useQueryStates } from "nuqs";
 import { createContext, useContext, useReducer } from "react";
-
-import type { TreeNode } from "@shared/types";
 
 import { dashboardSearchParams } from "@/lib/search-params";
 

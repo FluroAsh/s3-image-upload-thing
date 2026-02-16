@@ -1,9 +1,8 @@
+import * as path from "node:path";
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import * as path from "node:path";
-import type { FormatEnum } from "sharp";
-
 import type { FileVariant } from "@shared/types";
+import type { FormatEnum } from "sharp";
 
 import { TIME } from "@/shared/constants";
 import type { ImageVariants } from "@/shared/types/image";

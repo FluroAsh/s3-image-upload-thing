@@ -1,6 +1,5 @@
-import { type Dispatch, type SetStateAction, createContext, useContext, useState } from "react";
-
 import type { UploadSuccess } from "@shared/types";
+import { createContext, type Dispatch, type SetStateAction, useContext, useState } from "react";
 
 export enum EUploadState {
 	Idle = "Idle",

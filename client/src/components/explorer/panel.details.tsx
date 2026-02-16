@@ -1,6 +1,5 @@
-import { LucideExternalLink, LucideFile, LucideImage, LucideLink } from "lucide-react";
-
 import type { TreeNode } from "@shared/types";
+import { LucideExternalLink, LucideFile, LucideImage, LucideLink } from "lucide-react";
 
 import { isImageFile, isVideoFile } from "@/lib/helpers";
 import { useExplorer } from "@/lib/providers/explorer-provider";

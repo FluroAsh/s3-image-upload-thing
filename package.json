@@ -5,7 +5,7 @@
     "dev": "concurrently -n client,server -c cyan,yellow \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "npm run dev --prefix client",
     "dev:server": "cd server && bun run dev",
-    "format": "biome format --write client/ server/",
+    "format": "biome check --write --linter-enabled=false client/ server/",
     "lint": "biome lint",
     "lint:fix": "biome lint --write client/ server/"
   },

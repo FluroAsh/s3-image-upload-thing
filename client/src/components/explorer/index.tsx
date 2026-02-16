@@ -1,9 +1,8 @@
 "use client";
 
+import type { ImageVariant, TreeNode } from "@shared/types";
 import { LucideChevronRight, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from "lucide-react";
 import { useMemo, useState } from "react";
-
-import type { ImageVariant, TreeNode } from "@shared/types";
 
 import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
