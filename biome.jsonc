@@ -20,7 +20,7 @@
 							":BLANK_LINE:",
 							":PACKAGE:",
 							":BLANK_LINE:",
-							[":ALIAS:", "~/*"],
+							":ALIAS:",
 							":BLANK_LINE:",
 							":PATH:"
 						]
