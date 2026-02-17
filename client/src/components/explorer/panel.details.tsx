@@ -117,7 +117,6 @@ export const DetailsPanel = () => {
 								className="mx-auto flex items-center justify-center "
 								style={{ height: `${PREVIEW_CONTAINER_SIZE}px` }}
 							>
-								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img src={remoteURL} alt={fileName || "Preview"} className="max-w-full max-h-full object-contain" />
 							</div>
 						) : (

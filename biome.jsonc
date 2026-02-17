@@ -3,9 +3,11 @@
 		"enabled": true,
 		"lineWidth": 120
 	},
-	"json": {
-		"formatter": {
-			"enabled": true
+	"linter": {
+		"rules": {
+			"performance": {
+				"noImgElement": "off" // Not important at the moment, address this later. Probably.
+			}
 		}
 	},
 	"assist": {
