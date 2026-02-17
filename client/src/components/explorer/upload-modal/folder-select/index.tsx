@@ -1,10 +1,10 @@
-import type { TreeNode } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
 import { type MutableRefObject, useState } from "react";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
+import type { TreeNode } from "~/shared/types";
 
 import { Folder } from "./folder";
 

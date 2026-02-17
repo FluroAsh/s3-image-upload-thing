@@ -1,4 +1,4 @@
-import type { ImageVariant } from "@shared/types";
+import type { ImageVariant } from "~/shared/types";
 
 export type { ImageVariant };
 

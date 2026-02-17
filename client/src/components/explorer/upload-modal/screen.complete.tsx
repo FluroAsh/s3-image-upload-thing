@@ -1,4 +1,4 @@
-import type { FileVariant, FileVariants, ImageVariant } from "@shared/types";
+import type { FileVariant, FileVariants, ImageVariant } from "~/shared/types";
 
 import { useUpload } from "./provider";
 

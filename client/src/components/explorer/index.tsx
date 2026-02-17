@@ -1,6 +1,5 @@
 "use client";
 
-import type { ImageVariant, TreeNode } from "@shared/types";
 import { LucideChevronRight, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -8,6 +7,7 @@ import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
+import type { ImageVariant, TreeNode } from "~/shared/types";
 
 import { DEPTH_PADDING_MAP } from "./constants";
 import { MainContent } from "./layout.main-content";

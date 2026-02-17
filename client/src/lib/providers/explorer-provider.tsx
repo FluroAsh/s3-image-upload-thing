@@ -1,8 +1,8 @@
-import type { TreeNode } from "@shared/types";
 import { useQueryStates } from "nuqs";
 import { createContext, useContext, useReducer } from "react";
 
 import { dashboardSearchParams } from "@/lib/search-params";
+import type { TreeNode } from "~/shared/types";
 
 type ReducerState = {
 	bucketSearchTerm: string;

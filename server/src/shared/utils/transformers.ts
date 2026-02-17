@@ -1,8 +1,8 @@
 import type { Bucket as AwsBucket } from "@aws-sdk/client-s3";
-import type { Bucket } from "@shared/types";
 import { format } from "date-fns";
 
 import type { BucketStats } from "@/shared/types/s3";
+import type { Bucket } from "~/shared/types";
 
 import { readableSize } from "./helpers";
 

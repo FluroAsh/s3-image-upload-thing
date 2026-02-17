@@ -1,9 +1,8 @@
 import type { _Object } from "@aws-sdk/client-s3";
 
-import type { TreeNode } from "@shared/types";
-
 import type { ValidObject } from "@/shared/types/s3";
 import { readableSize } from "@/shared/utils/helpers";
+import type { TreeNode } from "~/shared/types";
 
 // ---------------------------------------------------------------------------
 // Key parsing & sorting

@@ -1,10 +1,10 @@
 "use client";
 
-import type { Bucket } from "@shared/types";
 import { LucideAlertTriangle, LucideDatabase, LucideLoader2, LucideSearchX } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
 import { dashboardSearchParams } from "@/lib/search-params";
+import type { Bucket } from "~/shared/types";
 
 import { BucketCard } from "./card";
 

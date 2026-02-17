@@ -1,6 +1,5 @@
-import type { PresignedUrlsResponse } from "@shared/types";
-
 import ofetch from "@/lib/ofetch";
+import type { PresignedUrlsResponse } from "~/shared/types";
 
 /**
  * DataLoader-style batcher for presigned URL generation.

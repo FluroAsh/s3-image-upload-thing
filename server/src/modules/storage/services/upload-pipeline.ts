@@ -1,6 +1,5 @@
-import type { FileVariant } from "@shared/types";
-
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
+import type { FileVariant } from "~/shared/types";
 
 import { createImageVariants, prepareImages } from "./image-processing";
 import { uploadImages } from "./s3-operations";

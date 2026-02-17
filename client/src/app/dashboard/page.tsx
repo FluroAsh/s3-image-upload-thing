@@ -1,4 +1,3 @@
-import type { BucketsResponse } from "@shared/types";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { LucideCircleAlert } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -6,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ExplorerLayout } from "@/components/explorer";
 import { loadDashboardParams } from "@/lib/search-params";
 import { getBuckets, getFileTree } from "@/services/s3";
+import type { BucketsResponse } from "~/shared/types";
 
 export const dynamic = "force-dynamic";
 
