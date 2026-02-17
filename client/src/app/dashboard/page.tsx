@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { LucideCircleAlert } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -44,10 +42,6 @@ export default async function Page({
 	}
 
 	const { activeBucket, activeRegion } = getInitialQueryState(data, bucket, region);
-
-	useEffect(() => {
-		//
-	}, []);
 
 	// Partial search params is not allowed, redirect to the expected bucket/region
 	if (!bucket || !region) {
