@@ -1,10 +1,11 @@
 import * as path from "node:path";
+
 import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { TIME } from "@shared/constants/time";
 import type { FileVariant } from "@shared/types";
 import type { FormatEnum } from "sharp";
 
-import { TIME } from "@/shared/constants";
 import type { ImageVariants } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 
@@ -102,7 +103,7 @@ export const generatePresignedUrl = async (bucketName: string, bucketRegion: str
 	const client = getRegionalClient(bucketRegion);
 
 	return getSignedUrl(client, command, {
-		expiresIn: TIME.ONE_HOUR_IN_SECONDS,
+		expiresIn: TIME.seconds.perHour,
 	});
 };
 
