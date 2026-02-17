@@ -9,28 +9,6 @@ import { getBuckets, getFileTree } from "@/services/s3";
 
 export const dynamic = "force-dynamic";
 
-const initialQueryState = (data: BucketsResponse, requestedBucket: string, requestedRegion: string) => {
-	const defaultBucket = data.buckets[0];
-	const fallback = {
-		activeBucket: defaultBucket.Name,
-		activeRegion: defaultBucket.BucketRegion,
-	};
-
-	if (!requestedBucket) return fallback;
-
-	const found = data.buckets.find((bucket) => bucket.Name === requestedBucket);
-	if (!found) return fallback;
-
-	if (requestedRegion && found.BucketRegion !== requestedRegion) {
-		return fallback;
-	}
-
-	return {
-		activeBucket: found.Name,
-		activeRegion: found.BucketRegion,
-	};
-};
-
 const NoBucketsFound = () => {
 	return (
 		<div className="flex flex-col items-center justify-center h-full">
@@ -63,7 +41,7 @@ export default async function Page({
 		return <NoBucketsFound />;
 	}
 
-	const { activeBucket, activeRegion } = initialQueryState(data, bucket, region);
+	const { activeBucket, activeRegion } = getInitialQueryState(data, bucket, region);
 
 	// Partial search params is not allowed, redirect to the expected bucket/region
 	if (!bucket || !region) {
@@ -84,4 +62,26 @@ export default async function Page({
 			</div>
 		</HydrationBoundary>
 	);
+}
+
+function getInitialQueryState(data: BucketsResponse, requestedBucket: string, requestedRegion: string) {
+	const defaultBucket = data.buckets[0];
+	const fallback = {
+		activeBucket: defaultBucket.Name,
+		activeRegion: defaultBucket.BucketRegion,
+	};
+
+	if (!requestedBucket) return fallback;
+
+	const found = data.buckets.find((bucket) => bucket.Name === requestedBucket);
+	if (!found) return fallback;
+
+	if (requestedRegion && found.BucketRegion !== requestedRegion) {
+		return fallback;
+	}
+
+	return {
+		activeBucket: found.Name,
+		activeRegion: found.BucketRegion,
+	};
 }

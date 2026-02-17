@@ -11,8 +11,6 @@ export const listBucketsHandler = async (ctx: Context) => {
 	const limit = Math.min(Math.max(1, Number(ctx.req.query("limit")) || BUCKETS_PAGE_SIZE), 100);
 	const page = Math.max(1, Number(ctx.req.query("page")) || 1);
 
-	console.log("hey");
-
 	try {
 		const res = await s3Client.send(
 			new ListBucketsCommand({
@@ -38,7 +36,6 @@ export const listBucketsHandler = async (ctx: Context) => {
 		);
 
 		const totalSizeBytes = bucketsWithStats.reduce((sum, b) => sum + b.totalSizeBytes, 0);
-
 		const totalObjectCount = bucketsWithStats.reduce((sum, b) => sum + b.objectCount, 0);
 
 		return ctx.json({
