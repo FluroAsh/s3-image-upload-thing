@@ -53,8 +53,8 @@ export const FileTree = () => {
 	const visibleNodes = useMemo(() => {
 		const nodes: RenderTreeNode[] = [];
 
-		const renderChildrenByFolder = (parentId: string) => {
-			(childMap.get(parentId) || []).map((node) => {
+	const renderChildrenByFolder = (parentId: string) => {
+		(childMap.get(parentId) || []).forEach((node) => {
 				if (node.isFolder && node.childCount >= MIN_IMAGE_COLLECTION_SIZE) {
 					const children = childMap.get(node.id) ?? [];
 
