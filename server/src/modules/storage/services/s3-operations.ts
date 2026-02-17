@@ -102,6 +102,7 @@ export const generatePresignedUrl = async (bucketName: string, bucketRegion: str
 	const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
 	const client = getRegionalClient(bucketRegion);
 
+	/* @ts-expect-error - @smithy/smithy-client type is not compatible with the S3Client type */
 	return getSignedUrl(client, command, {
 		expiresIn: TIME.seconds.perHour,
 	});
