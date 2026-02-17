@@ -1,8 +1,6 @@
 import type { ProcessedImage } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
 
-import { createImageVariants as createVariants } from "../processors/variants/processor";
-
 /**
  * Prepares uploaded files for processing by converting them to ProcessedImage format
  * @param files - Array of tuples containing field name and file

@@ -19,7 +19,7 @@ const parseKey = (key: string) => {
 		depth: segments.length - 1,
 		isFolder: key.endsWith("/"),
 		// Parent folder path, empty string for root-level nodes
-		parentId: parentSegments.length ? parentSegments.join("/") + "/" : "",
+		parentId: parentSegments.length ? `${parentSegments.join("/")}/` : "",
 	};
 };
 
@@ -57,7 +57,7 @@ const buildTreeIndex = (objects: ValidObject[]): TreeIndex => {
 		if (!childrenMap.has(parentId)) {
 			childrenMap.set(parentId, []);
 		}
-		childrenMap.get(parentId)!.push(childKey);
+		childrenMap.get(parentId)?.push(childKey);
 	};
 
 	for (const obj of objects) {
@@ -66,7 +66,7 @@ const buildTreeIndex = (objects: ValidObject[]): TreeIndex => {
 
 		// Walk ancestor segments to find folders not stored as real objects
 		for (let i = 1; i < segments.length; i++) {
-			const folderPath = segments.slice(0, i).join("/") + "/";
+			const folderPath = `${segments.slice(0, i).join("/")}/`;
 			if (!existingKeys.has(folderPath)) {
 				impliedFolders.add(folderPath);
 			}

@@ -19,13 +19,20 @@ export const BucketCard = ({
 	isActive,
 	handleClick,
 }: BucketCardProps) => (
-	<div
+	<button
+		type="button"
 		className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg min-w-0 ${
 			isActive
 				? "bg-sky-900/50 border-sky-400/70 shadow-lg shadow-sky-500/20"
 				: "hover:bg-sky-900/10 border-slate-600/60 hover:border-sky-400/50 hover:shadow-sky-500/10"
 		}`}
 		onClick={handleClick}
+		onKeyDown={(e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				handleClick();
+			}
+		}}
 	>
 		<div className="flex flex-col items-center gap-3">
 			{/* Content section */}
@@ -65,5 +72,5 @@ export const BucketCard = ({
 				</div>
 			</div>
 		</div>
-	</div>
+	</button>
 );

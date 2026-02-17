@@ -37,8 +37,8 @@ const createS3Client = (region: string) =>
 	new S3Client({
 		region,
 		credentials: {
-			accessKeyId: process.env.ACCESS_KEY_ID!,
-			secretAccessKey: process.env.SECRET_ACCESS_KEY!,
+			accessKeyId: process.env.ACCESS_KEY_ID ?? "",
+			secretAccessKey: process.env.SECRET_ACCESS_KEY ?? "",
 		},
 	});
 

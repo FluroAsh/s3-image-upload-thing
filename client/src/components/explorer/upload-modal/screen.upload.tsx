@@ -18,6 +18,7 @@ import { EUploadState, useUpload } from "./provider";
 
 const SubmitButton = ({ hasImages, onClick }: { hasImages: boolean; onClick: () => void }) => (
 	<button
+		type="button"
 		className={cn(
 			"bg-neutral-300 px-4 py-2 rounded-sm text-neutral-900",
 			!hasImages && "bg-neutral-600 text-neutral-400",
@@ -47,8 +48,11 @@ export const UploadScreen = () => {
 
 			const formData = new FormData();
 			formData.append("bucketName", bucketName ?? "");
-			images.forEach((file) => formData.append("images", file, file.name));
 			formData.append("destination", folderPathRef.current);
+
+			images.forEach((file) => {
+				formData.append("images", file, file.name);
+			});
 
 			const response = await postUploadImages(formData);
 			setUploadResponse(response);

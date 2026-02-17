@@ -12,8 +12,8 @@ const app = new Hono();
 app.use("*", cors());
 
 // Health check endpoint (infrastructure/monitoring - not a feature)
-app.get("/health", (c) =>
-	c.json(
+app.get("/health", (ctx) =>
+	ctx.json(
 		{
 			status: "OK",
 			timestamp: new Date().toISOString(),

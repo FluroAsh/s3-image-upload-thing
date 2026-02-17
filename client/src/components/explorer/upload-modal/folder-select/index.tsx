@@ -81,6 +81,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 				</div>
 
 				<button
+					type="button"
 					className="flex items-center justify-center bg-neutral-500 text-neutral-100 py-2 px-4 rounded-md"
 					onClick={handleCreateFolder}
 				>
@@ -103,6 +104,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 				</div>
 
 				<button
+					type="button"
 					className="flex gap-x-2 items-center bg-neutral-500 text-neutral-100 px-4 py-2 rounded-md"
 					onClick={handleBack}
 				>

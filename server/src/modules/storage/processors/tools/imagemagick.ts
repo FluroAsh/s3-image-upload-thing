@@ -1,7 +1,7 @@
+import * as child_process from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import * as child_process from "child_process";
 
 /**
  * Process image with ImageMagick for better color reproduction
@@ -25,7 +25,7 @@ export const enhanceImageColors = async (
 
 	try {
 		// Write buffer to temp file
-		fs.writeFileSync(inputPath, buffer as any);
+		fs.writeFileSync(inputPath, buffer);
 
 		// Build ImageMagick command
 		const args = [inputPath, "-colorspace", colorSpace, "-depth", bitDepth.toString()];
@@ -87,7 +87,7 @@ export const isImageMagickAvailable = (): boolean => {
 			encoding: "utf8",
 		});
 		return result.status === 0;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 };

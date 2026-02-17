@@ -26,7 +26,7 @@ export const writeToDesktop = (image: ImageVariants) => {
 	}
 
 	// Write source image
-	if (image.source && image.source.buffer) {
+	if (image.source?.buffer) {
 		const sourcePath = path.join(baseFolderPath, `source-${image.fileName}`);
 		fs.writeFileSync(sourcePath, new Uint8Array(image.source.buffer));
 		console.log(`Source image written to: ${sourcePath}`);

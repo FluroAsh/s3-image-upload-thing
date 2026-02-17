@@ -86,8 +86,8 @@ const flush = async () => {
 export const fetchPresignedUrl = (key: string): Promise<string> =>
 	new Promise((resolve, reject) => {
 		// If this key is already pending, chain onto the existing resolver
-		if (pendingResolvers.has(key)) {
-			const existing = pendingResolvers.get(key)!;
+		const existing = pendingResolvers.get(key);
+		if (existing) {
 			pendingResolvers.set(key, {
 				resolve: (url) => {
 					existing.resolve(url);

@@ -55,11 +55,7 @@ export const DetailsPanel = () => {
 
 	if (!remoteURL) {
 		return (
-			<div
-				id="explorer-details-panel"
-				className="bg-slate-800 border-l border-slate-700 flex-1"
-				aria-label="File details"
-			>
+			<div id="explorer-details-panel" className="bg-slate-800 border-l border-slate-700 flex-1">
 				<EmptyState />
 			</div>
 		);
@@ -120,6 +116,7 @@ export const DetailsPanel = () => {
 								<img src={remoteURL} alt={fileName || "Preview"} className="max-w-full max-h-full object-contain" />
 							</div>
 						) : (
+							// biome-ignore lint/a11y/useMediaCaption: User-uploaded videos don't currently have captions
 							<video
 								src={remoteURL}
 								controls

@@ -8,6 +8,7 @@ import { ImagePreview, PreviewGrid } from "./preview";
 
 const AddImageButton = ({ onClick }: { onClick: () => void }) => (
 	<button
+		type="button"
 		onClick={onClick}
 		className={cn(
 			"h-[120px] border-2 border-dashed border-neutral-500 rounded-md hover:bg-neutral-500/10",
@@ -22,18 +23,25 @@ const AddImageButton = ({ onClick }: { onClick: () => void }) => (
 );
 
 const ImagePlaceholder = ({ onClick }: { onClick: () => void }) => (
-	<div
+	<button
+		type="button"
 		className={cn(
 			"border-neutral-500 border-2 border-dashed grid place-items-center hover:cursor-pointer h-full rounded-md",
 			"transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-neutral-500/10",
 		)}
 		onClick={onClick}
+		onKeyDown={(e) => {
+			if (e.key === "Enter" || e.key === " ") {
+				e.preventDefault();
+				onClick();
+			}
+		}}
 	>
 		<div className="flex flex-col items-center gap-2">
 			<LucideUpload className="size-10 " />
 			<p className="text-sm">Drag & drop an image, or click to browse</p>
 		</div>
-	</div>
+	</button>
 );
 
 export const UploadImageGrid = ({

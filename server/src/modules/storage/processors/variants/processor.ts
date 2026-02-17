@@ -27,7 +27,7 @@ const createImageVariant = async (
 	const outputOptions = getOutputOptions(variant);
 	const sourceBuffer = ensureBuffer(source.buffer);
 
-	if (width !== null && width > sourceMetadata.width) {
+	if (width && width > sourceMetadata.width) {
 		console.log(
 			`||== ⏭️  "${source.fileName}" | ${variant} | skipped (would upscale from ${sourceMetadata.width}px to ${width}px) ==||`,
 		);
@@ -38,7 +38,9 @@ const createImageVariant = async (
 	if (variant === "lossless") {
 		pipeline = pipeline.toFormat(outputFormat, outputOptions);
 	} else {
-		pipeline = pipeline.resize({ width: width!, withoutEnlargement: true }).toFormat(outputFormat, outputOptions);
+		pipeline = pipeline
+			.resize({ width: width ?? undefined, withoutEnlargement: true })
+			.toFormat(outputFormat, outputOptions);
 	}
 
 	if (variant === "placeholder") pipeline = pipeline.blur(10);

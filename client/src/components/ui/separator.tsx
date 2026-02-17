@@ -4,15 +4,14 @@ import { cn } from "@/lib/utils";
 
 type SeparatorOrientation = "horizontal" | "vertical";
 
-interface SeparatorProps extends React.ComponentPropsWithoutRef<"div"> {
+interface SeparatorProps extends React.ComponentPropsWithoutRef<"hr"> {
 	orientation?: SeparatorOrientation;
 }
 
-const Separator = React.forwardRef<HTMLDivElement, SeparatorProps>(
+const Separator = React.forwardRef<HTMLHRElement, SeparatorProps>(
 	({ orientation = "horizontal", className, ...props }, ref) => (
-		<div
+		<hr
 			ref={ref}
-			role="separator"
 			aria-orientation={orientation}
 			className={cn(
 				"shrink-0 bg-neutral-700",

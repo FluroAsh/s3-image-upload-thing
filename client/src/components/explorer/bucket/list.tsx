@@ -79,7 +79,7 @@ export const BucketList = ({
 	};
 
 	return (
-		<div className="flex flex-col gap-2 p-4" aria-label="Bucket List">
+		<div className="flex flex-col gap-2 p-4">
 			{buckets.map((bucket) => (
 				<BucketCard
 					key={`${bucket.Name}-${bucket.BucketRegion}`}

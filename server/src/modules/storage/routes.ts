@@ -13,7 +13,7 @@ const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use
 storage.use(
 	bodyLimit({
 		maxSize,
-		onError: (c) => c.json({ error: "Request body too large" }, 413),
+		onError: (ctx) => ctx.json({ error: "Request body too large" }, 413),
 	}),
 );
 
@@ -28,16 +28,16 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 // -------------------------------------//
 // TODO: Complete bucket operations
 
-storage.post("/bucket/:bucketName", async (c) => {
+storage.post("/bucket/:bucketName", async (_ctx) => {
 	// Upload object(s) to a bucket (upload image(s))
 	// Upload into a bucket subdirectory if specified
 });
 
-storage.put("/bucket/:bucketName", async (c) => {
+storage.put("/bucket/:bucketName", async (_ctx) => {
 	// Update a bucket properties (e.g., name, etc.)
 });
 
-storage.delete("/bucket/:bucketName", async (c) => {
+storage.delete("/bucket/:bucketName", async (_ctx) => {
 	// TODO: Delete a bucket
 });
 
@@ -58,11 +58,11 @@ storage.get("/bucket/:bucketName/object/:name", async (ctx) => {
 	return ctx.json({ url: "https://via.placeholder.com/150" });
 });
 
-storage.delete("/bucket/:bucketName/object/:name", async (c) => {
+storage.delete("/bucket/:bucketName/object/:name", async (_ctx) => {
 	// TODO: Delete an object from a bucket
 });
 
-storage.put("/bucket/:bucketName/object/:name", async (c) => {
+storage.put("/bucket/:bucketName/object/:name", async (_ctx) => {
 	// TODO: Update an object in a bucket
 	// (ie replace the object with a new one)
 });

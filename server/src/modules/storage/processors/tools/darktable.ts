@@ -1,7 +1,7 @@
+import * as child_process from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import * as child_process from "child_process";
 
 import { readableSize } from "@/shared/utils/helpers";
 
@@ -17,7 +17,7 @@ export const processNefWithDarktable = async (buffer: Buffer, options: Options =
 	const outputPath = path.join(tempDir, `output.${format}`);
 
 	try {
-		fs.writeFileSync(inputPath, buffer as any);
+		fs.writeFileSync(inputPath, buffer);
 		console.log(`||== Processing RAW image with darktable-cli to format "${format.toUpperCase()}" ==||`);
 
 		const args = [inputPath, outputPath, "--icc-type", "SRGB", "--out-ext", format];
