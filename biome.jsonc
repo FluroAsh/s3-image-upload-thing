@@ -15,7 +15,8 @@
 					"level": "on",
 					"options": {
 						"groups": [
-							[":REACT", ":NODE:"],
+							["react", "react-dom"],
+							":NODE:",
 							":BLANK_LINE:",
 							":PACKAGE:",
 							":BLANK_LINE:",
