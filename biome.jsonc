@@ -8,6 +8,26 @@
 			"enabled": true
 		}
 	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [
+							[":REACT", ":NODE:"],
+							":BLANK_LINE:",
+							":PACKAGE:",
+							":BLANK_LINE:",
+							[":ALIAS:", "~/*"],
+							":BLANK_LINE:",
+							":PATH:"
+						]
+					}
+				}
+			}
+		}
+	},
 	"files": {
 		"includes": ["client/**/*.{ts,tsx,js,jsx,json}", "server/**/*.{ts,tsx,js,json}", "!!**/.next"]
 	}
