@@ -211,11 +211,12 @@ const Folder = ({
 			)}
 			onClick={() => toggleExpanded(node.id)}
 		>
-			<span className="inline-flex mr-2">
+			<span className="flex items-center gap-0.5">
 				<LucideChevronRight
-					className={`size-4 mr-2 transition duration-75', ${
-						isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400"
-					}`}
+					className={cn(
+						"size-3 mr-2 transition duration-75",
+						isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
+					)}
 				/>
 				<FolderIcon className="size-4 mr-2 stroke-sky-400" />
 			</span>
