@@ -146,11 +146,11 @@ const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariant
 				});
 			}}
 		>
-			<LucideImages className="size-4 mr-2 text-sky-400 flex-shrink-0" />
-			<span className="text-sm truncate">{node.name}</span>
-			<div className="ml-auto">
-				<span className="text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
+			<div className="flex items-center gap-2">
+				<LucideImages className="size-4 text-sky-400 flex-shrink-0" />
+				<span className="text-sm truncate">{node.name}</span>
 			</div>
+			<span className="ml-auto text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
 		</button>
 	);
 };
@@ -180,9 +180,11 @@ const File = ({ node }: { node: TreeNode }) => {
 			style={{ paddingLeft: getDepthPadding(node.depth) }}
 			onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
 		>
-			<Icon className="size-4 mr-2 stroke-sky-400" />
-			<span className="text-sm truncate">{node.name}</span>
-			{node.size && <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.size}</span>}
+			<div className="flex items-center gap-2">
+				<Icon className="size-4 stroke-sky-400" />
+				<span className="text-sm truncate">{node.name}</span>
+			</div>
+			{node.size && <span className="ml-auto text-xs text-slate-400">{node.size}</span>}
 		</button>
 	);
 };
@@ -215,7 +217,7 @@ const Folder = ({
 				<span className="flex size-4 items-center justify-center">
 					<LucideChevronRight
 						className={cn(
-							"size-3.5 transition duration-75 shrink-0",
+							"size-3.5 transition duration-75",
 							isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
 						)}
 					/>
@@ -224,7 +226,7 @@ const Folder = ({
 				<span className="text-sm font-medium truncate">{node.name}</span>
 			</div>
 
-			{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.childCount}</span>}
+			{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400">{node.childCount}</span>}
 		</button>
 	);
 };

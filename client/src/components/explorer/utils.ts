@@ -1,4 +1,4 @@
-const DEPTH_INDENT_PX = 16;
+const DEPTH_INDENT_PX = 24;
 const DEPTH_BASE_OFFSET_PX = 8;
 
 export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
