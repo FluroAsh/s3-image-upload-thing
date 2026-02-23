@@ -38,7 +38,7 @@ export const Sidebar = () => {
 					<BucketSearch disabled={isLoading} />
 				</div>
 
-				<Separator />
+				<Separator className="border-neutral-700" />
 			</header>
 
 			<section className="shrink-0" aria-labelledby="bucket-collection-summary-heading">
@@ -49,7 +49,7 @@ export const Sidebar = () => {
 					<p className="text-sm text-neutral-300">Total Buckets: {isLoading ? "..." : totalCount}</p>
 					<p className="text-sm text-neutral-300">Total Files: {isLoading ? "..." : totalObjectCount}</p>
 				</div>
-				<Separator />
+				<Separator className="border-neutral-700" />
 			</section>
 
 			<ScrollArea className="flex-1 min-h-0">
