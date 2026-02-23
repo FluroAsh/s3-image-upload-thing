@@ -10,10 +10,9 @@ import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
-import { DEPTH_PADDING_MAP } from "./constants";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename } from "./utils";
+import { extractFilename, getDepthPadding } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -134,8 +133,8 @@ const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariant
 				remoteURL && activeFile.fileName === node.name
 					? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
 					: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-				DEPTH_PADDING_MAP[node.depth],
 			)}
+			style={{ paddingLeft: getDepthPadding(node.depth) }}
 			onClick={() => {
 				setActiveFile({
 					remoteURL: presignedUrls[resizedVariant.id],
@@ -177,8 +176,8 @@ const File = ({ node }: { node: TreeNode }) => {
 				remoteURL && activeFile.fileName === node.name
 					? "bg-sky-600 text-neutral-100 border border-sky-500"
 					: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-				DEPTH_PADDING_MAP[node.depth],
 			)}
+			style={{ paddingLeft: getDepthPadding(node.depth) }}
 			onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
 		>
 			<Icon className="size-4 mr-2 stroke-sky-400" />
@@ -205,22 +204,25 @@ const Folder = ({
 			aria-expanded={isExpanded}
 			aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
 			className={cn(
-				"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-				"text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-				DEPTH_PADDING_MAP[node.depth],
+				"flex w-full items-center text-sm rounded-md p-2 mx-1 my-0.5",
+				"text-neutral-100 border-0 bg-transparent select-none transition-colors duration-200",
+				"hover:bg-slate-700 hover:text-neutral-100 hover:cursor-pointer",
 			)}
+			style={{ paddingLeft: getDepthPadding(node.depth) }}
 			onClick={() => toggleExpanded(node.id)}
 		>
-			<span className="flex items-center gap-0.5">
-				<LucideChevronRight
-					className={cn(
-						"size-3 mr-2 transition duration-75",
-						isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
-					)}
-				/>
-				<FolderIcon className="size-4 mr-2 stroke-sky-400" />
-			</span>
-			<span className="text-sm font-medium truncate">{node.name}</span>
+			<div className="flex items-center gap-2">
+				<span className="flex size-4 items-center justify-center">
+					<LucideChevronRight
+						className={cn(
+							"size-3.5 transition duration-75 shrink-0",
+							isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
+						)}
+					/>
+				</span>
+				<FolderIcon className="size-4 stroke-sky-400" />
+				<span className="text-sm font-medium truncate">{node.name}</span>
+			</div>
 
 			{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400 flex-shrink-0">{node.childCount}</span>}
 		</button>

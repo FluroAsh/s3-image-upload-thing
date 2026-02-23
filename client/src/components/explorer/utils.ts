@@ -1,3 +1,8 @@
+const DEPTH_INDENT_PX = 16;
+const DEPTH_BASE_OFFSET_PX = 8;
+
+export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
+
 // Extracts the string between "_" and "." (ie: "large_filename.jpg" -> "filename")
 export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 
