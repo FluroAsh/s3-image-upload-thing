@@ -1,13 +1,16 @@
 import { ContextMenuSeparator } from "../ui/context-menu";
-import { DeleteMenuItem, DownloadMenuItem, RenameMenuItem } from "./items.actions";
+import { DeleteMenuItem, DownloadMenuItem, OpenMenuItem, RenameMenuItem } from "./items.actions";
 
-export const FileContextMenuItems = () => {
-	return (
-		<>
-			<DownloadMenuItem />
-			<RenameMenuItem />
-			<ContextMenuSeparator />
-			<DeleteMenuItem />
-		</>
-	);
+type FileContextMenuItemsProps = {
+	previewUrl?: string;
 };
+
+export const FileContextMenuItems = ({ previewUrl }: FileContextMenuItemsProps) => (
+	<>
+		<OpenMenuItem url={previewUrl} />
+		<DownloadMenuItem />
+		<RenameMenuItem />
+		<ContextMenuSeparator />
+		<DeleteMenuItem />
+	</>
+);

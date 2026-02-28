@@ -11,12 +11,13 @@ import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
 import { ContextMenu } from "../context-menu";
+import type { DownloadVariant } from "../context-menu/items.actions";
 import { FileContextMenuItems } from "../context-menu/items.file";
 import { FolderContextMenuItems } from "../context-menu/items.folder";
 import { ImageCollectionContextMenuItems } from "../context-menu/items.image-collection";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename, getDepthPadding } from "./utils";
+import { extractFilename, extractVariantLabel, getDepthPadding } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -130,8 +131,15 @@ const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariant
 
 	const remoteURL = presignedUrls[resizedVariant.id];
 
+	const downloadVariants: DownloadVariant[] = variants.map((v) => ({
+		id: v.id,
+		label: extractVariantLabel(v.name),
+		size: v.size,
+		url: presignedUrls[v.id],
+	}));
+
 	return (
-		<ContextMenu variant="image-collection" items={<ImageCollectionContextMenuItems />}>
+		<ContextMenu variant="image-collection" items={<ImageCollectionContextMenuItems variants={downloadVariants} />}>
 			<button
 				type="button"
 				aria-label={`Open image collection ${node.name}`}
@@ -176,7 +184,7 @@ const File = ({ node }: { node: TreeNode }) => {
 	const Icon = getFileIcon(generatedRemotePathname) || LucideFile;
 
 	return (
-		<ContextMenu variant="file" items={<FileContextMenuItems />}>
+		<ContextMenu variant="file" items={<FileContextMenuItems previewUrl={remoteURL} />}>
 			<button
 				type="button"
 				aria-label={`Open file ${node.name}`}
