@@ -1,14 +1,5 @@
 // UI Primitives, the components accept logic handlers as props
 
-import {
-	LucideArchive,
-	LucideDownload,
-	LucideExternalLink,
-	LucideImage,
-	LucidePencil,
-	LucideTrash,
-} from "lucide-react";
-
 import { IMAGE_VARIANT_ORDER } from "~/shared/types/image";
 
 import {
@@ -20,31 +11,26 @@ import {
 } from "../ui/context-menu";
 
 // ---- Common ContextMenu Actions ---- //
+// Color is reserved for destructive actions only; everything else is neutral
 export const DeleteMenuItem = () => (
-	<ContextMenuItem>
-		<LucideTrash className="size-4 mr-2 stroke-red-500 flex-shrink-0" />
-		<span className="text-red-500">Delete</span>
-	</ContextMenuItem>
+	<ContextMenuItem className="text-red-400 focus:text-red-400">Delete</ContextMenuItem>
 );
 
 export const RenameMenuItem = () => (
-	<ContextMenuItem>
-		<LucidePencil className="size-4 mr-2 stroke-neutral-100 flex-shrink-0" />
-		<span className="text-neutral-100">Rename</span>
-	</ContextMenuItem>
+	<ContextMenuItem className="text-neutral-200">Rename</ContextMenuItem>
 );
 
 export const DownloadMenuItem = () => (
-	<ContextMenuItem>
-		<LucideDownload className="size-4 mr-2 stroke-sky-500 flex-shrink-0" />
-		<span className="text-sky-500">Download</span>
-	</ContextMenuItem>
+	<ContextMenuItem className="text-neutral-200">Download</ContextMenuItem>
 );
 
 export const OpenMenuItem = ({ url }: { url?: string }) => (
-	<ContextMenuItem disabled={!url} onSelect={() => url && window.open(url, "_blank")}>
-		<LucideExternalLink className="size-4 mr-2 stroke-neutral-100 flex-shrink-0" />
-		<span className="text-neutral-100">Open</span>
+	<ContextMenuItem
+		disabled={!url}
+		className="text-neutral-200"
+		onSelect={() => url && window.open(url, "_blank")}
+	>
+		Open
 	</ContextMenuItem>
 );
 
@@ -67,15 +53,11 @@ export const DownloadSubMenu = ({ variants }: { variants: DownloadVariant[] }) =
 
 	return (
 		<ContextMenuSub>
-			<ContextMenuSubTrigger className="[&>svg]:stroke-sky-500">
-				<LucideDownload className="size-4 mr-2 stroke-sky-500 flex-shrink-0" />
-				<span className="text-sky-500">Download</span>
-			</ContextMenuSubTrigger>
+			<ContextMenuSubTrigger className="text-neutral-200">Download</ContextMenuSubTrigger>
 
 			<ContextMenuSubContent>
-				<ContextMenuItem disabled>
-					<LucideArchive className="size-4 mr-2 stroke-neutral-100 flex-shrink-0" />
-					<span className="text-neutral-100">Download all (ZIP)</span>
+				<ContextMenuItem disabled className="text-neutral-500">
+					Download all (ZIP)
 				</ContextMenuItem>
 
 				<ContextMenuSeparator />
@@ -83,11 +65,11 @@ export const DownloadSubMenu = ({ variants }: { variants: DownloadVariant[] }) =
 					<ContextMenuItem
 						key={variant.id}
 						disabled={!variant.url}
+						className="text-neutral-200"
 						onSelect={() => variant.url && window.open(variant.url, "_blank")}
 					>
-						<LucideImage className="size-4 mr-2 stroke-neutral-100 flex-shrink-0" />
-						<span className="text-neutral-100 capitalize">{variant.label}</span>
-						{variant.size && <span className="ml-auto pl-4 text-xs text-slate-400">{variant.size}</span>}
+						<span className="capitalize">{variant.label}</span>
+						{variant.size && <span className="ml-auto shrink-0 pl-3 text-xs text-neutral-500">{variant.size}</span>}
 					</ContextMenuItem>
 				))}
 			</ContextMenuSubContent>
