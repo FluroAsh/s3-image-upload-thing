@@ -2,22 +2,16 @@
 
 import { useMemo, useState } from "react";
 
-import { LucideChevronRight, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from "lucide-react";
-
-import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
-import { useFileTree, usePresignedUrls } from "@/lib/query";
-import { cn } from "@/lib/utils";
-import type { ImageVariant, TreeNode } from "~/shared/types";
+import { useFileTree } from "@/lib/query";
+import type { TreeNode } from "~/shared/types";
 
-import type { DownloadVariant } from "../context-menu/items.actions";
-import { FileContextMenuItems } from "../context-menu/items.file";
-import { FolderContextMenuItems } from "../context-menu/items.folder";
-import { ImageCollectionContextMenuItems } from "../context-menu/items.image-collection";
-import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "../ui/context-menu";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename, extractVariantLabel, getDepthPadding } from "./utils";
+import { FileNode } from "./nodes/node.file";
+import { FolderNode } from "./nodes/node.folder";
+import { ImageCollectionNode } from "./nodes/node.image-collection";
+import { extractFilename } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -92,188 +86,14 @@ export const FileTree = () => {
 			{visibleNodes.map((node) => (
 				<li key={node.id}>
 					{node.isFolder && node.isImageCollection && node.variants ? (
-						<ImageCollection variants={node.variants} node={node} previewSize="large" />
+						<ImageCollectionNode variants={node.variants} node={node} previewSize="large" />
+					) : node.isFolder ? (
+						<FolderNode node={node} isExpanded={expanded[node.id]} toggleExpanded={toggleExpanded} />
 					) : (
-						<Node node={node} toggleExpanded={toggleExpanded} isExpanded={expanded[node.id]} />
+						<FileNode node={node} />
 					)}
 				</li>
 			))}
 		</ul>
 	);
 };
-
-type ImageVariantProps = {
-	node: TreeNode;
-	variants: TreeNode[];
-	/** Used for setting the desired size for the image preview in the Explorer's "active" panel — by default this is "large". */
-	previewSize?: ImageVariant;
-};
-
-/**
- * This component will not recursively render children, it is intended to be used immediately, and display a
- * collection of image variants for a given node (thumbnail, medium, large, etc.).
- */
-const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariantProps) => {
-	const {
-		actions: { setActiveFile },
-		state: { bucketName, bucketRegion, activeFile },
-	} = useExplorer();
-
-	const { data: presignedUrls = {} } = usePresignedUrls(
-		variants.map((v) => v.id),
-		bucketName,
-		bucketRegion,
-	);
-
-	// Find the variant node that matches the desired size
-	const resizedVariant =
-		variants.find((variant) => variant.name.startsWith(previewSize)) || variants[variants.length - 1];
-
-	const remoteURL = presignedUrls[resizedVariant.id];
-
-	const downloadVariants: DownloadVariant[] = variants.map((v) => ({
-		id: v.id,
-		label: extractVariantLabel(v.name),
-		size: v.size,
-		url: presignedUrls[v.id],
-	}));
-
-	return (
-		<ContextMenu>
-			<ContextMenuTrigger asChild>
-				<button
-					type="button"
-					aria-label={`Open image collection ${node.name}`}
-					className={cn(
-						"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-						remoteURL && activeFile.fileName === node.name
-							? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
-							: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-					)}
-					style={{ paddingLeft: getDepthPadding(node.depth) }}
-					onClick={() => {
-						setActiveFile({
-							remoteURL: presignedUrls[resizedVariant.id],
-							fileName: node.name,
-							variants: variants.map((variant) => ({
-								...variant,
-								presignedUrl: presignedUrls[variant.id],
-							})),
-						});
-					}}
-				>
-					<div className="flex items-center gap-2">
-						<LucideImages className="size-4 text-sky-400 flex-shrink-0" />
-						<span className="text-sm truncate">{node.name}</span>
-					</div>
-					<span className="ml-auto text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
-				</button>
-			</ContextMenuTrigger>
-			<ContextMenuContent>
-				<ImageCollectionContextMenuItems variants={downloadVariants} />
-			</ContextMenuContent>
-		</ContextMenu>
-	);
-};
-
-const File = ({ node }: { node: TreeNode }) => {
-	const {
-		actions: { setActiveFile },
-		state: { bucketName, bucketRegion, activeFile },
-	} = useExplorer();
-
-	const { data: presignedUrls } = usePresignedUrls([node.id], bucketName, bucketRegion);
-	const remoteURL = presignedUrls?.[node.id] ?? "";
-
-	const generatedRemotePathname = `https://${bucketName}.s3.amazonaws.com/${node.id}`;
-	const Icon = getFileIcon(generatedRemotePathname) || LucideFile;
-
-	return (
-		<ContextMenu>
-			<ContextMenuTrigger asChild>
-				<button
-					type="button"
-					aria-label={`Open file ${node.name}`}
-					className={cn(
-						"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5",
-						remoteURL && activeFile.fileName === node.name
-							? "bg-sky-600 text-neutral-100 border border-sky-500"
-							: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-					)}
-					style={{ paddingLeft: getDepthPadding(node.depth) }}
-					onClick={() => setActiveFile({ remoteURL, fileName: node.name })}
-				>
-					<div className="flex items-center gap-2">
-						<Icon className="size-4 stroke-sky-400" />
-						<span className="text-sm truncate">{node.name}</span>
-					</div>
-					{node.size && <span className="ml-auto text-xs text-slate-400">{node.size}</span>}
-				</button>
-			</ContextMenuTrigger>
-			<ContextMenuContent>
-				<FileContextMenuItems previewUrl={remoteURL} />
-			</ContextMenuContent>
-		</ContextMenu>
-	);
-};
-
-const Folder = ({
-	node,
-	isExpanded,
-	toggleExpanded,
-}: {
-	node: TreeNode;
-	isExpanded: boolean;
-	toggleExpanded: (id: string) => void;
-}) => {
-	const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed;
-
-	return (
-		<ContextMenu>
-			<ContextMenuTrigger asChild>
-				<button
-					type="button"
-					aria-expanded={isExpanded}
-					aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
-					className={cn(
-						"flex w-full items-center text-sm rounded-md p-2 mx-1 my-0.5",
-						"text-neutral-100 border-0 bg-transparent select-none transition-colors duration-200",
-						"hover:bg-slate-700 hover:text-neutral-100 hover:cursor-pointer",
-					)}
-					style={{ paddingLeft: getDepthPadding(node.depth) }}
-					onClick={() => toggleExpanded(node.id)}
-				>
-					<div className="flex items-center gap-2">
-						<span className="flex size-4 items-center justify-center">
-							<LucideChevronRight
-								className={cn(
-									"size-3.5 transition duration-75",
-									isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
-								)}
-							/>
-						</span>
-						<FolderIcon className="size-4 stroke-sky-400" />
-						<span className="text-sm font-medium truncate">{node.name}</span>
-					</div>
-
-					{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400">{node.childCount}</span>}
-				</button>
-			</ContextMenuTrigger>
-
-			<ContextMenuContent>
-				<FolderContextMenuItems />
-			</ContextMenuContent>
-		</ContextMenu>
-	);
-};
-
-const Node = ({
-	node,
-	toggleExpanded,
-	isExpanded,
-}: {
-	node: TreeNode;
-	toggleExpanded: (id: string) => void;
-	isExpanded: boolean;
-}) =>
-	node.isFolder ? <Folder node={node} isExpanded={isExpanded} toggleExpanded={toggleExpanded} /> : <File node={node} />;
