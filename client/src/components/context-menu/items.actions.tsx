@@ -16,20 +16,12 @@ export const DeleteMenuItem = () => (
 	<ContextMenuItem className="text-red-400 focus:text-red-400">Delete</ContextMenuItem>
 );
 
-export const RenameMenuItem = () => (
-	<ContextMenuItem className="text-neutral-200">Rename</ContextMenuItem>
-);
+export const RenameMenuItem = () => <ContextMenuItem className="text-neutral-200">Rename</ContextMenuItem>;
 
-export const DownloadMenuItem = () => (
-	<ContextMenuItem className="text-neutral-200">Download</ContextMenuItem>
-);
+export const DownloadMenuItem = () => <ContextMenuItem className="text-neutral-200">Download</ContextMenuItem>;
 
 export const OpenMenuItem = ({ url }: { url?: string }) => (
-	<ContextMenuItem
-		disabled={!url}
-		className="text-neutral-200"
-		onSelect={() => url && window.open(url, "_blank")}
-	>
+	<ContextMenuItem disabled={!url} className="text-neutral-200" onSelect={() => url && window.open(url, "_blank")}>
 		Open
 	</ContextMenuItem>
 );
