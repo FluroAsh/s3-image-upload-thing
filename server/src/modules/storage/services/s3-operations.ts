@@ -124,7 +124,7 @@ export const uploadImages = async (
 	const formatExt = format ?? DEFAULT_FILE_TYPE;
 
 	return Promise.all(
-		Object.entries(image.variations).map(async ([variant, { buffer, size }]) => {
+		Object.entries(image.variations).map(async ([variant, { buffer, size, width, height }]) => {
 			const fileNameKey = `${variant}_${baseName}.${formatExt}`;
 			const key = destination ? `${destination}/${baseName}/${fileNameKey}` : `${baseName}/${fileNameKey}`;
 
@@ -144,6 +144,8 @@ export const uploadImages = async (
 				fileName: image.fileName,
 				imageURL,
 				size,
+				width,
+				height,
 				ETag: putResponse.ETag,
 			} as FileVariant;
 		}),
