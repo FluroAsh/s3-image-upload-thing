@@ -13,7 +13,7 @@ const Header = ({ imageCount, groupCount }: { imageCount: number; groupCount: nu
 
 const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
 	return groups.map((fileGroup, i) => (
-		<div key={`group-${fileGroup[i].fileName}`} className="bg-neutral-800 rounded-lg p-3 border border-neutral-700">
+		<div key={`group-${fileGroup[0].fileName}`} className="bg-neutral-800 rounded-lg p-3 border border-neutral-700">
 			<h4 className="text-sm font-medium text-neutral-200 mb-2">Group {i + 1}</h4>
 
 			<div className="space-y-2">
