@@ -12,6 +12,10 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Server docs and scripts
+
+`server/docs/` holds runbooks and diagrams for the server; see `server/docs/README.md` for its conventions. Code that only a hand-run script uses lives under `server/scripts/`, not `server/src/`. A script that a person runs gets a runbook in `server/docs/runbooks/`, and a change to the script updates its runbook in the same pull request.
+
 ### Branch and PR workflow
 
 One ticket, one branch, one pull request.

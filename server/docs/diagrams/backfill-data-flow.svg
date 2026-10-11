@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 470" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">What the backfill script reads and writes</title>
+  <desc id="d">The script lists and downloads image objects from the bucket it reads, which is either the primary bucket or a second bucket published under a path prefix. It writes one JSON manifest per image set, only under the manifests folder of the primary bucket. It never writes to image keys and never writes to a second bucket. The CDN serves both the images and the manifests to the site that consumes them.</desc>
+  <style>
+    .bg { fill: #ffffff; }
+    .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
+    .script { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+    .write { fill: #ecfdf5; stroke: #059669; stroke-width: 1.5; }
+    .h { font-size: 15px; font-weight: 600; fill: #18181b; }
+    .p { font-size: 13px; fill: #3f3f46; }
+    .read { stroke: #52525b; stroke-width: 1.5; fill: none; }
+    .wr { stroke: #059669; stroke-width: 2; fill: none; }
+    .no { stroke: #dc2626; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+    .lr { font-size: 12px; fill: #52525b; }
+    .lw { font-size: 12px; fill: #047857; font-weight: 600; }
+    .ln { font-size: 12px; fill: #b91c1c; font-weight: 600; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #18181b; }
+      .box { fill: #27272a; stroke: #71717a; }
+      .script { fill: #1e1b4b; stroke: #818cf8; }
+      .write { fill: #052e2b; stroke: #34d399; }
+      .h { fill: #f4f4f5; }
+      .p { fill: #d4d4d8; }
+      .read { stroke: #a1a1aa; }
+      .wr { stroke: #34d399; }
+      .no { stroke: #f87171; }
+      .lr { fill: #a1a1aa; }
+      .lw { fill: #6ee7b7; }
+      .ln { fill: #fca5a5; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#71717a"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#059669"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#dc2626"/></marker>
+  </defs>
+
+  <rect class="bg" width="860" height="470"/>
+
+  <rect class="box" x="24" y="32" width="250" height="150" rx="8"/>
+  <text class="h" x="40" y="58">Primary bucket</text>
+  <text class="p" x="40" y="82">Image sets, nested layout</text>
+  <text class="p" x="40" y="102">trip/photo/large_photo.webp</text>
+  <rect class="write" x="40" y="118" width="218" height="48" rx="6"/>
+  <text class="h" x="52" y="139" font-size="13">manifests/</text>
+  <text class="p" x="52" y="157">one .json per image set</text>
+
+  <rect class="box" x="24" y="238" width="250" height="176" rx="8"/>
+  <text class="h" x="40" y="264">Second bucket</text>
+  <text class="p" x="40" y="288">Image sets, flat layout, at the root</text>
+  <text class="p" x="40" y="308">photo_ab12.webp</text>
+  <text class="p" x="40" y="328">large_photo_ab12.webp</text>
+  <text class="p" x="40" y="360">Published under the path</text>
+  <text class="p" x="40" y="380">prefix legacy/ on the CDN</text>
+
+  <rect class="script" x="350" y="150" width="200" height="120" rx="8"/>
+  <text class="h" x="366" y="178">Backfill script</text>
+  <text class="p" x="366" y="202">Lists keys, groups them</text>
+  <text class="p" x="366" y="222">into sets, measures each</text>
+  <text class="p" x="366" y="242">object, builds a manifest</text>
+
+  <rect class="box" x="640" y="150" width="196" height="120" rx="8"/>
+  <text class="h" x="656" y="178">CDN</text>
+  <text class="p" x="656" y="202">Serves images and</text>
+  <text class="p" x="656" y="222">manifests to the site</text>
+  <text class="p" x="656" y="242">that displays them</text>
+
+  <path class="read" d="M274 78 C320 78 320 172 350 172" marker-end="url(#a)"/>
+  <text class="lr" x="282" y="66">list, read</text>
+
+  <path class="read" d="M274 262 C320 262 320 240 350 240" marker-end="url(#a)"/>
+  <text class="lr" x="282" y="228">list, read</text>
+
+  <path class="wr" d="M350 200 C310 200 310 142 258 142" marker-end="url(#g)"/>
+  <text class="lw" x="286" y="188">write</text>
+
+  <path class="no" d="M450 270 C450 340 360 340 274 340" marker-end="url(#r)"/>
+  <text class="ln" x="286" y="362">never written to</text>
+
+  <path class="read" d="M274 54 C520 20 700 60 738 150" marker-end="url(#a)"/>
+  <path class="read" d="M274 400 C520 450 700 400 738 270" marker-end="url(#a)"/>
+  <text class="lr" x="560" y="46">served as /…</text>
+  <text class="lr" x="560" y="446">served as /legacy/…</text>
+</svg>
