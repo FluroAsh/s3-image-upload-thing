@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
 
-import type { WriteOptions } from "../src/modules/storage/services/backfill-write";
-import { assertPathPrefix, MANIFEST_PREFIX } from "../src/modules/storage/services/manifest";
+import { assertPathPrefix, MANIFEST_PREFIX } from "@/modules/storage/services/manifest";
+
+import type { WriteOptions } from "./write";
 
 const USAGE = `Usage: bun --env-file=.env scripts/backfill-manifests.ts --bucket <name> [options]
+Runbook: server/docs/runbooks/backfill-manifests.md
 
 Dry run by default: lists the bucket and prints what a backfill would find. Writes nothing without --write.
 

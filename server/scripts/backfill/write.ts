@@ -2,12 +2,8 @@ import { createHash } from "node:crypto";
 
 import sharp from "sharp";
 
-import { errorMessage } from "@/shared/utils/helpers";
-import type { Manifest } from "~/shared/types";
-
-import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
-import { encodeVariant } from "../processors/variants/processor";
-import { type BucketObject, buildBackfillReport, setLabel } from "./backfill-report";
+import { DEFAULT_FILE_TYPE } from "@/modules/storage/processors/variants/config";
+import { encodeVariant } from "@/modules/storage/processors/variants/processor";
 import {
 	buildManifest,
 	type ImageSet,
@@ -16,8 +12,12 @@ import {
 	placeholderDataUri,
 	type SetIdentity,
 	setId,
-} from "./manifest";
-import type { StoreManifestOptions } from "./s3-operations";
+} from "@/modules/storage/services/manifest";
+import type { StoreManifestOptions } from "@/modules/storage/services/s3-operations";
+import { errorMessage } from "@/shared/utils/helpers";
+import type { Manifest } from "~/shared/types";
+
+import { type BucketObject, buildBackfillReport, setLabel } from "./report";
 
 export type ListedObject = BucketObject & {
 	/** Size of the object in bytes, as listed. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseBackfillArgs } from "./backfill-args";
+import { parseBackfillArgs } from "./args";
 
 describe("parseBackfillArgs", () => {
 	it("reads a dry run of one folder, without the folder's trailing slash", () => {

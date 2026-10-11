@@ -1,5 +1,3 @@
-import type { ImageVariant, Manifest } from "~/shared/types";
-
 import {
 	EXTENSION,
 	groupImageSets,
@@ -8,7 +6,8 @@ import {
 	type SetIdentity,
 	SKIP_REASONS,
 	type SkippedKey,
-} from "./manifest";
+} from "@/modules/storage/services/manifest";
+import type { ImageVariant, Manifest } from "~/shared/types";
 
 export type BucketObject = {
 	/** Bucket key of the object. */
