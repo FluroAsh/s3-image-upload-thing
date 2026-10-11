@@ -1,12 +1,12 @@
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 import type { FileVariant } from "~/shared/types";
 
-import { DEFAULT_MIME_TYPE } from "../processors/variants/config";
 import { createImageVariants, prepareImages } from "./image-processing";
 import {
 	buildManifest,
 	hasRefusedUploadPrefix,
 	type ManifestLocation,
+	placeholderDataUri,
 	setKeyPrefix,
 	uploadSetIdentity,
 } from "./manifest";
@@ -70,7 +70,7 @@ const storeImageSet = async (
 		bucket: location.bucketName,
 		pathPrefix: identity.pathPrefix,
 		createdAt: new Date().toISOString(),
-		placeholder: placeholderBuffer ? `data:${DEFAULT_MIME_TYPE};base64,${placeholderBuffer.toString("base64")}` : null,
+		placeholder: placeholderBuffer ? placeholderDataUri(placeholderBuffer) : null,
 		source: null,
 		objects: stored.map(({ key, width, height, bytes, ETag }) => ({ key, width, height, bytes, etag: ETag })),
 	});
