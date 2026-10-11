@@ -1,14 +1,13 @@
-import type { ImageVariant, Manifest } from "~/shared/types";
-
 import {
 	EXTENSION,
 	groupImageSets,
 	type ImageSet,
 	manifestKey,
-	SKIP_REASONS,
 	type SetIdentity,
+	SKIP_REASONS,
 	type SkippedKey,
-} from "./manifest";
+} from "@/modules/storage/services/manifest";
+import type { ImageVariant, Manifest } from "~/shared/types";
 
 export type BucketObject = {
 	/** Bucket key of the object. */
@@ -23,9 +22,11 @@ export const REQUIRED_VARIANTS = ["medium", "large"] as const satisfies readonly
 /** Image formats that are not WebP, so the classifier skips them and they get no manifest; the report lists them to make that visible. */
 export const NON_EXTENSION_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
 
-export type BackfillReport = {
+type BackfillReport = {
 	/** Number of keys the report was built from. */
 	keyCount: number;
+	/** Every image set found, in first-seen order. */
+	sets: ImageSet[];
 	/** Number of image sets of each layout. */
 	setsByLayout: Record<Manifest["layout"], number>;
 	/** Each distinct mix of variant names within a layout, in first-seen order. */
@@ -87,20 +88,22 @@ const findNonWebpSets = (keys: readonly string[], sets: readonly ImageSet[]): Ba
 		sets.flatMap(({ name, members }) => members.map(({ key, variant }) => [key, { name, variant }] as const)),
 	);
 
-	return groupImageSets(Array.from(keysByWebpName.keys())).sets.flatMap(({ members: webpNamedMembers, ...identity }) => {
-		const allMembers = webpNamedMembers.flatMap(({ key: webpName, variant }) =>
-			(keysByWebpName.get(webpName) ?? []).map((key) => ({ key, variant })),
-		);
-		const members = allMembers.filter(({ key }) => !key.endsWith(EXTENSION));
-		if (!members.length) return [];
+	return groupImageSets(Array.from(keysByWebpName.keys())).sets.flatMap(
+		({ members: webpNamedMembers, ...identity }) => {
+			const allMembers = webpNamedMembers.flatMap(({ key: webpName, variant }) =>
+				(keysByWebpName.get(webpName) ?? []).map((key) => ({ key, variant })),
+			);
+			const members = allMembers.filter(({ key }) => !key.endsWith(EXTENSION));
+			if (!members.length) return [];
 
-		const webpSiblings = allMembers.flatMap((member) => {
-			const classifiedAs = classifiedByKey.get(member.key);
-			return classifiedAs ? [{ ...member, classifiedAs }] : [];
-		});
+			const webpSiblings = allMembers.flatMap((member) => {
+				const classifiedAs = classifiedByKey.get(member.key);
+				return classifiedAs ? [{ ...member, classifiedAs }] : [];
+			});
 
-		return [{ ...identity, members, webpSiblings }];
-	});
+			return [{ ...identity, members, webpSiblings }];
+		},
+	);
 };
 
 /** Everything the dry run prints, worked out from a bucket listing alone so it needs no network to test. */
@@ -147,6 +150,7 @@ export const buildBackfillReport = (
 
 	return {
 		keyCount: objects.length,
+		sets,
 		setsByLayout,
 		variantCombinations: Array.from(combinations.values()),
 		skipped,
@@ -159,7 +163,17 @@ export const buildBackfillReport = (
 	};
 };
 
-const setLabel = ({ layout, folder, name }: SetIdentity): string => `${layout} ${folder ? `${folder}/` : ""}${name}`;
+/** Keys that form no set are far more often a wrong folder or bucket than a bucket of non-images, so a run must not look clean. */
+export const assertImageSets = ({ sets, keyCount }: BackfillReport, scope: string): void => {
+	if (!sets.length) {
+		throw new Error(
+			`No image sets in ${scope}: its ${keyCount} keys belong to none (see a dry run's skipped list); nothing was written`,
+		);
+	}
+};
+
+export const setLabel = ({ layout, folder, name }: SetIdentity): string =>
+	`${layout} ${folder ? `${folder}/` : ""}${name}`;
 
 export const formatBackfillReport = (report: BackfillReport): string => {
 	const { skipped, sharedEtags, missingRequired, collisions, nonWebpSets } = report;

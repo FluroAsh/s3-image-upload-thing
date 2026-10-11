@@ -13,7 +13,7 @@ type JpegOptions = {
 	noisy?: boolean;
 };
 
-/** Generates a JPEG for pipeline tests. */
+/** Generates a JPEG for tests. */
 export const makeJpeg = async ({ width, height, orientation, noisy }: JpegOptions): Promise<Buffer> => {
 	const image = noisy
 		? sharp(randomBytes(width * height * 3), { raw: { width, height, channels: 3 } }).jpeg({ quality: 40 })
