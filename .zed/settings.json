@@ -1,0 +1,13 @@
+{
+  "format_on_save": "on",
+  "formatter": {
+    "language_server": { "name": "biome" }
+  },
+  "code_actions_on_format": {
+    "source.organizeImports.biome": true
+  },
+  "languages": {
+    "JSONC": { "format_on_save": "off" },
+    "Markdown": { "format_on_save": "off" }
+  }
+}
