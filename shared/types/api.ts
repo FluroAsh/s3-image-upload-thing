@@ -62,9 +62,9 @@ export type FileVariant = {
   imageURL: `https://${string}`;
   /** Human-readable size of the stored variant, e.g. `"1.5 MB"`. */
   size: string;
-  /** Pixel width of the stored variant as displayed, measured, not configured. */
+  /** Pixel width of the stored variant as displayed, measured from the output. */
   width: number;
-  /** Pixel height of the stored variant as displayed, measured. */
+  /** Pixel height of the stored variant as displayed, measured from the output. */
   height: number;
   /** S3 ETag of the stored object, `undefined` when S3 returned none. */
   ETag: string | undefined;

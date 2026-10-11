@@ -1,6 +1,6 @@
-import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 
+import { makeJpeg } from "../test-support";
 import { runUploadPipeline } from "./upload-pipeline";
 
 const { storedKeys } = vi.hoisted(() => {
@@ -25,9 +25,7 @@ vi.mock("@aws-sdk/client-s3", () => ({
 
 describe("runUploadPipeline", () => {
 	it("stores a 300px-wide image as placeholder and full size only, returning each one's width and height", async () => {
-		const jpeg = await sharp({ create: { width: 300, height: 150, channels: 3, background: "#c0ffee" } })
-			.jpeg()
-			.toBuffer();
+		const jpeg = await makeJpeg({ width: 300, height: 150 });
 
 		const files = await runUploadPipeline({
 			fileEntries: [["0", new File([jpeg], "photo.jpg", { type: "image/jpeg" })]],

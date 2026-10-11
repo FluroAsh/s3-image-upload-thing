@@ -1,11 +1,11 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
+import { makeJpeg } from "../../test-support";
 import { createImageVariants, planVariants } from "./processor";
 
-const sourceImage = async (width: number, height: number, orientation?: number) => {
-	const image = sharp({ create: { width, height, channels: 3, background: "#c0ffee" } }).jpeg();
-	const buffer = await (orientation ? image.withMetadata({ orientation }) : image).toBuffer();
+const sourceImage = async (width: number, height: number, orientation?: number, noisy?: boolean) => {
+	const buffer = await makeJpeg({ width, height, orientation, noisy });
 	return { fieldName: "images", fileName: "photo.jpg", fileType: "image/jpeg", size: "1 kB", buffer };
 };
 
@@ -32,12 +32,6 @@ describe("planVariants", () => {
 });
 
 describe("createImageVariants", () => {
-	it("produces only the placeholder and the full-size variant for a 300px-wide source", async () => {
-		const variations = await createImageVariants(await sourceImage(300, 200));
-
-		expect(Object.keys(variations)).toEqual(["placeholder", "lossless"]);
-	});
-
 	it("produces no two variants with the same bytes for a 600px-wide source", async () => {
 		const variations = await createImageVariants(await sourceImage(600, 400));
 		const contents = Object.values(variations).map(({ buffer }) => buffer.toString("base64"));
@@ -68,5 +62,18 @@ describe("createImageVariants", () => {
 
 		expect(Object.keys(variations)).toEqual(["placeholder", "lossless"]);
 		expect(variations.lossless).toMatchObject({ width: 300, height: 600 });
+	});
+
+	it("stores the full-size variant as a rotated WebP even when it is larger than the upload", async () => {
+		const upload = await sourceImage(600, 300, 6, true);
+
+		const { lossless } = await createImageVariants(upload);
+		if (!lossless) throw new Error("no lossless variant produced");
+		const stored = await sharp(lossless.buffer).metadata();
+
+		expect(lossless.buffer.length).toBeGreaterThan((upload.buffer as Buffer).length);
+		expect(stored.format).toBe("webp");
+		expect({ width: stored.width, height: stored.height }).toEqual({ width: lossless.width, height: lossless.height });
+		expect(lossless).toMatchObject({ width: 300, height: 600 });
 	});
 });

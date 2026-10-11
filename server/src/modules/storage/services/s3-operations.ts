@@ -4,10 +4,10 @@ import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } fr
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { FormatEnum } from "sharp";
 
-import type { ImageVariants } from "@/shared/types/image";
+import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 import { TIME } from "~/shared/constants/time";
-import type { FileVariant } from "~/shared/types";
+import type { FileVariant, ImageVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 
@@ -98,14 +98,18 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 // Presigned URLs
 // ---------------------------------------------------------------------------
 
-export const generatePresignedUrl = async (bucketName: string, bucketRegion: string, key: string): Promise<string> => {
+export const generatePresignedUrl = async (
+	bucketName: string,
+	bucketRegion: string,
+	key: string,
+): Promise<`https://${string}`> => {
 	const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
 	const client = getRegionalClient(bucketRegion);
 
 	/* @ts-expect-error - @smithy/smithy-client type is not compatible with the S3Client type */
-	return getSignedUrl(client, command, {
+	return (await getSignedUrl(client, command, {
 		expiresIn: TIME.seconds.perHour,
-	});
+	})) as `https://${string}`;
 };
 
 export const uploadImages = async (
@@ -123,30 +127,32 @@ export const uploadImages = async (
 	const formatExt = format ?? DEFAULT_FILE_TYPE;
 
 	return Promise.all(
-		Object.entries(image.variations).map(async ([variant, { buffer, size, width, height }]) => {
-			const fileNameKey = `${variant}_${baseName}.${formatExt}`;
-			const key = destination ? `${destination}/${baseName}/${fileNameKey}` : `${baseName}/${fileNameKey}`;
+		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
+			async ([variant, { buffer, size, width, height }]) => {
+				const fileNameKey = `${variant}_${baseName}.${formatExt}`;
+				const key = destination ? `${destination}/${baseName}/${fileNameKey}` : `${baseName}/${fileNameKey}`;
 
-			const putResponse = await getRegionalClient(bucketRegion).send(
-				new PutObjectCommand({
-					Body: buffer,
-					Bucket: bucketName,
-					Key: key,
-					ContentType: "image/webp",
-				}),
-			);
+				const putResponse = await getRegionalClient(bucketRegion).send(
+					new PutObjectCommand({
+						Body: buffer,
+						Bucket: bucketName,
+						Key: key,
+						ContentType: "image/webp",
+					}),
+				);
 
-			const imageURL = await generatePresignedUrl(bucketName, bucketRegion, key);
+				const imageURL = await generatePresignedUrl(bucketName, bucketRegion, key);
 
-			return {
-				variant,
-				fileName: image.fileName,
-				imageURL,
-				size,
-				width,
-				height,
-				ETag: putResponse.ETag,
-			} as FileVariant;
-		}),
+				return {
+					variant,
+					fileName: image.fileName,
+					imageURL,
+					size,
+					width,
+					height,
+					ETag: putResponse.ETag,
+				} satisfies FileVariant;
+			},
+		),
 	);
 };
