@@ -2,7 +2,7 @@ import * as path from "node:path";
 
 import type { Manifest, ManifestVariant } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
+import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
 
 /** What makes two keys part of the same image set. */
 export type SetIdentity = Pick<Manifest, "layout" | "folder" | "name">;
@@ -45,6 +45,8 @@ export type SkippedKey = {
 };
 
 type ManifestObject = Omit<ManifestVariant, "format"> & {
+	/** Format the object was measured to hold; omitted means the one its key's extension claims. */
+	format?: ManifestVariant["format"];
 	/** Required on a flat set's original, which becomes the manifest's source. */
 	sha256?: string;
 };
@@ -54,8 +56,10 @@ type BuildManifestParams = Pick<Manifest, "bucket" | "pathPrefix" | "createdAt" 
 	objects: ManifestObject[];
 };
 
+/** Key prefix every manifest is stored under. */
+const MANIFEST_PREFIX = "manifests/";
 /** Where only the service writes, so the classifier never mistakes its objects for image sets. */
-const SERVICE_PREFIXES = ["manifests/", "src/"] as const;
+const SERVICE_PREFIXES = [MANIFEST_PREFIX, "src/"] as const;
 /** The service prefixes plus `legacy/`, where the CDN publishes the second bucket, so an upload there would collide in URLs. */
 const REFUSED_UPLOAD_PREFIXES = [...SERVICE_PREFIXES, "legacy/"] as const;
 /** File extension of every key the classifier accepts, dot included. */
@@ -63,7 +67,7 @@ export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
 export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
 
-const assertPathPrefix = (pathPrefix: string): void => {
+export const assertPathPrefix = (pathPrefix: string): void => {
 	if (pathPrefix && !pathPrefix.endsWith("/")) throw new Error(`pathPrefix "${pathPrefix}" must end with "/"`);
 };
 
@@ -148,10 +152,21 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 	return { sets: Array.from(sets.values()), skipped };
 };
 
+/** The form a manifest's `placeholder` takes, given the bytes of a blurred placeholder variant. */
+export const placeholderDataUri = (placeholder: Buffer): string =>
+	`data:${DEFAULT_MIME_TYPE};base64,${placeholder.toString("base64")}`;
+
 /** Manifests for every bucket live in the primary bucket, the only place the CDN serves `manifests/` from. */
 export const manifestKey = ({ pathPrefix, folder, name }: ManifestLocation): string => {
 	assertPathPrefix(pathPrefix);
-	return `manifests/${pathPrefix}${folder ? `${folder}/` : ""}${name}.json`;
+	return `${MANIFEST_PREFIX}${pathPrefix}${folder ? `${folder}/` : ""}${name}.json`;
+};
+
+/** Checked where a manifest is stored, so no caller or later change to the key can make that write land on an image. */
+export const assertManifestKey = (key: string): void => {
+	if (!key.startsWith(MANIFEST_PREFIX)) {
+		throw new Error(`Refusing to write "${key}": manifests are only stored under ${MANIFEST_PREFIX}`);
+	}
 };
 
 /** Shared by the upload path and the backfill, so the two cannot describe the same objects differently. */
@@ -176,8 +191,8 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 
 		if (variant === "original") original = object;
 
-		const { key, width, height, bytes, etag } = object;
-		variants[variant] = { key, format: DEFAULT_FILE_TYPE, width, height, bytes, etag };
+		const { key, format = DEFAULT_FILE_TYPE, width, height, bytes, etag } = object;
+		variants[variant] = { key, format, width, height, bytes, etag };
 	}
 
 	if (!identity) throw new Error("An image set needs at least one object");

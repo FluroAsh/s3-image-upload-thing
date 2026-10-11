@@ -159,7 +159,7 @@ export const buildBackfillReport = (
 	};
 };
 
-const setLabel = ({ layout, folder, name }: SetIdentity): string => `${layout} ${folder ? `${folder}/` : ""}${name}`;
+export const setLabel = ({ layout, folder, name }: SetIdentity): string => `${layout} ${folder ? `${folder}/` : ""}${name}`;
 
 export const formatBackfillReport = (report: BackfillReport): string => {
 	const { skipped, sharedEtags, missingRequired, collisions, nonWebpSets } = report;
