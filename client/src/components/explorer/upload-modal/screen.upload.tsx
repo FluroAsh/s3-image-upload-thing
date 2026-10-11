@@ -1,9 +1,7 @@
 import { useRef, useState } from "react";
 
-import { useSearchParams } from "next/navigation";
-
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useBuckets, useMutateUpload } from "@/lib/query";
+import { useMutateUpload } from "@/lib/query";
 import { buildUploadFormData } from "@/lib/upload-form-data";
 import { cn } from "@/lib/utils";
 
@@ -36,16 +34,13 @@ export const UploadScreen = () => {
 	const [images, setImages] = useState<File[]>([]);
 	const folderPathRef = useRef<string>("");
 
-	const { data: bucketData } = useBuckets();
-	const bucketName = useSearchParams().get("bucket") || bucketData?.buckets?.[0]?.Name;
-
-	const { bucketRegion } = useExplorer().state;
+	const { bucketName, bucketRegion } = useExplorer().state;
 	const { setUploadState, setUploadResponse } = useUpload();
-	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName ?? "");
+	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName);
 
 	const handleSubmit = async () => {
 		try {
-			if (!bucketName) throw new Error("Unable to find name of bucket.");
+			if (!bucketName || !bucketRegion) throw new Error("Unable to find the active bucket and region.");
 
 			setUploadState(EUploadState.Uploading);
 

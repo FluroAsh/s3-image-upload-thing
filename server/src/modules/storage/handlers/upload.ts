@@ -1,8 +1,9 @@
 import type { Context } from "hono";
+import { HTTPException } from "hono/http-exception";
 
 import { runUploadPipeline } from "../services/upload-pipeline";
 
-export class BadRequestError extends Error {}
+const badRequest = (message: string) => new HTTPException(400, { message });
 
 /**
  * Validates and extracts request body parameters
@@ -13,10 +14,10 @@ const parseUploadRequest = async (ctx: Context) => {
 	const { bucketName, bucketRegion, images, destination = "" } = body;
 
 	// TODO: We should add Zod validaton here for improved type inference/validation
-	if (!bucketName || typeof bucketName !== "string") throw new BadRequestError("Bucket name is required");
-	if (!bucketRegion || typeof bucketRegion !== "string") throw new BadRequestError("Bucket region is required");
+	if (!bucketName || typeof bucketName !== "string") throw badRequest("Bucket name is required");
+	if (!bucketRegion || typeof bucketRegion !== "string") throw badRequest("Bucket region is required");
 
-	if (!images) throw new BadRequestError("No images provided");
+	if (!images) throw badRequest("No images provided");
 
 	// Transform images Buffer into the same format whether or not it's a single image, or multiple
 	const imageArray = Array.isArray(images) ? images : [images];
@@ -50,18 +51,12 @@ export const uploadImagesHandler = async (ctx: Context) => {
 			files: uploadResults,
 		});
 	} catch (error) {
-		if (error instanceof BadRequestError) return ctx.json({ error: error.message }, 400);
+		if (error instanceof HTTPException) return ctx.json({ error: error.message }, error.status);
 
 		console.error("Error in upload process:", error);
 
 		const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during upload";
 
-		return ctx.json(
-			{
-				error: errorMessage,
-				details: error instanceof Error ? error.stack : undefined,
-			},
-			500,
-		);
+		return ctx.json({ error: errorMessage }, 500);
 	}
 };
