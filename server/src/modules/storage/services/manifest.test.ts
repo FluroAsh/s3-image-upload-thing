@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { buildManifest, classifyKey, groupImageSets, manifestKey } from "./manifest";
+import {
+	buildManifest,
+	classifyKey,
+	groupImageSets,
+	hasRefusedUploadPrefix,
+	manifestKey,
+	setKeyPrefix,
+	uploadSetIdentity,
+} from "./manifest";
 
 const NESTED_KEYS = [
 	"japan-2025/kyoto/ginsui-sukiyaki-1/thumbnail_ginsui-sukiyaki-1.webp",
@@ -117,7 +125,7 @@ describe("classifyKey", () => {
 		expect(classifyAll(["japan-2025/"])).toEqual([{ skip: "folder-marker" }]);
 	});
 
-	it("skips keys under the reserved manifests/ and src/ prefixes", () => {
+	it("skips keys under the service-written manifests/ and src/ prefixes", () => {
 		const keys = [
 			"manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json",
 			"manifests/ginsui-sukiyaki-1.webp",
@@ -129,6 +137,37 @@ describe("classifyKey", () => {
 			{ skip: "reserved-prefix" },
 			{ skip: "reserved-prefix" },
 		]);
+	});
+
+	it("does not skip legacy/, which only uploads refuse", () => {
+		const keys = ["legacy/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp"];
+
+		expect(classifyAll(keys)).toEqual([
+			{ member: { layout: "nested", folder: "legacy", name: "ginsui-sukiyaki-1", variant: "large" } },
+		]);
+	});
+});
+
+describe("hasRefusedUploadPrefix", () => {
+	it.each(["manifests/a", "src/a", "legacy/a"])("refuses %s", (key) => {
+		expect(hasRefusedUploadPrefix(key)).toBe(true);
+	});
+
+	it.each(["manifests-2025/a", "trip/manifests/a", "legacy.png"])("accepts %s", (key) => {
+		expect(hasRefusedUploadPrefix(key)).toBe(false);
+	});
+});
+
+describe("uploadSetIdentity", () => {
+	it("names the set after the file without its extension and keys it under the destination", () => {
+		const identity = uploadSetIdentity("trip", "photo.final.jpg");
+
+		expect(identity).toEqual({ pathPrefix: "", folder: "trip", name: "photo.final" });
+		expect(setKeyPrefix(identity)).toBe("trip/photo.final/");
+	});
+
+	it("keys a set at the bucket root without a leading slash", () => {
+		expect(setKeyPrefix(uploadSetIdentity("", "photo.jpg"))).toBe("photo/");
 	});
 });
 

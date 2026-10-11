@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 import type { Manifest, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
@@ -52,23 +54,42 @@ type BuildManifestParams = Pick<Manifest, "bucket" | "pathPrefix" | "createdAt" 
 	objects: ManifestObject[];
 };
 
-const RESERVED_PREFIXES = ["manifests/", "src/"];
+/** Where only the service writes, so the classifier never mistakes its objects for image sets. */
+const SERVICE_PREFIXES = ["manifests/", "src/"] as const;
+/** The service prefixes plus `legacy/`, where the CDN publishes the second bucket, so an upload there would collide in URLs. */
+const REFUSED_UPLOAD_PREFIXES = [...SERVICE_PREFIXES, "legacy/"] as const;
 /** File extension of every key the classifier accepts, dot included. */
 export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
-export const setId = ({ layout, folder, name }: SetIdentity): string =>
-	JSON.stringify([layout, folder, name]);
+export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
 
 const assertPathPrefix = (pathPrefix: string): void => {
 	if (pathPrefix && !pathPrefix.endsWith("/")) throw new Error(`pathPrefix "${pathPrefix}" must end with "/"`);
 };
+
+export const hasRefusedUploadPrefix = (key: string): boolean =>
+	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix));
+
+/** The part of a manifest that says which set it is and where it is stored. */
+export type ManifestLocation = Pick<Manifest, "pathPrefix" | "folder" | "name">;
+
+/** The one place an upload's set identity is derived, so the pre-check, variant keys and manifest agree. */
+export const uploadSetIdentity = (destination: string, fileName: string): ManifestLocation => ({
+	pathPrefix: "",
+	folder: destination,
+	name: path.parse(fileName).name,
+});
+
+/** Key prefix every variant of an uploaded set is stored under. */
+export const setKeyPrefix = ({ folder, name }: ManifestLocation): string =>
+	folder ? `${folder}/${name}/` : `${name}/`;
 
 /**
  * `siblings` is every key that could sit beside it, normally the whole bucket listing.
  * A flat file's text before its first underscore is a variant prefix only if the rest of the name exists beside it.
  */
 export const classifyKey = (key: string, siblings: ReadonlySet<string>): ClassifyResult => {
-	if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) return { skip: "reserved-prefix" };
+	if (SERVICE_PREFIXES.some((prefix) => key.startsWith(prefix))) return { skip: "reserved-prefix" };
 	if (key.endsWith("/")) return { skip: "folder-marker" };
 	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
 
@@ -128,7 +149,7 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 };
 
 /** Manifests for every bucket live in the primary bucket, the only place the CDN serves `manifests/` from. */
-export const manifestKey = ({ pathPrefix, folder, name }: Pick<Manifest, "pathPrefix" | "folder" | "name">): string => {
+export const manifestKey = ({ pathPrefix, folder, name }: ManifestLocation): string => {
 	assertPathPrefix(pathPrefix);
 	return `manifests/${pathPrefix}${folder ? `${folder}/` : ""}${name}.json`;
 };

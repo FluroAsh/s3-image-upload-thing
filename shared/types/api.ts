@@ -58,16 +58,20 @@ export type FileVariant = {
   variant: ImageVariant;
   /** Name of the uploaded file the variant was made from, with its extension. */
   fileName: string;
+  /** Bucket key the variant was stored under. */
+  key: string;
   /** Presigned URL of the stored variant; it expires. */
   imageURL: `https://${string}`;
   /** Human-readable size of the stored variant, e.g. `"1.5 MB"`. */
   size: string;
+  /** Size of the stored variant in bytes. */
+  bytes: number;
   /** Pixel width of the stored variant as displayed, measured from the output. */
   width: number;
   /** Pixel height of the stored variant as displayed, measured from the output. */
   height: number;
-  /** S3 ETag of the stored object, `undefined` when S3 returned none. */
-  ETag: string | undefined;
+  /** S3 ETag of the stored object, exactly as S3 returned it (quotes included). */
+  ETag: string;
 };
 
 export type FileVariants = FileVariant[];
