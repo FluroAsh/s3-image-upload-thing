@@ -1,7 +1,14 @@
-import type { Manifest } from "~/shared/types";
+import type { ImageVariant, Manifest } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
-import { groupImageSets, type ImageSet, manifestKey, SKIP_REASONS, type SkippedKey } from "./manifest";
+import {
+	EXTENSION,
+	groupImageSets,
+	type ImageSet,
+	manifestKey,
+	SKIP_REASONS,
+	type SetIdentity,
+	type SkippedKey,
+} from "./manifest";
 
 export type BucketObject = {
 	/** Bucket key of the object. */
@@ -11,12 +18,10 @@ export type BucketObject = {
 };
 
 /** Variants the portfolio always asks for, so a set without one cannot be served whole. */
-export const REQUIRED_VARIANTS = ["medium", "large"] as const;
+export const REQUIRED_VARIANTS = ["medium", "large"] as const satisfies readonly ImageVariant[];
 
-/** Image formats the classifier skips as `not-webp`, reported apart so the rule for them can be decided from real cases. */
-export const NON_WEBP_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
-
-type SetIdentity = Pick<Manifest, "layout" | "folder" | "name">;
+/** Image formats that are not WebP, so the classifier skips them and they get no manifest; the report lists them to make that visible. */
+export const NON_EXTENSION_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
 
 export type BackfillReport = {
 	/** Number of keys the report was built from. */
@@ -53,7 +58,7 @@ export type BackfillReport = {
 		/** The sets that map to it, in first-seen order. */
 		sets: SetIdentity[];
 	}[];
-	/** Sets found by reading `NON_WEBP_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
+	/** Sets found by reading `NON_EXTENSION_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
 	nonWebpSets: (SetIdentity & {
 		/** The skipped non-webp keys, each with the variant name it would hold if its extension were read. */
 		members: ImageSet["members"];
@@ -67,31 +72,30 @@ export type BackfillReport = {
 
 type BackfillReportOptions = Pick<Manifest, "pathPrefix">;
 
-const WEBP = `.${DEFAULT_FILE_TYPE}`;
-const NON_WEBP_IMAGE = new RegExp(`\\.(${NON_WEBP_IMAGE_EXTENSIONS.join("|")})$`, "i");
+const NON_EXTENSION_IMAGE = new RegExp(`\\.(${NON_EXTENSION_IMAGE_EXTENSIONS.join("|")})$`, "i");
 
 const findNonWebpSets = (keys: readonly string[], sets: readonly ImageSet[]): BackfillReport["nonWebpSets"] => {
 	// Grouping each image under a webp name applies the classifier's own rules to formats it does not read.
 	const keysByWebpName = new Map<string, string[]>();
 	for (const key of keys) {
-		if (!key.endsWith(WEBP) && !NON_WEBP_IMAGE.test(key)) continue;
-		const webpName = key.replace(NON_WEBP_IMAGE, WEBP);
+		if (!key.endsWith(EXTENSION) && !NON_EXTENSION_IMAGE.test(key)) continue;
+		const webpName = key.replace(NON_EXTENSION_IMAGE, EXTENSION);
 		keysByWebpName.set(webpName, [...(keysByWebpName.get(webpName) ?? []), key]);
 	}
 
-	const classified = new Map(
+	const classifiedByKey = new Map(
 		sets.flatMap(({ name, members }) => members.map(({ key, variant }) => [key, { name, variant }] as const)),
 	);
 
-	return groupImageSets(Array.from(keysByWebpName.keys())).sets.flatMap(({ members: grouped, ...identity }) => {
-		const all = grouped.flatMap(({ key: webpName, variant }) =>
+	return groupImageSets(Array.from(keysByWebpName.keys())).sets.flatMap(({ members: webpNamedMembers, ...identity }) => {
+		const allMembers = webpNamedMembers.flatMap(({ key: webpName, variant }) =>
 			(keysByWebpName.get(webpName) ?? []).map((key) => ({ key, variant })),
 		);
-		const members = all.filter(({ key }) => !key.endsWith(WEBP));
+		const members = allMembers.filter(({ key }) => !key.endsWith(EXTENSION));
 		if (!members.length) return [];
 
-		const webpSiblings = all.flatMap((member) => {
-			const classifiedAs = classified.get(member.key);
+		const webpSiblings = allMembers.flatMap((member) => {
+			const classifiedAs = classifiedByKey.get(member.key);
 			return classifiedAs ? [{ ...member, classifiedAs }] : [];
 		});
 
@@ -127,6 +131,7 @@ export const buildBackfillReport = (
 		const variantsByEtag = new Map<string, string[]>();
 		for (const { key, variant } of members) {
 			const etag = etags.get(key) ?? "";
+			if (!etag) continue;
 			variantsByEtag.set(etag, [...(variantsByEtag.get(etag) ?? []), variant]);
 		}
 		for (const [etag, sharing] of Array.from(variantsByEtag)) {
@@ -182,7 +187,7 @@ export const formatBackfillReport = (report: BackfillReport): string => {
 		`Manifest key collisions: ${collisions.length}`,
 		...collisions.map((collision) => `  ${collision.manifestKey}: ${collision.sets.map(setLabel).join(", ")}`),
 		"",
-		`Sets with ${NON_WEBP_IMAGE_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
+		`Sets with ${NON_EXTENSION_IMAGE_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
 		...nonWebpSets.flatMap((set) => [
 			`  ${setLabel(set)}: ${set.members.map(({ variant }) => variant).join(", ")}`,
 			...set.webpSiblings.map(

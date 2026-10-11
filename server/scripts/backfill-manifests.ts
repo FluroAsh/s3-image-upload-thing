@@ -7,7 +7,7 @@ import {
 	buildBackfillReport,
 	formatBackfillReport,
 } from "../src/modules/storage/services/backfill-report";
-import { getRegionalClient } from "../src/modules/storage/services/s3-operations";
+import { defaultRegion, getRegionalClient } from "../src/modules/storage/services/s3-operations";
 
 const USAGE = `Usage: bun --env-file=.env scripts/backfill-manifests.ts --bucket <name> [options]
 
@@ -17,7 +17,7 @@ Dry run: lists the bucket and prints what a backfill would find. Writes nothing.
   --manifest-bucket <name>  Bucket manifests belong in; only echoed in a dry run
   --path-prefix <prefix>    How the read bucket's keys appear under the CDN host: "" (default) or e.g. "legacy/"
   --prefix <folder>         Limit the run to one folder of the read bucket
-  --region <region>         Region of the read bucket (default: AWS_REGION)`;
+  --region <region>         Region of the read bucket (default: the server default region)`;
 
 const listObjects = async (bucket: string, region: string, folder?: string): Promise<BucketObject[]> => {
 	const objects: BucketObject[] = [];
@@ -40,12 +40,12 @@ const main = async (): Promise<void> => {
 			"manifest-bucket": { type: "string" },
 			"path-prefix": { type: "string", default: "" },
 			prefix: { type: "string" },
-			region: { type: "string", default: process.env.AWS_REGION },
+			region: { type: "string", default: defaultRegion },
 		},
 	});
 
 	const { bucket, region, prefix } = values;
-	if (!bucket || !region) throw new Error(`--bucket and a region are required\n\n${USAGE}`);
+	if (!bucket) throw new Error(`--bucket is required\n\n${USAGE}`);
 
 	const pathPrefix = values["path-prefix"];
 	const report = buildBackfillReport(await listObjects(bucket, region, prefix), { pathPrefix });
