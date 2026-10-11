@@ -3,9 +3,10 @@ import { createHash } from "node:crypto";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
+import { manifestKey } from "@/modules/storage/services/manifest";
+import { makeJpeg } from "@/modules/storage/test-helpers";
 import type { Manifest } from "~/shared/types";
 
-import { makeJpeg } from "../test-helpers";
 import {
 	type BackfillIo,
 	countFailed,
@@ -13,8 +14,7 @@ import {
 	formatWriteTotals,
 	type SetResult,
 	writeManifests,
-} from "./backfill-write";
-import { manifestKey } from "./manifest";
+} from "./write";
 
 const webp = async (width: number, height: number) =>
 	sharp(await makeJpeg({ width, height }))

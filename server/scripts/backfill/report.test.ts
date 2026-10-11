@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill-report";
+import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./report";
 
 /** Gives every key its own ETag unless one is supplied, so only the ETag tests have to think about them. */
 const objects = (keys: string[], etags: Record<string, string> = {}) =>

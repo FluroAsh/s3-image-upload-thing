@@ -1,20 +1,6 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-import { errorMessage } from "@/shared/utils/helpers";
-
-import {
-	assertImageSets,
-	buildBackfillReport,
-	formatBackfillReport,
-} from "../src/modules/storage/services/backfill-report";
-import {
-	countFailed,
-	formatSetResult,
-	formatWriteTotals,
-	type ListedObject,
-	writeManifests,
-} from "../src/modules/storage/services/backfill-write";
-import { MANIFEST_PREFIX } from "../src/modules/storage/services/manifest";
+import { MANIFEST_PREFIX } from "@/modules/storage/services/manifest";
 import {
 	type BucketLocation,
 	defaultRegion,
@@ -23,8 +9,12 @@ import {
 	readObject,
 	storeManifest,
 	withDeadline,
-} from "../src/modules/storage/services/s3-operations";
-import { parseBackfillArgs } from "./backfill-args";
+} from "@/modules/storage/services/s3-operations";
+import { errorMessage } from "@/shared/utils/helpers";
+
+import { parseBackfillArgs } from "./backfill/args";
+import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill/report";
+import { countFailed, formatSetResult, formatWriteTotals, type ListedObject, writeManifests } from "./backfill/write";
 
 const listObjects = async ({ bucketName, bucketRegion }: BucketLocation, folder?: string): Promise<ListedObject[]> => {
 	const objects: ListedObject[] = [];
