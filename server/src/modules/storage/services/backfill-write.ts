@@ -1,97 +1,23 @@
 import { createHash } from "node:crypto";
-import { parseArgs } from "node:util";
 
 import sharp from "sharp";
 
+import { errorMessage } from "@/shared/utils/helpers";
 import type { Manifest } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 import { encodeVariant } from "../processors/variants/processor";
-import { type BucketObject, setLabel } from "./backfill-report";
+import { type BucketObject, buildBackfillReport, setLabel } from "./backfill-report";
 import {
-	assertPathPrefix,
 	buildManifest,
-	groupImageSets,
 	type ImageSet,
 	type ManifestLocation,
 	manifestKey,
 	placeholderDataUri,
 	type SetIdentity,
+	setId,
 } from "./manifest";
 import type { StoreManifestOptions } from "./s3-operations";
-
-export const USAGE = `Usage: bun --env-file=.env scripts/backfill-manifests.ts --bucket <name> [options]
-
-Dry run by default: lists the bucket and prints what a backfill would find. Writes nothing without --write.
-
-  --bucket <name>           Bucket to read (required)
-  --prefix <folder>         Limit the run to one folder of the read bucket
-  --region <region>         Region of both buckets (default: the server default region)
-  --manifest-bucket <name>  Bucket manifests are stored in, under manifests/ only; required with --write
-  --path-prefix <prefix>    How the read bucket's keys appear under the CDN host: "" or e.g. "legacy/";
-                            must be given with --write, even when empty
-  --write                   Measure every set and store its manifest; existing manifests are left alone
-  --force                   With --write, replace existing manifests`;
-
-export type BackfillArgs = Pick<Manifest, "pathPrefix"> & {
-	/** Bucket the image sets are read from. */
-	bucket: string;
-	/** Bucket manifests are stored in; always set when `write` is. */
-	manifestBucket: string | undefined;
-	/** Folder of the read bucket the run is limited to, without a slash at either end; unset for the whole bucket. */
-	folder: string | undefined;
-	/** Region of both buckets; unset means the server default. */
-	region: string | undefined;
-	/** Store manifests; `false` is a dry run. */
-	write: boolean;
-	/** Replace manifests that already exist; only with `write`. */
-	force: boolean;
-};
-
-/** `argv` is the command line after the script name. Throws with a message for the person running it. */
-export const parseBackfillArgs = (argv: string[]): BackfillArgs => {
-	const { values } = parseArgs({
-		args: argv,
-		options: {
-			bucket: { type: "string" },
-			"manifest-bucket": { type: "string" },
-			"path-prefix": { type: "string" },
-			prefix: { type: "string" },
-			region: { type: "string" },
-			write: { type: "boolean", default: false },
-			force: { type: "boolean", default: false },
-		},
-	});
-
-	const { bucket, region, write, force } = values;
-	const manifestBucket = values["manifest-bucket"];
-	const pathPrefix = values["path-prefix"];
-	const folder = values.prefix?.replace(/\/+$/, "");
-	const fail = (problem: string): never => {
-		throw new Error(`${problem}\n\n${USAGE}`);
-	};
-
-	if (!bucket) return fail("--bucket is required");
-	// Keys never start with "/", so such a filter lists nothing and the run would look like a clean one.
-	if (folder === "" || folder?.startsWith("/")) {
-		fail('--prefix must name a folder without a leading "/", e.g. japan-2025; omit it to run the whole bucket');
-	}
-	if (force && !write) fail("--force only applies with --write");
-	if (write && !manifestBucket) fail("--write needs --manifest-bucket");
-	// A forgotten prefix on the second bucket would store its manifests under the primary bucket's paths.
-	if (write && pathPrefix === undefined) fail('--write needs --path-prefix, even when it is empty: --path-prefix ""');
-	assertPathPrefix(pathPrefix ?? "");
-
-	return {
-		bucket,
-		manifestBucket,
-		pathPrefix: pathPrefix ?? "",
-		folder,
-		region,
-		write,
-		force,
-	};
-};
 
 export type ListedObject = BucketObject & {
 	/** Size of the object in bytes, as listed. */
@@ -104,20 +30,17 @@ export type BackfillIo = {
 	readObject: (key: string) => Promise<Buffer>;
 	/** Reads the manifest stored for a set in the manifest bucket; `null` when there is none. */
 	readManifest: (location: ManifestLocation) => Promise<Manifest | null>;
-	/** Stores a manifest in the manifest bucket; resolves `false`, storing nothing, when one exists and `overwrite` is off. */
+	/** Stores a manifest in the manifest bucket; resolves `false`, storing nothing, when one exists and `force` is off. */
 	storeManifest: (manifest: Manifest, options: StoreManifestOptions) => Promise<boolean>;
 };
 
-export type WriteOptions = Pick<Manifest, "bucket" | "pathPrefix"> & {
-	/** Rewrite manifests that already exist. */
-	force: boolean;
-};
+export type WriteOptions = Pick<Manifest, "bucket" | "pathPrefix"> & StoreManifestOptions;
 
 /** Outcomes that leave a set without a new manifest on purpose. */
-export const SKIPPED_OUTCOMES = ["exists", "exists-other-set"] as const;
+const SKIPPED_OUTCOMES = ["exists", "exists-stale"] as const;
 
 /** Outcomes that mean a set should have a manifest and has none, which make the run exit non-zero. */
-export const FAILED_OUTCOMES = ["collision", "unreadable-object", "failed"] as const;
+const FAILED_OUTCOMES = ["exists-other-set", "collision", "unreadable-object", "failed"] as const;
 
 /** What can happen to one image set in a write run. */
 export const SET_OUTCOMES = ["written", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES] as const;
@@ -133,35 +56,44 @@ export type SetResult = SetIdentity & {
 	detail?: string;
 };
 
-type Outcome = Pick<SetResult, "outcome" | "detail">;
+type OutcomeWithDetail = Pick<SetResult, "outcome" | "detail">;
 
-const sortedKeys = (keys: string[]): string => keys.sort().join(", ");
+const joinSortedKeys = (keys: readonly string[]): string => [...keys].sort().join(", ");
 
-/** A manifest key can be taken by a set this run never listed, so an existing one is compared, not assumed to be ours. */
-const existingOutcome = (existing: Manifest, set: ImageSet, bucket: string): Outcome => {
-	const existingKeys = sortedKeys(Object.values(existing.variants).map(({ key }) => key));
-	const sameSet =
-		existing.layout === set.layout &&
-		existing.bucket === bucket &&
-		existingKeys === sortedKeys(set.members.map(({ key }) => key));
+/** The key pins path prefix, folder and name, so layout and bucket tell an existing manifest's set apart; `null` means replace it. */
+const judgeExisting = (existing: Manifest, set: ImageSet, bucket: string, force: boolean): OutcomeWithDetail | null => {
+	if (existing.layout !== set.layout || existing.bucket !== bucket) {
+		return {
+			outcome: "exists-other-set",
+			detail: `its manifest key is held by another set, ${setLabel(existing)} in ${existing.bucket}; not replaced`,
+		};
+	}
+	if (force) return null;
 
-	if (sameSet) return { outcome: "exists" };
+	const existingKeys = Object.values(existing.variants).map(({ key }) => key);
+	const setKeys = set.members.map(({ key }) => key);
+	const added = setKeys.filter((key) => !existingKeys.includes(key));
+	const removed = existingKeys.filter((key) => !setKeys.includes(key));
+	if (!added.length && !removed.length) return { outcome: "exists" };
+
 	return {
-		outcome: "exists-other-set",
-		detail: `existing manifest is a ${existing.layout} set in ${existing.bucket} with keys ${existingKeys}`,
+		outcome: "exists-stale",
+		detail: `its keys changed since the manifest was written (added: ${joinSortedKeys(added) || "none"}; removed: ${joinSortedKeys(removed) || "none"}); --force will refresh it`,
 	};
 };
-
-const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 // ponytail: every object is downloaded whole, since the original's hash and the blur need the bytes anyway. Fine for
 // buckets of a few thousand small images; move to ranged reads and a streamed hash before pointing this at a large one.
 const measureObject = async (
 	{ key, variant }: ImageSet["members"][number],
-	{ bytes, etag }: ListedObject,
+	listed: ReadonlyMap<string, ListedObject>,
 	io: BackfillIo,
 ) => {
 	try {
+		const object = listed.get(key);
+		if (!object) throw new Error("missing from the listing");
+		const { bytes, etag } = object;
+
 		const body = await io.readObject(key);
 		if (body.length !== bytes) throw new Error(`read ${body.length} bytes, listed as ${bytes}`);
 		// `autoOrient` matches how an upload measures: the size as displayed, after any EXIF rotation.
@@ -170,7 +102,7 @@ const measureObject = async (
 
 		return { key, variant, body, bytes, etag, sha256, format, ...autoOrient };
 	} catch (error) {
-		throw new Error(`"${key}": ${message(error)}`);
+		throw new Error(`"${key}": ${errorMessage(error)}`);
 	}
 };
 
@@ -179,21 +111,21 @@ const backfillSet = async (
 	listed: ReadonlyMap<string, ListedObject>,
 	io: BackfillIo,
 	{ bucket, pathPrefix, force }: WriteOptions,
-): Promise<Outcome> => {
-	const existing = force ? null : await io.readManifest({ pathPrefix, ...set });
-	if (existing) return existingOutcome(existing, set, bucket);
+): Promise<OutcomeWithDetail> => {
+	// Read even when forced: a forced run must still not replace another set's manifest.
+	const existing = await io.readManifest({ pathPrefix, ...set });
+	const verdict = existing && judgeExisting(existing, set, bucket, force);
+	if (verdict) return verdict;
 
 	let objects: Awaited<ReturnType<typeof measureObject>>[];
 	let placeholder: Buffer;
 	try {
-		objects = await Promise.all(
-			set.members.map((member) => measureObject(member, listed.get(member.key) as ListedObject, io)),
-		);
+		objects = await Promise.all(set.members.map((member) => measureObject(member, listed, io)));
 		const stored = objects.find(({ variant }) => variant === "placeholder");
 		const narrowest = objects.reduce((smallest, object) => (object.width < smallest.width ? object : smallest));
 		placeholder = stored?.body ?? (await encodeVariant("placeholder", narrowest.body)).data;
 	} catch (error) {
-		return { outcome: "unreadable-object", detail: message(error) };
+		return { outcome: "unreadable-object", detail: errorMessage(error) };
 	}
 
 	const manifest = buildManifest({
@@ -204,7 +136,7 @@ const backfillSet = async (
 		source: null,
 		objects,
 	});
-	if (await io.storeManifest(manifest, { overwrite: force })) {
+	if (await io.storeManifest(manifest, { force })) {
 		// Uploads once stored the source file itself under a `.webp` key; the manifest says what is there, and so does the run.
 		const mislabelled = objects.filter(({ format }) => format !== DEFAULT_FILE_TYPE);
 		const detail = mislabelled
@@ -237,56 +169,53 @@ const mapLimited = async <Item, Result>(
 	return results;
 };
 
-/** Measures every image set in a listing and stores a manifest for each, reporting what happened set by set. */
+/** Sets finish in any order, so `onResult` hears them as they do; the returned results keep listing order. */
 export const writeManifests = async (
 	objects: readonly ListedObject[],
 	io: BackfillIo,
 	options: WriteOptions,
+	onResult?: (result: SetResult) => void,
 ): Promise<SetResult[]> => {
 	const listed = new Map(objects.map((object) => [object.key, object]));
-	const targets = groupImageSets(objects.map(({ key }) => key)).sets.map((set) => ({
-		set,
-		manifestKey: manifestKey({ pathPrefix: options.pathPrefix, ...set }),
-	}));
+	const { sets, collisions } = buildBackfillReport(objects, options);
+	const collidingWith = new Map(
+		collisions.flatMap(({ sets: colliding }) => colliding.map((identity) => [setId(identity), colliding] as const)),
+	);
 
-	return mapLimited(targets, SET_CONCURRENCY, async ({ set, manifestKey: target }) => {
+	return mapLimited(sets, SET_CONCURRENCY, async (set) => {
 		const { members, ...identity } = set;
+		const rivals = (collidingWith.get(setId(set)) ?? []).filter((other) => setId(other) !== setId(set));
 		// Forced, the later of two colliding sets would silently replace the earlier one's manifest.
-		const rivals = targets.filter((other) => other.manifestKey === target && other.set !== set);
-		const outcome: Outcome = rivals.length
-			? {
-					outcome: "collision",
-					detail: `shares its manifest key with ${rivals.map((rival) => setLabel(rival.set)).join(", ")}`,
-				}
+		const verdict: OutcomeWithDetail = rivals.length
+			? { outcome: "collision", detail: `shares its manifest key with ${rivals.map(setLabel).join(", ")}` }
 			: await backfillSet(set, listed, io, options).catch(
-					(error: unknown): Outcome => ({ outcome: "failed", detail: message(error) }),
+					(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
 				);
+		const result = { ...identity, manifestKey: manifestKey({ pathPrefix: options.pathPrefix, ...set }), ...verdict };
+		onResult?.(result);
 
-		return { ...identity, manifestKey: target, ...outcome };
+		return result;
 	});
 };
 
 const countOutcomes = (results: readonly SetResult[], outcomes: readonly SetOutcome[]): number =>
 	results.filter(({ outcome }) => outcomes.includes(outcome)).length;
 
-/** Number of sets that should have a manifest and have none; the run exits non-zero when it is not 0. */
 export const countFailed = (results: readonly SetResult[]): number => countOutcomes(results, FAILED_OUTCOMES);
 
-export const formatWriteReport = (results: readonly SetResult[]): string => {
-	const totals = (outcomes: readonly SetOutcome[]) =>
+export const formatSetResult = ({ outcome, detail, manifestKey: target, ...identity }: SetResult): string =>
+	`[${outcome}] ${setLabel(identity)} -> ${target}${detail ? `: ${detail}` : ""}`;
+
+export const formatWriteTotals = (results: readonly SetResult[]): string => {
+	const perOutcome = (outcomes: readonly SetOutcome[]) =>
 		outcomes.map((outcome) => `  ${outcome}: ${countOutcomes(results, [outcome])}`);
 
 	return [
-		...results.map(
-			({ outcome, detail, manifestKey: target, ...identity }) =>
-				`[${outcome}] ${setLabel(identity)} -> ${target}${detail ? `: ${detail}` : ""}`,
-		),
-		"",
 		`Sets found: ${results.length}`,
 		`Written: ${countOutcomes(results, ["written"])}`,
 		`Skipped: ${countOutcomes(results, SKIPPED_OUTCOMES)}`,
-		...totals(SKIPPED_OUTCOMES),
+		...perOutcome(SKIPPED_OUTCOMES),
 		`Failed: ${countFailed(results)}`,
-		...totals(FAILED_OUTCOMES),
+		...perOutcome(FAILED_OUTCOMES),
 	].join("\n");
 };

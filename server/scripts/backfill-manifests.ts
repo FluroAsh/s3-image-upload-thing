@@ -1,13 +1,20 @@
-import { paginateListObjectsV2 } from "@aws-sdk/client-s3";
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-import { buildBackfillReport, formatBackfillReport } from "../src/modules/storage/services/backfill-report";
+import { errorMessage } from "@/shared/utils/helpers";
+
+import {
+	assertImageSets,
+	buildBackfillReport,
+	formatBackfillReport,
+} from "../src/modules/storage/services/backfill-report";
 import {
 	countFailed,
-	formatWriteReport,
+	formatSetResult,
+	formatWriteTotals,
 	type ListedObject,
-	parseBackfillArgs,
 	writeManifests,
 } from "../src/modules/storage/services/backfill-write";
+import { MANIFEST_PREFIX } from "../src/modules/storage/services/manifest";
 import {
 	type BucketLocation,
 	defaultRegion,
@@ -15,27 +22,35 @@ import {
 	readManifest,
 	readObject,
 	storeManifest,
+	withDeadline,
 } from "../src/modules/storage/services/s3-operations";
+import { parseBackfillArgs } from "./backfill-args";
 
 const listObjects = async ({ bucketName, bucketRegion }: BucketLocation, folder?: string): Promise<ListedObject[]> => {
 	const objects: ListedObject[] = [];
 	// A trailing slash stops `japan` from also matching `japan-2025/`.
 	const Prefix = folder ? `${folder}/` : undefined;
+	let ContinuationToken: string | undefined;
 
-	for await (const page of paginateListObjectsV2(
-		{ client: getRegionalClient(bucketRegion) },
-		{ Bucket: bucketName, Prefix },
-	)) {
+	do {
+		const page = await withDeadline((options) =>
+			getRegionalClient(bucketRegion).send(
+				new ListObjectsV2Command({ Bucket: bucketName, Prefix, ContinuationToken }),
+				options,
+			),
+		);
 		for (const { Key, ETag, Size } of page.Contents ?? []) {
 			if (Key) objects.push({ key: Key, etag: ETag ?? "", bytes: Size ?? 0 });
 		}
-	}
+		ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+	} while (ContinuationToken);
 
 	return objects;
 };
 
 const main = async (): Promise<void> => {
-	const { bucket, manifestBucket, pathPrefix, folder, region, write, force } = parseBackfillArgs(process.argv.slice(2));
+	const args = parseBackfillArgs(process.argv.slice(2));
+	const { bucket, pathPrefix, folder, region } = args;
 	const bucketRegion = region ?? defaultRegion;
 	const readLocation = { bucketName: bucket, bucketRegion };
 
@@ -44,26 +59,31 @@ const main = async (): Promise<void> => {
 	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
 	if (!objects.length) throw new Error(`No keys found in ${scope}; nothing was written`);
 
-	if (!write || !manifestBucket) {
+	const report = buildBackfillReport(objects, { pathPrefix });
+	assertImageSets(report, scope);
+	const manifestRoot = `${MANIFEST_PREFIX}${pathPrefix}`;
+
+	if (!args.write) {
 		console.log(
 			[
 				`Backfill dry run: nothing was written`,
 				`Bucket read: ${scope}`,
-				`Manifests would go to: ${manifestBucket ?? "(no --manifest-bucket given)"} under manifests/${pathPrefix}`,
+				`Manifests would go to: ${args.manifestBucket ?? "(no --manifest-bucket given)"} under ${manifestRoot}`,
 				"",
-				formatBackfillReport(buildBackfillReport(objects, { pathPrefix })),
+				formatBackfillReport(report),
 			].join("\n"),
 		);
 		return;
 	}
 
+	const { manifestBucket, force } = args;
 	// The only bucket this run writes to, and `storeManifest` refuses any key outside manifests/.
 	const manifestLocation = { bucketName: manifestBucket, bucketRegion };
 	console.log(
 		[
-			`Backfill write run${force ? " (--force: existing manifests are replaced)" : ""}`,
+			`Backfill write run${force ? " (--force: manifests of the same set are replaced)" : ""}`,
 			`Bucket read: ${scope}, ${objects.length} keys`,
-			`Manifests go to: ${manifestBucket} under manifests/${pathPrefix}`,
+			`Manifests go to: ${manifestBucket} under ${manifestRoot}`,
 			"Measuring every set; this downloads each object once...",
 			"",
 		].join("\n"),
@@ -77,13 +97,14 @@ const main = async (): Promise<void> => {
 			storeManifest: (manifest, options) => storeManifest(manifest, manifestLocation, options),
 		},
 		{ bucket, pathPrefix, force },
+		(result) => console.log(formatSetResult(result)),
 	);
 
-	console.log(formatWriteReport(results));
+	console.log(`\n${formatWriteTotals(results)}`);
 	if (countFailed(results)) process.exitCode = 1;
 };
 
 main().catch((error: unknown) => {
-	console.error(error instanceof Error ? error.message : error);
+	console.error(errorMessage(error));
 	process.exit(1);
 });
