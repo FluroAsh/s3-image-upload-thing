@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 
 import { useSearchParams } from "next/navigation";
 
+import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets, useMutateUpload } from "@/lib/query";
+import { buildUploadFormData } from "@/lib/upload-form-data";
 import { cn } from "@/lib/utils";
 
 import { FolderSelect } from "./folder-select";
@@ -37,6 +39,7 @@ export const UploadScreen = () => {
 	const { data: bucketData } = useBuckets();
 	const bucketName = useSearchParams().get("bucket") || bucketData?.buckets?.[0]?.Name;
 
+	const { bucketRegion } = useExplorer().state;
 	const { setUploadState, setUploadResponse } = useUpload();
 	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName ?? "");
 
@@ -46,15 +49,9 @@ export const UploadScreen = () => {
 
 			setUploadState(EUploadState.Uploading);
 
-			const formData = new FormData();
-			formData.append("bucketName", bucketName ?? "");
-			formData.append("destination", folderPathRef.current);
-
-			images.forEach((file) => {
-				formData.append("images", file, file.name);
-			});
-
-			const response = await postUploadImages(formData);
+			const response = await postUploadImages(
+				buildUploadFormData({ bucketName, bucketRegion, destination: folderPathRef.current, images }),
+			);
 			setUploadResponse(response);
 			setUploadState(EUploadState.Complete);
 
