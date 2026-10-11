@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { makeJpeg } from "../../test-support";
+import { makeJpeg } from "../../test-helpers";
 import { createImageVariants, planVariants } from "./processor";
 
 const sourceImage = async (width: number, height: number, orientation?: number, noisy?: boolean) => {
