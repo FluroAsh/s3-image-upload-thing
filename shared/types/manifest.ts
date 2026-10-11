@@ -14,7 +14,10 @@ export type ManifestSource = {
 };
 
 export type ManifestVariant = {
-  /** Bucket key, never the public path: a URL is CDN host + `pathPrefix` + `key`. */
+  /**
+   * Bucket key of the variant, in the same folder as the manifest. A consumer finds the manifest as `manifest.json`
+   * beside any image URL of the set, and each variant by the last path segment of its `key`.
+   */
   key: string;
   /** Image format as a file extension without the dot, e.g. `"webp"`. */
   format: string;
@@ -35,10 +38,6 @@ export type Manifest = {
   name: string;
   /** Bucket folder the set lives in, without a trailing slash; `""` for the bucket root. */
   folder: string;
-  /** Bucket that holds the variants. */
-  bucket: string;
-  /** How that bucket's keys appear under the CDN host: `""` or `"legacy/"`. */
-  pathPrefix: string;
   /** `nested`: `{folder}/{name}/{variant}_{name}.webp`. `flat`: `{folder}/{variant}_{name}.webp` beside an un-prefixed original. */
   layout: "nested" | "flat";
   /** Always `"ready"`: a manifest is written only after every variant is stored. */

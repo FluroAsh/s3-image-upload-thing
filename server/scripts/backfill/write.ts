@@ -1,23 +1,21 @@
-import { createHash } from "node:crypto";
-
 import sharp from "sharp";
 
 import { DEFAULT_FILE_TYPE } from "@/modules/storage/processors/variants/config";
 import { encodeVariant } from "@/modules/storage/processors/variants/processor";
 import {
 	buildManifest,
+	groupImageSets,
 	type ImageSet,
 	type ManifestLocation,
 	manifestKey,
 	placeholderDataUri,
 	type SetIdentity,
-	setId,
 } from "@/modules/storage/services/manifest";
 import type { StoreManifestOptions } from "@/modules/storage/services/s3-operations";
 import { errorMessage } from "@/shared/utils/helpers";
 import type { Manifest } from "~/shared/types";
 
-import { type BucketObject, buildBackfillReport, setLabel } from "./report";
+import { type BucketObject, FLAT_SET_NOTE, setLabel } from "./report";
 
 export type ListedObject = BucketObject & {
 	/** Size of the object in bytes, as listed. */
@@ -26,21 +24,19 @@ export type ListedObject = BucketObject & {
 
 /** The bucket requests a write run makes, so the run itself can be tested without the network. */
 export type BackfillIo = {
-	/** Downloads one object of the read bucket whole. */
+	/** Downloads one object of the bucket whole. */
 	readObject: (key: string) => Promise<Buffer>;
-	/** Reads the manifest stored for a set in the manifest bucket; `null` when there is none. */
+	/** Reads the manifest stored in a set's folder; `null` when there is none. */
 	readManifest: (location: ManifestLocation) => Promise<Manifest | null>;
-	/** Stores a manifest in the manifest bucket; resolves `false`, storing nothing, when one exists and `force` is off. */
+	/** Stores a manifest in its set's folder; resolves `false`, storing nothing, when one exists and `force` is off. */
 	storeManifest: (manifest: Manifest, options: StoreManifestOptions) => Promise<boolean>;
 };
 
-export type WriteOptions = Pick<Manifest, "bucket" | "pathPrefix"> & StoreManifestOptions;
-
 /** Outcomes that leave a set without a new manifest on purpose. */
-const SKIPPED_OUTCOMES = ["exists", "exists-stale"] as const;
+const SKIPPED_OUTCOMES = ["exists", "exists-stale", "flat-set"] as const;
 
 /** Outcomes that mean a set should have a manifest and has none, which make the run exit non-zero. */
-const FAILED_OUTCOMES = ["exists-other-set", "collision", "unreadable-object", "failed"] as const;
+const FAILED_OUTCOMES = ["unreadable-object", "failed"] as const;
 
 /** What can happen to one image set in a write run. */
 export const SET_OUTCOMES = ["written", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES] as const;
@@ -48,8 +44,8 @@ export const SET_OUTCOMES = ["written", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES]
 export type SetOutcome = (typeof SET_OUTCOMES)[number];
 
 export type SetResult = SetIdentity & {
-	/** Key the set's manifest is stored under, or would be. */
-	manifestKey: string;
+	/** Key the set's manifest is stored under, or would be; absent for a flat set, which gets none. */
+	manifestKey?: string;
 	/** What happened to the set. */
 	outcome: SetOutcome;
 	/** Why, in words for the person running it; absent when there is nothing to add. */
@@ -60,16 +56,8 @@ type OutcomeWithDetail = Pick<SetResult, "outcome" | "detail">;
 
 const joinSortedKeys = (keys: readonly string[]): string => [...keys].sort().join(", ");
 
-/** The key pins path prefix, folder and name, so layout and bucket tell an existing manifest's set apart; `null` means replace it. */
-const judgeExisting = (existing: Manifest, set: ImageSet, bucket: string, force: boolean): OutcomeWithDetail | null => {
-	if (existing.layout !== set.layout || existing.bucket !== bucket) {
-		return {
-			outcome: "exists-other-set",
-			detail: `its manifest key is held by another set, ${setLabel(existing)} in ${existing.bucket}; not replaced`,
-		};
-	}
-	if (force) return null;
-
+/** The manifest sits in the set's own folder, so it can only be this set's: the question is whether it still lists the set's files. */
+const judgeExisting = (existing: Manifest, set: ImageSet): OutcomeWithDetail => {
 	const existingKeys = Object.values(existing.variants).map(({ key }) => key);
 	const setKeys = set.members.map(({ key }) => key);
 	const added = setKeys.filter((key) => !existingKeys.includes(key));
@@ -82,8 +70,8 @@ const judgeExisting = (existing: Manifest, set: ImageSet, bucket: string, force:
 	};
 };
 
-// ponytail: every object is downloaded whole, since the original's hash and the blur need the bytes anyway. Fine for
-// buckets of a few thousand small images; move to ranged reads and a streamed hash before pointing this at a large one.
+// ponytail: every object is downloaded whole to be measured, though only the blur's source needs all its bytes. Fine for
+// buckets of a few thousand small images; move to ranged reads before pointing this at a large one.
 const measureObject = async (
 	{ key, variant }: ImageSet["members"][number],
 	listed: ReadonlyMap<string, ListedObject>,
@@ -98,9 +86,8 @@ const measureObject = async (
 		if (body.length !== bytes) throw new Error(`read ${body.length} bytes, listed as ${bytes}`);
 		// `autoOrient` matches how an upload measures: the size as displayed, after any EXIF rotation.
 		const { format, autoOrient } = await sharp(body).metadata();
-		const sha256 = variant === "original" ? createHash("sha256").update(body).digest("hex") : undefined;
 
-		return { key, variant, body, bytes, etag, sha256, format, ...autoOrient };
+		return { key, variant, body, bytes, etag, format, ...autoOrient };
 	} catch (error) {
 		throw new Error(`"${key}": ${errorMessage(error)}`);
 	}
@@ -110,12 +97,12 @@ const backfillSet = async (
 	set: ImageSet,
 	listed: ReadonlyMap<string, ListedObject>,
 	io: BackfillIo,
-	{ bucket, pathPrefix, force }: WriteOptions,
+	{ force }: StoreManifestOptions,
 ): Promise<OutcomeWithDetail> => {
-	// Read even when forced: a forced run must still not replace another set's manifest.
-	const existing = await io.readManifest({ pathPrefix, ...set });
-	const verdict = existing && judgeExisting(existing, set, bucket, force);
-	if (verdict) return verdict;
+	if (set.layout === "flat") return { outcome: "flat-set", detail: FLAT_SET_NOTE };
+
+	const existing = force ? null : await io.readManifest(set);
+	if (existing) return judgeExisting(existing, set);
 
 	let objects: Awaited<ReturnType<typeof measureObject>>[];
 	let placeholder: Buffer;
@@ -129,8 +116,6 @@ const backfillSet = async (
 	}
 
 	const manifest = buildManifest({
-		bucket,
-		pathPrefix,
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderDataUri(placeholder),
 		source: null,
@@ -173,25 +158,18 @@ const mapLimited = async <Item, Result>(
 export const writeManifests = async (
 	objects: readonly ListedObject[],
 	io: BackfillIo,
-	options: WriteOptions,
+	options: StoreManifestOptions,
 	onResult?: (result: SetResult) => void,
 ): Promise<SetResult[]> => {
 	const listed = new Map(objects.map((object) => [object.key, object]));
-	const { sets, collisions } = buildBackfillReport(objects, options);
-	const collidingWith = new Map(
-		collisions.flatMap(({ sets: colliding }) => colliding.map((identity) => [setId(identity), colliding] as const)),
-	);
+	const { sets } = groupImageSets(objects.map(({ key }) => key));
 
 	return mapLimited(sets, SET_CONCURRENCY, async (set) => {
 		const { members, ...identity } = set;
-		const rivals = (collidingWith.get(setId(set)) ?? []).filter((other) => setId(other) !== setId(set));
-		// Forced, the later of two colliding sets would silently replace the earlier one's manifest.
-		const verdict: OutcomeWithDetail = rivals.length
-			? { outcome: "collision", detail: `shares its manifest key with ${rivals.map(setLabel).join(", ")}` }
-			: await backfillSet(set, listed, io, options).catch(
-					(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
-				);
-		const result = { ...identity, manifestKey: manifestKey({ pathPrefix: options.pathPrefix, ...set }), ...verdict };
+		const verdict = await backfillSet(set, listed, io, options).catch(
+			(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
+		);
+		const result = { ...identity, ...(set.layout === "nested" && { manifestKey: manifestKey(set) }), ...verdict };
 		onResult?.(result);
 
 		return result;
@@ -204,7 +182,7 @@ const countOutcomes = (results: readonly SetResult[], outcomes: readonly SetOutc
 export const countFailed = (results: readonly SetResult[]): number => countOutcomes(results, FAILED_OUTCOMES);
 
 export const formatSetResult = ({ outcome, detail, manifestKey: target, ...identity }: SetResult): string =>
-	`[${outcome}] ${setLabel(identity)} -> ${target}${detail ? `: ${detail}` : ""}`;
+	`[${outcome}] ${setLabel(identity)}${target ? ` -> ${target}` : ""}${detail ? `: ${detail}` : ""}`;
 
 export const formatWriteTotals = (results: readonly SetResult[]): string => {
 	const perOutcome = (outcomes: readonly SetOutcome[]) =>

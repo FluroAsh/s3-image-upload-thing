@@ -67,8 +67,6 @@ const storeImageSet = async (
 	const placeholderBuffer = image.variations.placeholder?.buffer;
 
 	const manifest = buildManifest({
-		bucket: location.bucketName,
-		pathPrefix: identity.pathPrefix,
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderBuffer ? placeholderDataUri(placeholderBuffer) : null,
 		source: null,
