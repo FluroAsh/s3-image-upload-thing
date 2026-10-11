@@ -2,17 +2,40 @@ import type { Manifest, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 
-type ClassifiedKey = Pick<Manifest, "layout" | "folder" | "name"> & { variant: string };
-
-type SkipReason = "reserved-prefix" | "folder-marker" | "not-webp" | "empty-name";
-
-type ClassifyResult = { member: ClassifiedKey } | { skip: SkipReason };
-
-export type ImageSet = Pick<Manifest, "layout" | "folder" | "name"> & {
-	members: { key: string; variant: string }[];
+type ClassifiedKey = Pick<Manifest, "layout" | "folder" | "name"> & {
+	/** Variant name taken from the key's prefix; `"original"` for an un-prefixed file. */
+	variant: string;
 };
 
-export type SkippedKey = { key: string; reason: SkipReason };
+/** Why a bucket key is not part of any image set. */
+type SkipReason = "reserved-prefix" | "folder-marker" | "not-webp" | "empty-name";
+
+type ClassifyResult =
+	| {
+			/** The image set the key belongs to and its variant within it. */
+			member: ClassifiedKey;
+	  }
+	| {
+			/** Why the key belongs to no image set. */
+			skip: SkipReason;
+	  };
+
+export type ImageSet = Pick<Manifest, "layout" | "folder" | "name"> & {
+	/** Every key in the set, each with the variant name it holds. */
+	members: {
+		/** Bucket key of the object. */
+		key: string;
+		/** Variant name taken from the key's prefix; `"original"` for an un-prefixed file. */
+		variant: string;
+	}[];
+};
+
+export type SkippedKey = {
+	/** Bucket key that was skipped. */
+	key: string;
+	/** Why it was skipped, for the backfill report. */
+	reason: SkipReason;
+};
 
 type ManifestObject = Omit<ManifestVariant, "format"> & {
 	/** Required on a flat set's original, which becomes the manifest's source. */
