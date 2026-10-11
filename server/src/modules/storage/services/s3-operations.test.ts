@@ -9,8 +9,6 @@ vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 const LOCATION = { bucketName: "example-bucket", bucketRegion: "us-east-1" };
 
 const MANIFEST = buildManifest({
-	bucket: "example-bucket",
-	pathPrefix: "",
 	createdAt: "2026-10-11T00:00:00.000Z",
 	placeholder: null,
 	source: null,
@@ -55,11 +53,21 @@ describe("storeManifest", () => {
 		expect(s3.sent).toHaveLength(1);
 		expect(s3.sent[0].input).toMatchObject({
 			Bucket: "example-bucket",
-			Key: "manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json",
+			Key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
 			ContentType: "application/json",
 			CacheControl: "public, max-age=300",
 		});
 		expect(s3.sent[0].input.IfNoneMatch).toBeUndefined();
+	});
+});
+
+describe("storeManifest guard", () => {
+	it("sends nothing for a manifest whose key would not be manifest.json inside a set folder", async () => {
+		await expect(storeManifest({ ...MANIFEST, name: "" }, LOCATION, { force: true })).rejects.toThrow(
+			'Refusing to write "japan-2025/kyoto//manifest.json"',
+		);
+
+		expect(s3.sent).toEqual([]);
 	});
 });
 
@@ -72,7 +80,7 @@ describe("readManifest", () => {
 		expect(s3.sent).toEqual([
 			{
 				command: "GetObject",
-				input: { Bucket: "example-bucket", Key: "manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json" },
+				input: { Bucket: "example-bucket", Key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json" },
 			},
 		]);
 	});

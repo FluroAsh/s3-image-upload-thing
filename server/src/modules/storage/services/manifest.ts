@@ -13,7 +13,7 @@ type ClassifiedKey = SetIdentity & {
 };
 
 /** Why a bucket key is not part of any image set. */
-export const SKIP_REASONS = ["reserved-prefix", "folder-marker", "not-webp", "empty-name"] as const;
+export const SKIP_REASONS = ["reserved-prefix", "folder-marker", "set-manifest", "not-webp", "empty-name"] as const;
 
 type SkipReason = (typeof SKIP_REASONS)[number];
 
@@ -51,15 +51,15 @@ type ManifestObject = Omit<ManifestVariant, "format"> & {
 	sha256?: string;
 };
 
-type BuildManifestParams = Pick<Manifest, "bucket" | "pathPrefix" | "createdAt" | "placeholder" | "source"> & {
+type BuildManifestParams = Pick<Manifest, "createdAt" | "placeholder" | "source"> & {
 	/** Every object of exactly one image set. */
 	objects: ManifestObject[];
 };
 
-/** Key prefix every manifest is stored under. */
-export const MANIFEST_PREFIX = "manifests/";
+/** File name of a set's manifest, stored directly inside the set's own folder. */
+export const MANIFEST_FILE_NAME = "manifest.json";
 /** Where only the service writes, so the classifier never mistakes its objects for image sets. */
-const SERVICE_PREFIXES = [MANIFEST_PREFIX, "src/"] as const;
+const SERVICE_PREFIXES = ["src/"] as const;
 /** The service prefixes plus `legacy/`, where the CDN publishes the second bucket, so an upload there would collide in URLs. */
 const REFUSED_UPLOAD_PREFIXES = [...SERVICE_PREFIXES, "legacy/"] as const;
 /** File extension of every key the classifier accepts, dot included. */
@@ -67,31 +67,19 @@ export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
 export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
 
-/** Empty, or clean segments each followed by one slash; it is spliced into a key, so `.`, `..` and `//` would escape its place. */
-const PATH_PREFIX = /^(?:(?!\.\.?\/)[^/\s]+\/)*$/;
-
-export const assertPathPrefix = (pathPrefix: string): void => {
-	if (!PATH_PREFIX.test(pathPrefix)) {
-		throw new Error(
-			`pathPrefix "${pathPrefix}" must be empty or segments each ending in "/", e.g. "legacy/", with no ".", ".." or whitespace`,
-		);
-	}
-};
-
 export const hasRefusedUploadPrefix = (key: string): boolean =>
 	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix));
 
-/** The part of a manifest that says which set it is and where it is stored. */
-export type ManifestLocation = Pick<Manifest, "pathPrefix" | "folder" | "name">;
+/** The part of a manifest that says which set it is, and so which folder holds it and its images. */
+export type ManifestLocation = Pick<Manifest, "folder" | "name">;
 
 /** The one place an upload's set identity is derived, so the pre-check, variant keys and manifest agree. */
 export const uploadSetIdentity = (destination: string, fileName: string): ManifestLocation => ({
-	pathPrefix: "",
 	folder: destination,
 	name: path.parse(fileName).name,
 });
 
-/** Key prefix every variant of an uploaded set is stored under. */
+/** The set's own folder as a key prefix: every variant of an uploaded set and its manifest are stored under it. */
 export const setKeyPrefix = ({ folder, name }: ManifestLocation): string =>
 	folder ? `${folder}/${name}/` : `${name}/`;
 
@@ -102,11 +90,14 @@ export const setKeyPrefix = ({ folder, name }: ManifestLocation): string =>
 export const classifyKey = (key: string, siblings: ReadonlySet<string>): ClassifyResult => {
 	if (SERVICE_PREFIXES.some((prefix) => key.startsWith(prefix))) return { skip: "reserved-prefix" };
 	if (key.endsWith("/")) return { skip: "folder-marker" };
-	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
 
 	const segments = key.split("/");
-	const stem = segments[segments.length - 1].slice(0, -EXTENSION.length);
+	const fileName = segments[segments.length - 1];
 	const parent: string | undefined = segments[segments.length - 2];
+	if (parent && fileName === MANIFEST_FILE_NAME) return { skip: "set-manifest" };
+	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
+
+	const stem = fileName.slice(0, -EXTENSION.length);
 	if (!stem) return { skip: "empty-name" };
 
 	if (parent && stem === parent) {
@@ -163,23 +154,22 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 export const placeholderDataUri = (placeholder: Buffer): string =>
 	`data:${DEFAULT_MIME_TYPE};base64,${placeholder.toString("base64")}`;
 
-/** Manifests for every bucket live in the primary bucket, the only place the CDN serves `manifests/` from. */
-export const manifestKey = ({ pathPrefix, folder, name }: ManifestLocation): string => {
-	assertPathPrefix(pathPrefix);
-	return `${MANIFEST_PREFIX}${pathPrefix}${folder ? `${folder}/` : ""}${name}.json`;
-};
+/** Beside the set's images, so a consumer finds it from any image URL of the set and deleting the folder removes it too. */
+export const manifestKey = (location: ManifestLocation): string => `${setKeyPrefix(location)}${MANIFEST_FILE_NAME}`;
 
 /** Checked where a manifest is stored, so no caller or later change to the key can make that write land on an image. */
 export const assertManifestKey = (key: string): void => {
-	if (!key.startsWith(MANIFEST_PREFIX)) {
-		throw new Error(`Refusing to write "${key}": manifests are only stored under ${MANIFEST_PREFIX}`);
+	const result = classifyKey(key, new Set());
+	if (!("skip" in result) || result.skip !== "set-manifest") {
+		throw new Error(
+			`Refusing to write "${key}": a manifest is only stored as ${MANIFEST_FILE_NAME} inside its set's folder`,
+		);
 	}
 };
 
 /** Shared by the upload path and the backfill, so the two cannot describe the same objects differently. */
 export const buildManifest = (params: BuildManifestParams): Manifest => {
-	const { bucket, pathPrefix, createdAt, placeholder, source, objects } = params;
-	assertPathPrefix(pathPrefix);
+	const { createdAt, placeholder, source, objects } = params;
 
 	const siblings = new Set(objects.map(({ key }) => key));
 	const variants: Manifest["variants"] = {};
@@ -215,8 +205,6 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 		schema: 1,
 		name: identity.name,
 		folder: identity.folder,
-		bucket,
-		pathPrefix,
 		layout: identity.layout,
 		status: "ready",
 		createdAt,

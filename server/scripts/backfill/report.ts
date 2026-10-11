@@ -2,7 +2,6 @@ import {
 	EXTENSION,
 	groupImageSets,
 	type ImageSet,
-	manifestKey,
 	type SetIdentity,
 	SKIP_REASONS,
 	type SkippedKey,
@@ -52,13 +51,6 @@ type BackfillReport = {
 		/** Variant names stored with that ETag, in listing order. */
 		variants: string[];
 	})[];
-	/** Manifest keys that two or more sets would be written to. */
-	collisions: {
-		/** The manifest key the sets share, under the report's `pathPrefix`. */
-		manifestKey: string;
-		/** The sets that map to it, in first-seen order. */
-		sets: SetIdentity[];
-	}[];
 	/** Sets found by reading `NON_EXTENSION_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
 	nonWebpSets: (SetIdentity & {
 		/** The skipped non-webp keys, each with the variant name it would hold if its extension were read. */
@@ -70,8 +62,6 @@ type BackfillReport = {
 		})[];
 	})[];
 };
-
-type BackfillReportOptions = Pick<Manifest, "pathPrefix">;
 
 const NON_EXTENSION_IMAGE = new RegExp(`\\.(${NON_EXTENSION_IMAGE_EXTENSIONS.join("|")})$`, "i");
 
@@ -107,10 +97,7 @@ const findNonWebpSets = (keys: readonly string[], sets: readonly ImageSet[]): Ba
 };
 
 /** Everything the dry run prints, worked out from a bucket listing alone so it needs no network to test. */
-export const buildBackfillReport = (
-	objects: readonly BucketObject[],
-	{ pathPrefix }: BackfillReportOptions,
-): BackfillReport => {
+export const buildBackfillReport = (objects: readonly BucketObject[]): BackfillReport => {
 	const keys = objects.map(({ key }) => key);
 	const { sets, skipped } = groupImageSets(keys);
 	const setsByLayout: BackfillReport["setsByLayout"] = { nested: 0, flat: 0 };
@@ -118,7 +105,6 @@ export const buildBackfillReport = (
 
 	const missingRequired: BackfillReport["missingRequired"] = [];
 	const sharedEtags: BackfillReport["sharedEtags"] = [];
-	const setsByManifestKey = new Map<string, SetIdentity[]>();
 	const etags = new Map(objects.map(({ key, etag }) => [key, etag]));
 
 	for (const { members, ...identity } of sets) {
@@ -127,9 +113,6 @@ export const buildBackfillReport = (
 
 		const missing = REQUIRED_VARIANTS.filter((required) => !members.some(({ variant }) => variant === required));
 		if (missing.length) missingRequired.push({ ...identity, missing });
-
-		const target = manifestKey({ pathPrefix, ...identity });
-		setsByManifestKey.set(target, [...(setsByManifestKey.get(target) ?? []), identity]);
 
 		const variantsByEtag = new Map<string, string[]>();
 		for (const { key, variant } of members) {
@@ -156,9 +139,6 @@ export const buildBackfillReport = (
 		skipped,
 		missingRequired,
 		sharedEtags,
-		collisions: Array.from(setsByManifestKey, ([key, colliding]) => ({ manifestKey: key, sets: colliding })).filter(
-			({ sets: colliding }) => colliding.length > 1,
-		),
 		nonWebpSets: findNonWebpSets(keys, sets),
 	};
 };
@@ -172,18 +152,22 @@ export const assertImageSets = ({ sets, keyCount }: BackfillReport, scope: strin
 	}
 };
 
+/** Said wherever a flat set is reported: it has no folder of its own to hold a manifest. */
+export const FLAT_SET_NOTE = "needs migrating into a set folder before it can have a manifest";
+
 export const setLabel = ({ layout, folder, name }: SetIdentity): string =>
 	`${layout} ${folder ? `${folder}/` : ""}${name}`;
 
 export const formatBackfillReport = (report: BackfillReport): string => {
-	const { skipped, sharedEtags, missingRequired, collisions, nonWebpSets } = report;
+	const { skipped, sharedEtags, missingRequired, nonWebpSets } = report;
 	const webpSiblingCount = nonWebpSets.reduce((count, { webpSiblings }) => count + webpSiblings.length, 0);
 
 	return [
 		`Keys listed: ${report.keyCount}`,
 		"",
 		"Sets by layout",
-		...Object.entries(report.setsByLayout).map(([layout, count]) => `  ${layout}: ${count}`),
+		`  nested: ${report.setsByLayout.nested}`,
+		`  flat: ${report.setsByLayout.flat}${report.setsByLayout.flat ? ` (each ${FLAT_SET_NOTE})` : ""}`,
 		"",
 		"Sets by variant names",
 		...report.variantCombinations.map(({ layout, variants, count }) => `  ${layout} ${variants.join("+")}: ${count}`),
@@ -197,9 +181,6 @@ export const formatBackfillReport = (report: BackfillReport): string => {
 		"",
 		`Sets missing ${REQUIRED_VARIANTS.join(" or ")}: ${missingRequired.length}`,
 		...missingRequired.map((set) => `  ${setLabel(set)}: ${set.missing.join(", ")}`),
-		"",
-		`Manifest key collisions: ${collisions.length}`,
-		...collisions.map((collision) => `  ${collision.manifestKey}: ${collision.sets.map(setLabel).join(", ")}`),
 		"",
 		`Sets with ${NON_EXTENSION_IMAGE_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
 		...nonWebpSets.flatMap((set) => [

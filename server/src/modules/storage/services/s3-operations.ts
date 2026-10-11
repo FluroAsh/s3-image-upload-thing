@@ -1,10 +1,4 @@
-import {
-	GetObjectCommand,
-	HeadObjectCommand,
-	ListObjectsV2Command,
-	PutObjectCommand,
-	S3Client,
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
@@ -165,26 +159,8 @@ export const uploadImages = async (
 
 const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
 
-/** Only "not found" means free; any other failure propagates, so a failed check never lets an upload through. */
-const manifestExists = async (
-	identity: ManifestLocation,
-	{ bucketName, bucketRegion }: BucketLocation,
-): Promise<boolean> => {
-	try {
-		await getRegionalClient(bucketRegion).send(
-			new HeadObjectCommand({ Bucket: bucketName, Key: manifestKey(identity) }),
-		);
-		return true;
-	} catch (error) {
-		if (isS3Error(error, "NotFound")) return false;
-		throw error;
-	}
-};
-
-/** A set with variants but no manifest (every set before the backfill) is still taken. */
+/** Anything under the set's folder takes the name: its manifest, or variants stored before manifests were written. A failed listing propagates, so it never lets an upload through. */
 export const imageSetExists = async (identity: ManifestLocation, location: BucketLocation): Promise<boolean> => {
-	if (await manifestExists(identity, location)) return true;
-
 	const { Contents } = await getRegionalClient(location.bucketRegion).send(
 		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(identity), MaxKeys: 1 }),
 	);

@@ -12,7 +12,7 @@ vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
 const puts = () => s3.sent.filter(({ command }) => command === "PutObject").map(({ input }) => input);
 
-const manifestPut = () => puts().find(({ Key }) => Key.startsWith("manifests/"));
+const manifestPut = () => puts().find(({ Key }) => Key.endsWith(".json"));
 
 const upload = async (
 	fileName = "photo.jpg",
@@ -60,18 +60,18 @@ describe("runUploadPipeline", () => {
 
 		expect(puts()).toHaveLength(3);
 		const [placeholder, lossless, last] = puts();
-		expect(last.Key).toBe("manifests/trip/photo.json");
+		expect(last.Key).toBe("trip/photo/manifest.json");
 
 		const manifest: Manifest = JSON.parse(last.Body as string);
 		expect(manifest).toMatchObject({
 			schema: 1,
 			name: "photo",
 			folder: "trip",
-			bucket: "example-bucket",
-			pathPrefix: "",
 			layout: "nested",
 			source: null,
 		});
+		expect(manifest).not.toHaveProperty("bucket");
+		expect(manifest).not.toHaveProperty("pathPrefix");
 		expect(manifest.variants).toEqual({
 			placeholder: {
 				key: "trip/photo/placeholder_photo.webp",
@@ -110,7 +110,7 @@ describe("runUploadPipeline", () => {
 		await uploadStored();
 
 		expect(manifestPut()).toMatchObject({
-			Key: "manifests/trip/photo.json",
+			Key: "trip/photo/manifest.json",
 			ContentType: "application/json",
 			CacheControl: "public, max-age=300",
 		});
@@ -150,42 +150,38 @@ describe("runUploadPipeline", () => {
 		]);
 	});
 
-	it("refuses a name that already has a manifest and stores nothing", async () => {
-		s3.respond = async (sent) => (sent.command === "HeadObject" ? {} : s3.defaultRespond(sent));
+	it.each([
+		["a manifest", "trip/photo/manifest.json"],
+		["variants but no manifest", "trip/photo/small_photo.webp"],
+		["only a stray file", "trip/photo/notes.txt"],
+	])("refuses a name whose folder holds %s, with one request for one key under the set's prefix", async (_holds, key) => {
+		s3.respond = async (sent) =>
+			sent.command === "ListObjectsV2" ? { Contents: [{ Key: key }] } : s3.defaultRespond(sent);
 
 		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
 
 		expect(s3.sent).toEqual([
-			{ command: "HeadObject", input: { Bucket: "example-bucket", Key: "manifests/trip/photo.json" } },
+			{ command: "ListObjectsV2", input: { Bucket: "example-bucket", Prefix: "trip/photo/", MaxKeys: 1 } },
 		]);
-	});
-
-	it("refuses a set that has variants but no manifest, asking for one key under the set's prefix", async () => {
-		s3.respond = async (sent) =>
-			sent.command === "ListObjectsV2"
-				? { Contents: [{ Key: "trip/photo/small_photo.webp" }] }
-				: s3.defaultRespond(sent);
-
-		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
-
-		expect(s3.sent.map(({ command }) => command)).toEqual(["HeadObject", "ListObjectsV2"]);
-		expect(s3.sent[1].input).toMatchObject({ Bucket: "example-bucket", Prefix: "trip/photo/", MaxKeys: 1 });
 	});
 
 	it.each([
 		["legacy.png", ""],
-		["manifests.png", ""],
 		["src.png", ""],
 		["photo.png", "legacy"],
-		["photo.png", "manifests/trip"],
+		["photo.png", "src/trip"],
 	])("refuses %s into destination '%s' as reserved before touching S3", async (fileName, destination) => {
 		await expect(upload(fileName, destination)).resolves.toMatchObject({ refused: "reserved" });
 
 		expect(s3.sent).toEqual([]);
 	});
 
-	it("accepts a file named manifests inside a destination, since only the start of the key is reserved", async () => {
-		await expect(upload("manifests.jpg", "trip")).resolves.toHaveProperty("files");
+	it.each([
+		["src.jpg", "trip"],
+		["manifests.jpg", ""],
+		["photo.jpg", "manifests/trip"],
+	])("accepts %s into destination '%s': only the start of a key is reserved, and manifests/ no longer is", async (fileName, destination) => {
+		await expect(upload(fileName, destination)).resolves.toHaveProperty("files");
 	});
 
 	it("answers 409 when another upload stores the manifest first, never replacing it", async () => {
@@ -200,6 +196,6 @@ describe("runUploadPipeline", () => {
 
 		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
 
-		expect(manifestPut()).toMatchObject({ Key: "manifests/trip/photo.json", IfNoneMatch: "*" });
+		expect(manifestPut()).toMatchObject({ Key: "trip/photo/manifest.json", IfNoneMatch: "*" });
 	});
 });
