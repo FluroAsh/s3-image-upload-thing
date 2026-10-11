@@ -8,11 +8,11 @@ import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import type { ImageVariant, TreeNode } from "~/shared/types";
+import type { TreeNode } from "~/shared/types";
 
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename, getDepthPadding } from "./utils";
+import { extractFilename, getDepthPadding, pickPreviewVariant } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -86,7 +86,7 @@ export const FileTree = () => {
 		<ul>
 			{visibleNodes.map((node) => {
 				return node.isFolder && node.isImageCollection && node.variants ? (
-					<ImageCollection key={node.id} variants={node.variants} node={node} previewSize="large" />
+					<ImageCollection key={node.id} variants={node.variants} node={node} />
 				) : (
 					<Node key={node.id} node={node} toggleExpanded={toggleExpanded} isExpanded={expanded[node.id]} />
 				);
@@ -98,15 +98,13 @@ export const FileTree = () => {
 type ImageVariantProps = {
 	node: TreeNode;
 	variants: TreeNode[];
-	/** Used for setting the desired size for the image preview in the Explorer's "active" panel — by default this is "large". */
-	previewSize?: ImageVariant;
 };
 
 /**
  * This component will not recursively render children, it is intended to be used immediately, and display a
  * collection of image variants for a given node (thumbnail, medium, large, etc.).
  */
-const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariantProps) => {
+const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 	const {
 		actions: { setActiveFile },
 		state: { bucketName, bucketRegion, activeFile },
@@ -118,11 +116,8 @@ const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariant
 		bucketRegion,
 	);
 
-	// Find the variant node that matches the desired size
-	const resizedVariant =
-		variants.find((variant) => variant.name.startsWith(previewSize)) || variants[variants.length - 1];
-
-	const remoteURL = presignedUrls[resizedVariant.id];
+	const previewVariant = pickPreviewVariant(variants);
+	const remoteURL = (previewVariant && presignedUrls[previewVariant.id]) ?? "";
 
 	return (
 		<button
@@ -137,7 +132,7 @@ const ImageCollection = ({ variants, node, previewSize = "large" }: ImageVariant
 			style={{ paddingLeft: getDepthPadding(node.depth) }}
 			onClick={() => {
 				setActiveFile({
-					remoteURL: presignedUrls[resizedVariant.id],
+					remoteURL,
 					fileName: node.name,
 					variants: variants.map((variant) => ({
 						...variant,

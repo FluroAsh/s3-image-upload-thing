@@ -2,18 +2,6 @@ import type { ImageVariant } from "~/shared/types";
 
 export const DEFAULT_FILE_TYPE = "webp";
 
-/**
- * Ordered list of variants produced for each uploaded image.
- * Defines "what" we generate; processor defines "how."
- */
-export const VARIANT_NAMES = [
-	"placeholder",
-	"small",
-	"medium",
-	"large",
-	"lossless",
-] as const satisfies readonly ImageVariant[];
-
 /** Target width in pixels per variant; null = no resize (original dimensions). */
 export const VARIANT_WIDTH = {
 	placeholder: 20,

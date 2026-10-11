@@ -1,0 +1,2 @@
+/** Every variant a stored image set can hold, narrowest first, full size last. */
+export const IMAGE_VARIANTS = ["placeholder", "small", "medium", "large", "lossless"] as const;

@@ -3,89 +3,58 @@ import sharp, { type FormatEnum } from "sharp";
 import type { OutputOptions } from "@/modules/storage/processors/tools/sharp";
 import type { ImageVariants, ProcessedImage, VariantOutput } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
+import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant } from "~/shared/types";
 
-import { VARIANT_EFFORT, VARIANT_NAMES, VARIANT_QUALITY, VARIANT_WIDTH } from "./config";
+import { VARIANT_EFFORT, VARIANT_QUALITY, VARIANT_WIDTH } from "./config";
 
 const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => (Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
 
-const getOutputOptions = (variant: ImageVariant): OutputOptions => {
-	const quality = VARIANT_QUALITY[variant];
-	const effort = VARIANT_EFFORT[variant];
-	if (variant === "placeholder") return { quality, effort };
-	if (variant === "lossless") return { quality, effort };
-	return { quality, effort };
-};
+const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
+	quality: VARIANT_QUALITY[variant],
+	effort: VARIANT_EFFORT[variant],
+});
 
 /** A null target width means "source size", which always fits; a sized variant fits only without upscaling. */
 export const planVariants = (sourceWidth: number): ImageVariant[] =>
-	VARIANT_NAMES.filter((variant) => (VARIANT_WIDTH[variant] ?? 0) <= sourceWidth);
+	IMAGE_VARIANTS.filter((variant) => (VARIANT_WIDTH[variant] ?? 0) <= sourceWidth);
 
-const createImageVariant = async (
-	width: number | null,
-	variant: ImageVariant,
-	source: ProcessedImage,
-	sourceMetadata: { width: number; height: number; size: number },
-): Promise<VariantOutput> => {
+const createImageVariant = async (variant: ImageVariant, source: ProcessedImage): Promise<VariantOutput> => {
 	const outputFormat: keyof FormatEnum = "webp";
 	const outputOptions = getOutputOptions(variant);
-	const sourceBuffer = ensureBuffer(source.buffer);
 
-	let pipeline = sharp(sourceBuffer).rotate();
-	if (variant === "lossless") {
-		pipeline = pipeline.toFormat(outputFormat, outputOptions);
-	} else {
-		pipeline = pipeline
-			.resize({ width: width ?? undefined, withoutEnlargement: true })
-			.toFormat(outputFormat, outputOptions);
+	let pipeline = sharp(ensureBuffer(source.buffer)).rotate();
+	if (variant !== "lossless") {
+		pipeline = pipeline.resize({ width: VARIANT_WIDTH[variant] ?? undefined, withoutEnlargement: true });
 	}
+	pipeline = pipeline.toFormat(outputFormat, outputOptions);
 
 	if (variant === "placeholder") pipeline = pipeline.blur(10);
 
-	const { data: processedBuffer, info } = await pipeline.toBuffer({ resolveWithObject: true });
-	const compressedSize = readableSize(processedBuffer.length);
+	const { data: buffer, info } = await pipeline.toBuffer({ resolveWithObject: true });
+	const size = readableSize(buffer.length);
 
-	if (variant === "lossless" && processedBuffer.length > sourceMetadata.size) {
-		console.log(
-			`||== ⚠️  "${
-				source.fileName
-			}" | ${variant} | processed size (${compressedSize}) larger than source (${readableSize(
-				sourceMetadata.size,
-			)}), using source ==||`,
-		);
-		return {
-			buffer: sourceBuffer,
-			size: readableSize(sourceMetadata.size),
-			width: sourceMetadata.width,
-			height: sourceMetadata.height,
-		};
-	}
-
-	console.log(`||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${compressedSize} ==||`);
-	return { buffer: processedBuffer, size: compressedSize, width: info.width, height: info.height };
+	console.log(`||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${size} ==||`);
+	return { buffer, size, width: info.width, height: info.height };
 };
 
-/** Creates the variants that fit the source, so no two stored files hold the same image. */
+/** Creates the variants that fit the source; a size equal to the source width still differs from the full-size file in encoding. */
 export const createImageVariants = async (sourceImage: ProcessedImage): Promise<ImageVariants["variations"]> => {
 	const sourceBuffer = ensureBuffer(sourceImage.buffer);
 	// `autoOrient` is the size after EXIF rotation; the raw width of a sideways-stored portrait is its height.
 	const { autoOrient } = await sharp(sourceBuffer).metadata();
-	const sourceMetadata = {
-		width: autoOrient.width,
-		height: autoOrient.height,
-		size: sourceBuffer.length,
-	};
 
 	console.log(
-		`||== 📊 "${sourceImage.fileName}" | Source: ${sourceMetadata.width}x${
-			sourceMetadata.height
-		} (${readableSize(sourceMetadata.size)}) ==||`,
+		`||== 📊 "${sourceImage.fileName}" | Source: ${autoOrient.width}x${autoOrient.height} (${readableSize(
+			sourceBuffer.length,
+		)}) ==||`,
 	);
 
-	const variants = planVariants(sourceMetadata.width);
-	const results = await Promise.all(
-		variants.map((variant) => createImageVariant(VARIANT_WIDTH[variant], variant, sourceImage, sourceMetadata)),
+	const outputs = await Promise.all(
+		planVariants(autoOrient.width).map(
+			async (variant) => [variant, await createImageVariant(variant, sourceImage)] as const,
+		),
 	);
 
-	return Object.fromEntries(variants.map((variant, index) => [variant, results[index]]));
+	return Object.fromEntries(outputs);
 };
