@@ -2,7 +2,10 @@ import type { Manifest, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 
-type ClassifiedKey = Pick<Manifest, "layout" | "folder" | "name"> & {
+/** What makes two keys part of the same image set. */
+export type SetIdentity = Pick<Manifest, "layout" | "folder" | "name">;
+
+type ClassifiedKey = SetIdentity & {
 	/** Variant name taken from the key's prefix; `"original"` for an un-prefixed file. */
 	variant: string;
 };
@@ -22,7 +25,7 @@ type ClassifyResult =
 			skip: SkipReason;
 	  };
 
-export type ImageSet = Pick<Manifest, "layout" | "folder" | "name"> & {
+export type ImageSet = SetIdentity & {
 	/** Every key in the set, each with the variant name it holds. */
 	members: {
 		/** Bucket key of the object. */
@@ -50,9 +53,10 @@ type BuildManifestParams = Pick<Manifest, "bucket" | "pathPrefix" | "createdAt" 
 };
 
 const RESERVED_PREFIXES = ["manifests/", "src/"];
-const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
+/** File extension of every key the classifier accepts, dot included. */
+export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
-const setId = ({ layout, folder, name }: Pick<ClassifiedKey, "layout" | "folder" | "name">): string =>
+export const setId = ({ layout, folder, name }: SetIdentity): string =>
 	JSON.stringify([layout, folder, name]);
 
 const assertPathPrefix = (pathPrefix: string): void => {
@@ -136,7 +140,7 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 
 	const siblings = new Set(objects.map(({ key }) => key));
 	const variants: Manifest["variants"] = {};
-	let identity: Pick<ClassifiedKey, "layout" | "folder" | "name"> | undefined;
+	let identity: SetIdentity | undefined;
 	let original: ManifestObject | undefined;
 
 	for (const object of objects) {

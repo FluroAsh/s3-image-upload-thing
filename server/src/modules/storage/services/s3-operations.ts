@@ -42,7 +42,8 @@ const createS3Client = (region: string) =>
 		},
 	});
 
-const defaultRegion = process.env.AWS_REGION ?? "us-east-1";
+/** Region the server uses when none is given. */
+export const defaultRegion = process.env.AWS_REGION ?? "us-east-1";
 
 /** Fixed-region client for account-level operations that do not require a specific region (e.g. ListBuckets). */
 export const s3Client = createS3Client(defaultRegion);

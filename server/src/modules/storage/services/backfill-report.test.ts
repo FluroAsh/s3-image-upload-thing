@@ -91,6 +91,17 @@ describe("buildBackfillReport", () => {
 		]);
 	});
 
+	it("does not treat missing ETags as a shared ETag", () => {
+		const [thumbnail, medium, large] = NESTED_KEYS;
+
+		const report = buildBackfillReport(
+			objects(NESTED_KEYS, { [thumbnail]: "", [medium]: "", [large]: '"own"' }),
+			{ pathPrefix: "" },
+		);
+
+		expect(report.sharedEtags).toEqual([]);
+	});
+
 	it("does not report an ETag shared by two different sets", () => {
 		const report = buildBackfillReport(
 			objects([...NESTED_KEYS, ...FLAT_KEYS], { [NESTED_KEYS[0]]: '"same-file"', [FLAT_KEYS[0]]: '"same-file"' }),
@@ -100,7 +111,7 @@ describe("buildBackfillReport", () => {
 		expect(report.sharedEtags).toEqual([]);
 	});
 
-	it("lists sets whose manifests would be written to the same key (made-up keys: one name as a flat file and as a set folder)", () => {
+	it("lists sets whose manifests would be written to the same key", () => {
 		const report = buildBackfillReport(
 			objects([
 				"trips/harbour.webp",
@@ -123,7 +134,6 @@ describe("buildBackfillReport", () => {
 	});
 
 	it("lists sets with jpg, jpeg or png members apart, with how the classifier placed any webp beside them", () => {
-		// The webp key is made up: no real jpg set has a webp variant beside it.
 		const report = buildBackfillReport(
 			objects([
 				...FLAT_KEYS,
