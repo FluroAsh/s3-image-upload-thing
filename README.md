@@ -85,7 +85,7 @@ This is a monorepo containing two main applications:
    Create environment files:
 
    ```bash
-   cp server/.env.example server/.env
+   cp .env.example server/.env
    ```
 
    Edit `server/.env`:
