@@ -95,7 +95,7 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 		sets.set(setId(identity), group);
 	}
 
-	return { sets: [...sets.values()], skipped };
+	return { sets: Array.from(sets.values()), skipped };
 };
 
 /** Manifests for every bucket live in the primary bucket, the only place the CDN serves `manifests/` from. */
