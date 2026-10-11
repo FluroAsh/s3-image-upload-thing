@@ -1,15 +1,19 @@
-import * as path from "node:path";
-
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+	GetObjectCommand,
+	HeadObjectCommand,
+	ListObjectsV2Command,
+	PutObjectCommand,
+	S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { FormatEnum } from "sharp";
 
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 import { TIME } from "~/shared/constants/time";
-import type { FileVariant, ImageVariant } from "~/shared/types";
+import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
+import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
+import { type ManifestLocation, manifestKey, setKeyPrefix } from "./manifest";
 
 if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 	throw new Error(
@@ -113,42 +117,52 @@ export const generatePresignedUrl = async (
 	})) as `https://${string}`;
 };
 
+const publicCache = (seconds: number) => `public, max-age=${seconds}`;
+
+// A day, not a year: keys carry no content hash, so a set deleted and re-uploaded under its name must not stay stale.
+const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
+
+// Short, so a manifest replaced after its first read reaches clients within minutes.
+const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
+
+export type BucketLocation = {
+	/** Name of the bucket to read or write. */
+	bucketName: string;
+	/** AWS region the bucket lives in; requests must be sent there. */
+	bucketRegion: string;
+};
+
 export const uploadImages = async (
 	image: ImageVariants,
-	options: {
-		destination: string;
-		format: keyof FormatEnum;
-		bucketName: string;
-		bucketRegion: string;
-	},
-): Promise<FileVariant[]> => {
-	const { fileName } = image;
-	const { format, bucketRegion, bucketName, destination } = options;
-	const baseName = path.parse(fileName).name;
-	const formatExt = format ?? DEFAULT_FILE_TYPE;
-
-	return Promise.all(
+	identity: ManifestLocation,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<FileVariant[]> =>
+	Promise.all(
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
-				const fileNameKey = `${variant}_${baseName}.${formatExt}`;
-				const key = destination ? `${destination}/${baseName}/${fileNameKey}` : `${baseName}/${fileNameKey}`;
+				const key = `${setKeyPrefix(identity)}${variant}_${identity.name}.${DEFAULT_FILE_TYPE}`;
 
 				const putResponse = await getRegionalClient(bucketRegion).send(
 					new PutObjectCommand({
 						Body: buffer,
 						Bucket: bucketName,
 						Key: key,
-						ContentType: "image/webp",
+						ContentType: DEFAULT_MIME_TYPE,
+						CacheControl: VARIANT_CACHE_CONTROL,
 					}),
 				);
+
+				if (!putResponse.ETag) throw new Error(`S3 returned no ETag for "${key}"`);
 
 				const imageURL = await generatePresignedUrl(bucketName, bucketRegion, key);
 
 				return {
 					variant,
 					fileName: image.fileName,
+					key,
 					imageURL,
 					size,
+					bytes: buffer.length,
 					width,
 					height,
 					ETag: putResponse.ETag,
@@ -156,4 +170,52 @@ export const uploadImages = async (
 			},
 		),
 	);
+
+/** Only "not found" means free; any other failure propagates, so a failed check never lets an upload through. */
+const manifestExists = async (
+	identity: ManifestLocation,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> => {
+	try {
+		await getRegionalClient(bucketRegion).send(
+			new HeadObjectCommand({ Bucket: bucketName, Key: manifestKey(identity) }),
+		);
+		return true;
+	} catch (error) {
+		if (error instanceof Error && error.name === "NotFound") return false;
+		throw error;
+	}
+};
+
+/** A set with variants but no manifest (every set before the backfill) is still taken. */
+export const imageSetExists = async (identity: ManifestLocation, location: BucketLocation): Promise<boolean> => {
+	if (await manifestExists(identity, location)) return true;
+
+	const { Contents } = await getRegionalClient(location.bucketRegion).send(
+		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(identity), MaxKeys: 1 }),
+	);
+	return (Contents?.length ?? 0) > 0;
+};
+
+/** Stores a manifest under its derived key in the given bucket. Create-only: resolves `false`, storing nothing, when one exists. */
+export const storeManifest = async (
+	manifest: Manifest,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> => {
+	try {
+		await getRegionalClient(bucketRegion).send(
+			new PutObjectCommand({
+				Body: JSON.stringify(manifest),
+				Bucket: bucketName,
+				Key: manifestKey(manifest),
+				ContentType: "application/json",
+				CacheControl: MANIFEST_CACHE_CONTROL,
+				IfNoneMatch: "*",
+			}),
+		);
+		return true;
+	} catch (error) {
+		if (error instanceof Error && error.name === "PreconditionFailed") return false;
+		throw error;
+	}
 };

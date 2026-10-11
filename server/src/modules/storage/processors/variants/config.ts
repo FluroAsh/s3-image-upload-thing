@@ -1,6 +1,7 @@
 import type { ImageVariant } from "~/shared/types";
 
 export const DEFAULT_FILE_TYPE = "webp";
+export const DEFAULT_MIME_TYPE = `image/${DEFAULT_FILE_TYPE}`;
 
 /** Target width in pixels per variant; null = no resize (original dimensions). */
 export const VARIANT_WIDTH = {
