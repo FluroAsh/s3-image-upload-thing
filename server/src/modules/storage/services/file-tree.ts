@@ -4,11 +4,8 @@ import type { ValidObject } from "@/shared/types/s3";
 import { readableSize } from "@/shared/utils/helpers";
 import type { TreeNode } from "~/shared/types";
 
-// ---------------------------------------------------------------------------
-// Key parsing & sorting
-// ---------------------------------------------------------------------------
+import { groupImageSets, manifestKey } from "./manifest";
 
-/** Used to parse the key of an S3 object into its segments, name, depth, isFolder, and parentId. */
 const parseKey = (key: string) => {
 	const segments = key.split("/").filter(Boolean);
 	const parentSegments = segments.slice(0, -1);
@@ -18,7 +15,6 @@ const parseKey = (key: string) => {
 		name: segments[segments.length - 1],
 		depth: segments.length - 1,
 		isFolder: key.endsWith("/"),
-		// Parent folder path, empty string for root-level nodes
 		parentId: parentSegments.length ? `${parentSegments.join("/")}/` : "",
 	};
 };
@@ -31,10 +27,6 @@ const sortNodes = (a: TreeNode, b: TreeNode): number => {
 	if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
 	return naturalSort(a.name, b.name);
 };
-
-// ---------------------------------------------------------------------------
-// Tree indexing
-// ---------------------------------------------------------------------------
 
 type TreeIndex = {
 	childrenMap: Map<string, string[]>;
@@ -64,7 +56,6 @@ const buildTreeIndex = (objects: ValidObject[]): TreeIndex => {
 		const { segments, parentId } = parseKey(obj.Key);
 		addChild(parentId, obj.Key);
 
-		// Walk ancestor segments to find folders not stored as real objects
 		for (let i = 1; i < segments.length; i++) {
 			const folderPath = `${segments.slice(0, i).join("/")}/`;
 			if (!existingKeys.has(folderPath)) {
@@ -73,7 +64,6 @@ const buildTreeIndex = (objects: ValidObject[]): TreeIndex => {
 		}
 	}
 
-	// Implied folders are also children of their parents
 	impliedFolders.forEach((folderPath) => {
 		const { parentId } = parseKey(folderPath);
 		addChild(parentId, folderPath);
@@ -81,10 +71,6 @@ const buildTreeIndex = (objects: ValidObject[]): TreeIndex => {
 
 	return { childrenMap, impliedFolders };
 };
-
-// ---------------------------------------------------------------------------
-// Node creation
-// ---------------------------------------------------------------------------
 
 const createNode = (key: string, childrenMap: Map<string, string[]>, size?: number): TreeNode => {
 	const { parentId, name, depth, isFolder } = parseKey(key);
@@ -100,16 +86,15 @@ const createNode = (key: string, childrenMap: Map<string, string[]>, size?: numb
 	};
 };
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Transforms a flat list of S3 objects into a sorted flat tree
- * with parent/child relationships and implied folder nodes.
- */
 export const constructFileTree = ({ objects }: { objects: _Object[] }): TreeNode[] => {
-	const validObjects = objects.filter((obj): obj is ValidObject => obj.Key !== undefined);
+	const keys = objects.flatMap(({ Key }) => Key ?? []);
+	// A set's manifest is not one of its images, and beside them it would stop the explorer seeing the folder as a set.
+	const setManifests = new Set(
+		groupImageSets(keys)
+			.sets.filter(({ layout }) => layout === "nested")
+			.map(manifestKey),
+	);
+	const validObjects = objects.filter((obj): obj is ValidObject => obj.Key !== undefined && !setManifests.has(obj.Key));
 
 	if (!validObjects.length) return [];
 
