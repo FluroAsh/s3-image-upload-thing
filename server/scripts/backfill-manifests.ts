@@ -1,6 +1,6 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-import { MANIFEST_PREFIX } from "@/modules/storage/services/manifest";
+import { MANIFEST_FILE_NAME } from "@/modules/storage/services/manifest";
 import {
 	type BucketLocation,
 	defaultRegion,
@@ -39,26 +39,24 @@ const listObjects = async ({ bucketName, bucketRegion }: BucketLocation, folder?
 };
 
 const main = async (): Promise<void> => {
-	const args = parseBackfillArgs(process.argv.slice(2));
-	const { bucket, pathPrefix, folder, region } = args;
-	const bucketRegion = region ?? defaultRegion;
-	const readLocation = { bucketName: bucket, bucketRegion };
+	const { bucket, folder, region, write, force } = parseBackfillArgs(process.argv.slice(2));
+	const location = { bucketName: bucket, bucketRegion: region ?? defaultRegion };
 
-	const objects = await listObjects(readLocation, folder);
+	const objects = await listObjects(location, folder);
 	const scope = `${bucket}${folder ? ` (folder ${folder})` : ""}`;
 	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
 	if (!objects.length) throw new Error(`No keys found in ${scope}; nothing was written`);
 
-	const report = buildBackfillReport(objects, { pathPrefix });
+	const report = buildBackfillReport(objects);
 	assertImageSets(report, scope);
-	const manifestRoot = `${MANIFEST_PREFIX}${pathPrefix}`;
+	const destination = `each nested set's own folder, as ${MANIFEST_FILE_NAME}`;
 
-	if (!args.write) {
+	if (!write) {
 		console.log(
 			[
 				`Backfill dry run: nothing was written`,
-				`Bucket read: ${scope}`,
-				`Manifests would go to: ${args.manifestBucket ?? "(no --manifest-bucket given)"} under ${manifestRoot}`,
+				`Bucket: ${scope}`,
+				`Manifests would go to: ${destination}`,
 				"",
 				formatBackfillReport(report),
 			].join("\n"),
@@ -66,27 +64,25 @@ const main = async (): Promise<void> => {
 		return;
 	}
 
-	const { manifestBucket, force } = args;
-	// The only bucket this run writes to, and `storeManifest` refuses any key outside manifests/.
-	const manifestLocation = { bucketName: manifestBucket, bucketRegion };
 	console.log(
 		[
-			`Backfill write run${force ? " (--force: manifests of the same set are replaced)" : ""}`,
-			`Bucket read: ${scope}, ${objects.length} keys`,
-			`Manifests go to: ${manifestBucket} under ${manifestRoot}`,
+			`Backfill write run${force ? " (--force: existing manifests are replaced)" : ""}`,
+			`Bucket: ${scope}, ${objects.length} keys`,
+			`Manifests go to: ${destination}`,
 			"Measuring every set; this downloads each object once...",
 			"",
 		].join("\n"),
 	);
 
+	// `storeManifest` is the only put this script can reach, and it refuses any key but a set folder's manifest.
 	const results = await writeManifests(
 		objects,
 		{
-			readObject: (key) => readObject(key, readLocation),
-			readManifest: (location) => readManifest(location, manifestLocation),
-			storeManifest: (manifest, options) => storeManifest(manifest, manifestLocation, options),
+			readObject: (key) => readObject(key, location),
+			readManifest: (set) => readManifest(set, location),
+			storeManifest: (manifest, options) => storeManifest(manifest, location, options),
 		},
-		{ bucket, pathPrefix, force },
+		{ force },
 		(result) => console.log(formatSetResult(result)),
 	);
 

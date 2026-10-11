@@ -39,10 +39,7 @@ const fakeS3 = () => {
 	process.env.ACCESS_KEY_ID = "test-key-id";
 	process.env.SECRET_ACCESS_KEY = "test-secret";
 
-	const defaultRespond: Respond = async ({ command, input }) => {
-		if (command === "HeadObject") throw Object.assign(new Error("Not Found"), { name: "NotFound" });
-		return { ETag: `"etag-of-${input.Key}"` };
-	};
+	const defaultRespond: Respond = async ({ input }) => ({ ETag: `"etag-of-${input.Key}"` });
 	const state = {
 		sent: [] as SentCommand[],
 		options: [] as (SendOptions | undefined)[],
@@ -59,7 +56,6 @@ const fakeS3 = () => {
 	return Object.assign(state, {
 		sdk: {
 			GetObjectCommand: commandClass("GetObject"),
-			HeadObjectCommand: commandClass("HeadObject"),
 			ListObjectsV2Command: commandClass("ListObjectsV2"),
 			PutObjectCommand: commandClass("PutObject"),
 			S3Client: class {

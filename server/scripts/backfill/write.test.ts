@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
@@ -21,7 +19,7 @@ const webp = async (width: number, height: number) =>
 		.webp()
 		.toBuffer();
 
-/** An in-memory read bucket holding `files`, and a manifest bucket that starts with `manifests`. */
+/** An in-memory bucket holding `files`, plus the `manifests` already stored in their sets' folders. */
 const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = []) => {
 	const stored = new Map(manifests.map((manifest) => [manifestKey(manifest), manifest]));
 	const read: string[] = [];
@@ -45,7 +43,7 @@ const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = []) => {
 	return { io, objects, stored, read };
 };
 
-const PRIMARY = { bucket: "example-bucket", pathPrefix: "", force: false };
+const UNFORCED = { force: false };
 
 const nestedSet = async () => ({
 	"japan-2025/kyoto/ginsui-sukiyaki-1/medium_ginsui-sukiyaki-1.webp": await webp(80, 40),
@@ -57,23 +55,21 @@ describe("writeManifests", () => {
 		const files = await nestedSet();
 		const { io, objects, stored } = buckets(files);
 
-		const results = await writeManifests(objects, io, PRIMARY);
+		const results = await writeManifests(objects, io, UNFORCED);
 
 		expect(results).toEqual([
 			{
 				layout: "nested",
 				folder: "japan-2025/kyoto",
 				name: "ginsui-sukiyaki-1",
-				manifestKey: "manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json",
+				manifestKey: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
 				outcome: "written",
 			},
 		]);
-		expect(stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")).toMatchObject({
+		expect(stored.get("japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json")).toMatchObject({
 			schema: 1,
 			name: "ginsui-sukiyaki-1",
 			folder: "japan-2025/kyoto",
-			bucket: "example-bucket",
-			pathPrefix: "",
 			layout: "nested",
 			source: null,
 			variants: {
@@ -90,31 +86,29 @@ describe("writeManifests", () => {
 		});
 	});
 
-	it("records a flat set's un-prefixed original as its public source, hashed from the bytes read", async () => {
-		const files = {
+	it("skips a flat set, which has no folder to hold a manifest, saying it needs migrating and reading none of it", async () => {
+		const { io, objects, stored, read } = buckets({
 			"DSC_1963_f6f8bf29c4.webp": await webp(200, 100),
 			"thumbnail_DSC_1963_f6f8bf29c4.webp": await webp(40, 20),
-		};
-		const { io, objects, stored } = buckets(files);
-
-		await writeManifests(objects, io, { bucket: "example-legacy-bucket", pathPrefix: "legacy/", force: false });
-
-		const manifest = stored.get("manifests/legacy/DSC_1963_f6f8bf29c4.json");
-		expect(manifest).toMatchObject({
-			bucket: "example-legacy-bucket",
-			pathPrefix: "legacy/",
-			layout: "flat",
-			folder: "",
 		});
-		expect(manifest?.source).toEqual({
-			key: "DSC_1963_f6f8bf29c4.webp",
-			public: true,
-			sha256: createHash("sha256").update(files["DSC_1963_f6f8bf29c4.webp"]).digest("hex"),
-			bytes: files["DSC_1963_f6f8bf29c4.webp"].length,
-			width: 200,
-			height: 100,
-		});
-		expect(Object.keys(manifest?.variants ?? {})).toEqual(["original", "thumbnail"]);
+
+		const results = await writeManifests(objects, io, { force: true });
+
+		expect(results).toEqual([
+			{
+				layout: "flat",
+				folder: "",
+				name: "DSC_1963_f6f8bf29c4",
+				outcome: "flat-set",
+				detail: "needs migrating into a set folder before it can have a manifest",
+			},
+		]);
+		expect(formatSetResult(results[0])).toBe(
+			"[flat-set] flat DSC_1963_f6f8bf29c4: needs migrating into a set folder before it can have a manifest",
+		);
+		expect(countFailed(results)).toBe(0);
+		expect(stored.size).toBe(0);
+		expect(read).toEqual([]);
 	});
 
 	it("uses the set's own placeholder variant as the manifest's blur, byte for byte", async () => {
@@ -125,9 +119,9 @@ describe("writeManifests", () => {
 		};
 		const { io, objects, stored } = buckets(files);
 
-		await writeManifests(objects, io, PRIMARY);
+		await writeManifests(objects, io, UNFORCED);
 
-		expect(stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")?.placeholder).toBe(
+		expect(stored.get("japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json")?.placeholder).toBe(
 			`data:image/webp;base64,${placeholder.toString("base64")}`,
 		);
 	});
@@ -135,9 +129,9 @@ describe("writeManifests", () => {
 	it("makes a 20px blur from the narrowest variant when the set has no placeholder", async () => {
 		const { io, objects, stored } = buckets(await nestedSet());
 
-		await writeManifests(objects, io, PRIMARY);
+		await writeManifests(objects, io, UNFORCED);
 
-		const { placeholder } = stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json") ?? {};
+		const { placeholder } = stored.get("japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json") ?? {};
 		const [header, base64] = (placeholder ?? "").split(",");
 		const { format, width, height } = await sharp(Buffer.from(base64 ?? "", "base64")).metadata();
 
@@ -148,63 +142,37 @@ describe("writeManifests", () => {
 	it("leaves an existing manifest alone and reads none of the set's objects", async () => {
 		const files = await nestedSet();
 		const first = buckets(files);
-		await writeManifests(first.objects, first.io, PRIMARY);
+		await writeManifests(first.objects, first.io, UNFORCED);
 		const existing = Array.from(first.stored.values());
 		const second = buckets(files, existing);
 
-		const results = await writeManifests(second.objects, second.io, PRIMARY);
+		const results = await writeManifests(second.objects, second.io, UNFORCED);
 
 		expect(results).toMatchObject([{ name: "ginsui-sukiyaki-1", outcome: "exists" }]);
 		expect(Array.from(second.stored.values())).toEqual(existing);
 		expect(second.read).toEqual([]);
 	});
 
-	it("fails a set whose manifest key holds another set's manifest, naming both, and replaces nothing even when forced", async () => {
-		const flat = { "japan-2025/kyoto/ginsui-sukiyaki-1.webp": await webp(200, 100) };
-		const first = buckets(flat);
-		await writeManifests(first.objects, first.io, PRIMARY);
-		const held = Array.from(first.stored.values());
-
-		for (const force of [false, true]) {
-			const second = buckets(await nestedSet(), held);
-
-			const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force });
-
-			expect(results).toMatchObject([
-				{
-					layout: "nested",
-					name: "ginsui-sukiyaki-1",
-					outcome: "exists-other-set",
-					detail:
-						"its manifest key is held by another set, flat japan-2025/kyoto/ginsui-sukiyaki-1 in example-bucket; not replaced",
-				},
-			]);
-			expect(countFailed(results)).toBe(1);
-			expect(Array.from(second.stored.values())).toEqual(held);
-			expect(second.read).toEqual([]);
-		}
-	});
-
-	it("fails a set whose manifest key holds the same layout in another bucket, even when forced", async () => {
+	it("does not count the manifest listed in a set's folder as one of its files: not stale, and never measured", async () => {
 		const files = await nestedSet();
 		const first = buckets(files);
-		await writeManifests(first.objects, first.io, { ...PRIMARY, bucket: "other-bucket" });
-		const held = Array.from(first.stored.values());
-		const second = buckets(files, held);
+		await writeManifests(first.objects, first.io, UNFORCED);
+		const existing = Array.from(first.stored.values());
+		const listedManifest = {
+			"japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json": Buffer.from(JSON.stringify(existing[0])),
+		};
+		const second = buckets({ ...files, ...listedManifest }, existing);
 
-		const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
-
-		expect(results).toMatchObject([
-			{ outcome: "exists-other-set", detail: expect.stringContaining("in other-bucket") },
-		]);
-		expect(Array.from(second.stored.values())).toEqual(held);
+		expect(await writeManifests(second.objects, second.io, UNFORCED)).toMatchObject([{ outcome: "exists" }]);
+		expect(await writeManifests(second.objects, second.io, { force: true })).toMatchObject([{ outcome: "written" }]);
+		expect(second.read.sort()).toEqual(Object.keys(files).sort());
 	});
 
 	describe("a set that gained or lost a variant since its manifest was written", () => {
 		const staleSetup = async () => {
 			const files = await nestedSet();
 			const first = buckets(files);
-			await writeManifests(first.objects, first.io, PRIMARY);
+			await writeManifests(first.objects, first.io, UNFORCED);
 			const { "japan-2025/kyoto/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp": removed, ...remaining } = files;
 			const held = Array.from(first.stored.values());
 
@@ -215,7 +183,7 @@ describe("writeManifests", () => {
 			const { remaining, held } = await staleSetup();
 			const second = buckets(remaining, held);
 
-			const results = await writeManifests(second.objects, second.io, PRIMARY);
+			const results = await writeManifests(second.objects, second.io, UNFORCED);
 
 			expect(results).toMatchObject([
 				{
@@ -232,11 +200,11 @@ describe("writeManifests", () => {
 			const { remaining, held } = await staleSetup();
 			const second = buckets(remaining, held);
 
-			const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
+			const results = await writeManifests(second.objects, second.io, { ...UNFORCED, force: true });
 
 			expect(results).toMatchObject([{ outcome: "written" }]);
 			expect(
-				Object.keys(second.stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")?.variants ?? {}),
+				Object.keys(second.stored.get("japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json")?.variants ?? {}),
 			).toEqual(["medium"]);
 		});
 	});
@@ -244,10 +212,10 @@ describe("writeManifests", () => {
 	it("replaces the manifest of the same set when forced", async () => {
 		const files = await nestedSet();
 		const first = buckets(files);
-		await writeManifests(first.objects, first.io, PRIMARY);
+		await writeManifests(first.objects, first.io, UNFORCED);
 		const second = buckets(files, Array.from(first.stored.values()));
 
-		const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
+		const results = await writeManifests(second.objects, second.io, { ...UNFORCED, force: true });
 
 		expect(results).toMatchObject([{ outcome: "written" }]);
 		expect(second.read).toHaveLength(2);
@@ -259,7 +227,7 @@ describe("writeManifests", () => {
 			"japan-2025/kyoto/broken/medium_broken.webp": Buffer.from("not an image"),
 		});
 
-		const results = await writeManifests(objects, io, PRIMARY);
+		const results = await writeManifests(objects, io, UNFORCED);
 
 		expect(results).toMatchObject([
 			{ name: "ginsui-sukiyaki-1", outcome: "written" },
@@ -269,7 +237,7 @@ describe("writeManifests", () => {
 				detail: expect.stringContaining('"japan-2025/kyoto/broken/medium_broken.webp": '),
 			},
 		]);
-		expect(Array.from(stored.keys())).toEqual(["manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json"]);
+		expect(Array.from(stored.keys())).toEqual(["japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json"]);
 	});
 
 	it("records the format a .webp key really holds, and says so, rather than describing a JPEG as WebP", async () => {
@@ -278,10 +246,10 @@ describe("writeManifests", () => {
 			"static/portrait/lossless_portrait.webp": await makeJpeg({ width: 300, height: 600, orientation: 6 }),
 		});
 
-		const results = await writeManifests(objects, io, PRIMARY);
+		const results = await writeManifests(objects, io, UNFORCED);
 
 		expect(results).toMatchObject([{ outcome: "written", detail: "lossless holds jpeg, not webp" }]);
-		expect(stored.get("manifests/static/portrait.json")?.variants).toMatchObject({
+		expect(stored.get("static/portrait/manifest.json")?.variants).toMatchObject({
 			medium: { format: "webp" },
 			lossless: { format: "jpeg", width: 600, height: 300 },
 		});
@@ -291,7 +259,7 @@ describe("writeManifests", () => {
 		const { io, objects, stored } = buckets(await nestedSet());
 		const stale = objects.map((object) => ({ ...object, bytes: object.bytes + 1 }));
 
-		const results = await writeManifests(stale, io, PRIMARY);
+		const results = await writeManifests(stale, io, UNFORCED);
 
 		expect(results).toMatchObject([
 			{ outcome: "unreadable-object", detail: expect.stringContaining("bytes, listed as") },
@@ -310,35 +278,12 @@ describe("writeManifests", () => {
 			return store(manifest, options);
 		};
 
-		const results = await writeManifests(objects, io, PRIMARY);
+		const results = await writeManifests(objects, io, UNFORCED);
 
 		expect(results).toMatchObject([
 			{ name: "ginsui-sukiyaki-1", outcome: "failed", detail: "Access Denied" },
 			{ name: "second", outcome: "written" },
 		]);
-	});
-
-	it("writes neither of two sets in one run that map to the same manifest key, even when forced", async () => {
-		const { io, objects, stored } = buckets({
-			...(await nestedSet()),
-			"japan-2025/kyoto/ginsui-sukiyaki-1.webp": await webp(200, 100),
-		});
-
-		const results = await writeManifests(objects, io, { ...PRIMARY, force: true });
-
-		expect(results).toMatchObject([
-			{
-				layout: "nested",
-				outcome: "collision",
-				detail: "shares its manifest key with flat japan-2025/kyoto/ginsui-sukiyaki-1",
-			},
-			{
-				layout: "flat",
-				outcome: "collision",
-				detail: "shares its manifest key with nested japan-2025/kyoto/ginsui-sukiyaki-1",
-			},
-		]);
-		expect(stored.size).toBe(0);
 	});
 
 	it("works on at most four sets at a time", async () => {
@@ -357,7 +302,7 @@ describe("writeManifests", () => {
 			return read(key);
 		};
 
-		const results = await writeManifests(objects, io, PRIMARY);
+		const results = await writeManifests(objects, io, UNFORCED);
 
 		expect(results.map(({ name, outcome }) => [name, outcome])).toEqual(names.map((name) => [name, "written"]));
 		expect(most).toBe(4);
@@ -378,7 +323,7 @@ describe("writeManifests progress", () => {
 		};
 		const finished: string[] = [];
 
-		const results = await writeManifests(objects, io, PRIMARY, ({ name }) => finished.push(name));
+		const results = await writeManifests(objects, io, UNFORCED, ({ name }) => finished.push(name));
 
 		expect(finished).toEqual(["quick", "slow"]);
 		expect(results.map(({ name }) => name)).toEqual(["slow", "quick"]);
@@ -387,11 +332,11 @@ describe("writeManifests progress", () => {
 
 describe("formatSetResult", () => {
 	it("puts the outcome, the set and its manifest key on one line, with the detail after", () => {
-		const set = { layout: "nested", folder: "trip", name: "a", manifestKey: "manifests/trip/a.json" } as const;
+		const set = { layout: "nested", folder: "trip", name: "a", manifestKey: "trip/a/manifest.json" } as const;
 
-		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] nested trip/a -> manifests/trip/a.json");
+		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] nested trip/a -> trip/a/manifest.json");
 		expect(formatSetResult({ ...set, outcome: "exists-stale", detail: "--force will refresh it" })).toBe(
-			"[exists-stale] nested trip/a -> manifests/trip/a.json: --force will refresh it",
+			"[exists-stale] nested trip/a -> trip/a/manifest.json: --force will refresh it",
 		);
 	});
 });
@@ -402,7 +347,7 @@ describe("formatWriteTotals", () => {
 			layout: "nested",
 			folder: "trip",
 			name,
-			manifestKey: `manifests/trip/${name}.json`,
+			manifestKey: `trip/${name}/manifest.json`,
 		});
 
 		const report = formatWriteTotals([
@@ -411,19 +356,18 @@ describe("formatWriteTotals", () => {
 			{ ...set("c"), outcome: "exists" },
 			{ ...set("d"), outcome: "exists-stale", detail: "--force will refresh it" },
 			{ ...set("e"), outcome: "unreadable-object", detail: '"trip/e/medium_e.webp": Access Denied' },
-			{ ...set("f"), outcome: "exists-other-set", detail: "its manifest key holds another set" },
+			{ layout: "flat", folder: "", name: "f", outcome: "flat-set" },
 		]);
 
 		expect(report).toBe(
 			[
 				"Sets found: 6",
 				"Written: 2",
-				"Skipped: 2",
+				"Skipped: 3",
 				"  exists: 1",
 				"  exists-stale: 1",
-				"Failed: 2",
-				"  exists-other-set: 1",
-				"  collision: 0",
+				"  flat-set: 1",
+				"Failed: 1",
 				"  unreadable-object: 1",
 				"  failed: 0",
 			].join("\n"),
