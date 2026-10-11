@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildBackfillReport, formatBackfillReport } from "./backfill-report";
+import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill-report";
 
 /** Gives every key its own ETag unless one is supplied, so only the ETag tests have to think about them. */
 const objects = (keys: string[], etags: Record<string, string> = {}) =>
@@ -26,6 +26,19 @@ describe("buildBackfillReport", () => {
 
 		expect(report.keyCount).toBe(8);
 		expect(report.setsByLayout).toEqual({ nested: 1, flat: 1 });
+	});
+
+	it("returns the sets it counted, with their members", () => {
+		const report = buildBackfillReport(objects([...NESTED_KEYS, "notes.txt"]), { pathPrefix: "" });
+
+		expect(report.sets).toEqual([
+			{
+				layout: "nested",
+				folder: "japan-2025/kyoto",
+				name: "ginsui-sukiyaki-1",
+				members: NESTED_KEYS.map((key) => ({ key, variant: key.split("/").pop()?.split("_")[0] })),
+			},
+		]);
 	});
 
 	it("counts sets by layout and the variant names they hold, whatever order the keys were listed in", () => {
@@ -94,10 +107,9 @@ describe("buildBackfillReport", () => {
 	it("does not treat missing ETags as a shared ETag", () => {
 		const [thumbnail, medium, large] = NESTED_KEYS;
 
-		const report = buildBackfillReport(
-			objects(NESTED_KEYS, { [thumbnail]: "", [medium]: "", [large]: '"own"' }),
-			{ pathPrefix: "" },
-		);
+		const report = buildBackfillReport(objects(NESTED_KEYS, { [thumbnail]: "", [medium]: "", [large]: '"own"' }), {
+			pathPrefix: "",
+		});
 
 		expect(report.sharedEtags).toEqual([]);
 	});
@@ -222,6 +234,22 @@ describe("formatBackfillReport", () => {
 				"  flat DSC_2361_91d38a3053: original, thumbnail",
 				'    large_DSC_2361_91d38a3053.webp is classified as original of "large_DSC_2361_91d38a3053"',
 			].join("\n"),
+		);
+	});
+});
+
+describe("assertImageSets", () => {
+	it("passes when the keys form at least one set", () => {
+		expect(() =>
+			assertImageSets(buildBackfillReport(objects(NESTED_KEYS), { pathPrefix: "" }), "example-bucket"),
+		).not.toThrow();
+	});
+
+	it("fails, naming the scope and the key count, when keys exist but none form a set", () => {
+		const report = buildBackfillReport(objects(["notes.txt", "photos/", "DSC_1.jpg"]), { pathPrefix: "" });
+
+		expect(() => assertImageSets(report, "example-bucket (folder docs)")).toThrow(
+			"No image sets in example-bucket (folder docs): its 3 keys belong to none",
 		);
 	});
 });

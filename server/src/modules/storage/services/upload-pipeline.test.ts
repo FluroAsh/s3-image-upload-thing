@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "~/shared/types";
 
-import { makeJpeg, s3 } from "../test-helpers";
+import { s3 } from "../fake-s3";
+import { makeJpeg } from "../test-helpers";
 import { runUploadPipeline } from "./upload-pipeline";
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: async () => "https://cdn.example.test/signed" }));
-vi.mock("@aws-sdk/client-s3", async () => (await import("../test-helpers")).s3.sdk);
+vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
 const puts = () => s3.sent.filter(({ command }) => command === "PutObject").map(({ input }) => input);
 

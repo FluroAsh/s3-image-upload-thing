@@ -8,8 +8,9 @@ import type { Manifest } from "~/shared/types";
 import { makeJpeg } from "../test-helpers";
 import {
 	type BackfillIo,
-	formatWriteReport,
-	parseBackfillArgs,
+	countFailed,
+	formatSetResult,
+	formatWriteTotals,
 	type SetResult,
 	writeManifests,
 } from "./backfill-write";
@@ -32,8 +33,8 @@ const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = []) => {
 			return files[key];
 		},
 		readManifest: async (location) => stored.get(manifestKey(location)) ?? null,
-		storeManifest: async (manifest, { overwrite }) => {
-			if (stored.has(manifestKey(manifest)) && !overwrite) return false;
+		storeManifest: async (manifest, { force }) => {
+			if (stored.has(manifestKey(manifest)) && !force) return false;
 			stored.set(manifestKey(manifest), manifest);
 			return true;
 		},
@@ -158,35 +159,98 @@ describe("writeManifests", () => {
 		expect(second.read).toEqual([]);
 	});
 
-	it("says so when the existing manifest describes a different set", async () => {
+	it("fails a set whose manifest key holds another set's manifest, naming both, and replaces nothing even when forced", async () => {
 		const flat = { "japan-2025/kyoto/ginsui-sukiyaki-1.webp": await webp(200, 100) };
 		const first = buckets(flat);
 		await writeManifests(first.objects, first.io, PRIMARY);
-		const second = buckets(await nestedSet(), Array.from(first.stored.values()));
+		const held = Array.from(first.stored.values());
 
-		const results = await writeManifests(second.objects, second.io, PRIMARY);
+		for (const force of [false, true]) {
+			const second = buckets(await nestedSet(), held);
 
-		expect(results).toMatchObject([
-			{
-				layout: "nested",
-				name: "ginsui-sukiyaki-1",
-				outcome: "exists-other-set",
-				detail: "existing manifest is a flat set in example-bucket with keys japan-2025/kyoto/ginsui-sukiyaki-1.webp",
-			},
-		]);
-		expect(second.stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")?.layout).toBe("flat");
+			const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force });
+
+			expect(results).toMatchObject([
+				{
+					layout: "nested",
+					name: "ginsui-sukiyaki-1",
+					outcome: "exists-other-set",
+					detail:
+						"its manifest key is held by another set, flat japan-2025/kyoto/ginsui-sukiyaki-1 in example-bucket; not replaced",
+				},
+			]);
+			expect(countFailed(results)).toBe(1);
+			expect(Array.from(second.stored.values())).toEqual(held);
+			expect(second.read).toEqual([]);
+		}
 	});
 
-	it("rewrites an existing manifest when forced", async () => {
-		const stale = { "japan-2025/kyoto/ginsui-sukiyaki-1.webp": await webp(200, 100) };
-		const first = buckets(stale);
+	it("fails a set whose manifest key holds the same layout in another bucket, even when forced", async () => {
+		const files = await nestedSet();
+		const first = buckets(files);
+		await writeManifests(first.objects, first.io, { ...PRIMARY, bucket: "other-bucket" });
+		const held = Array.from(first.stored.values());
+		const second = buckets(files, held);
+
+		const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
+
+		expect(results).toMatchObject([
+			{ outcome: "exists-other-set", detail: expect.stringContaining("in other-bucket") },
+		]);
+		expect(Array.from(second.stored.values())).toEqual(held);
+	});
+
+	describe("a set that gained or lost a variant since its manifest was written", () => {
+		const staleSetup = async () => {
+			const files = await nestedSet();
+			const first = buckets(files);
+			await writeManifests(first.objects, first.io, PRIMARY);
+			const { "japan-2025/kyoto/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp": removed, ...remaining } = files;
+			const held = Array.from(first.stored.values());
+
+			return { remaining, held, removed };
+		};
+
+		it("is skipped as stale, not failed, and says --force will refresh it", async () => {
+			const { remaining, held } = await staleSetup();
+			const second = buckets(remaining, held);
+
+			const results = await writeManifests(second.objects, second.io, PRIMARY);
+
+			expect(results).toMatchObject([
+				{
+					outcome: "exists-stale",
+					detail: expect.stringMatching(/removed: .*large_ginsui-sukiyaki-1\.webp.*--force will refresh it/),
+				},
+			]);
+			expect(countFailed(results)).toBe(0);
+			expect(Array.from(second.stored.values())).toEqual(held);
+			expect(second.read).toEqual([]);
+		});
+
+		it("is rewritten without the removed variant when forced", async () => {
+			const { remaining, held } = await staleSetup();
+			const second = buckets(remaining, held);
+
+			const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
+
+			expect(results).toMatchObject([{ outcome: "written" }]);
+			expect(
+				Object.keys(second.stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")?.variants ?? {}),
+			).toEqual(["medium"]);
+		});
+	});
+
+	it("replaces the manifest of the same set when forced", async () => {
+		const files = await nestedSet();
+		const first = buckets(files);
 		await writeManifests(first.objects, first.io, PRIMARY);
-		const second = buckets(await nestedSet(), Array.from(first.stored.values()));
+		const second = buckets(files, Array.from(first.stored.values()));
 
 		const results = await writeManifests(second.objects, second.io, { ...PRIMARY, force: true });
 
 		expect(results).toMatchObject([{ outcome: "written" }]);
-		expect(second.stored.get("manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json")?.layout).toBe("nested");
+		expect(second.read).toHaveLength(2);
 	});
 
 	it("reports a set with an object it cannot read and still writes the others", async () => {
@@ -300,8 +364,40 @@ describe("writeManifests", () => {
 	});
 });
 
-describe("formatWriteReport", () => {
-	it("lists every set with what happened to it, then totals by outcome", () => {
+describe("writeManifests progress", () => {
+	it("reports each set to onResult as it finishes, while the results keep listing order", async () => {
+		const image = await webp(80, 40);
+		const { io, objects } = buckets({
+			"trip/slow/medium_slow.webp": image,
+			"trip/quick/medium_quick.webp": image,
+		});
+		const read = io.readObject;
+		io.readObject = async (key) => {
+			if (key.includes("slow")) await new Promise((resolve) => setTimeout(resolve, 20));
+			return read(key);
+		};
+		const finished: string[] = [];
+
+		const results = await writeManifests(objects, io, PRIMARY, ({ name }) => finished.push(name));
+
+		expect(finished).toEqual(["quick", "slow"]);
+		expect(results.map(({ name }) => name)).toEqual(["slow", "quick"]);
+	});
+});
+
+describe("formatSetResult", () => {
+	it("puts the outcome, the set and its manifest key on one line, with the detail after", () => {
+		const set = { layout: "nested", folder: "trip", name: "a", manifestKey: "manifests/trip/a.json" } as const;
+
+		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] nested trip/a -> manifests/trip/a.json");
+		expect(formatSetResult({ ...set, outcome: "exists-stale", detail: "--force will refresh it" })).toBe(
+			"[exists-stale] nested trip/a -> manifests/trip/a.json: --force will refresh it",
+		);
+	});
+});
+
+describe("formatWriteTotals", () => {
+	it("counts the sets by outcome, skipped and failed separately", () => {
 		const set = (name: string): Pick<SetResult, "layout" | "folder" | "name" | "manifestKey"> => ({
 			layout: "nested",
 			folder: "trip",
@@ -309,91 +405,28 @@ describe("formatWriteReport", () => {
 			manifestKey: `manifests/trip/${name}.json`,
 		});
 
-		const report = formatWriteReport([
+		const report = formatWriteTotals([
 			{ ...set("a"), outcome: "written" },
 			{ ...set("b"), outcome: "written" },
 			{ ...set("c"), outcome: "exists" },
-			{ ...set("d"), outcome: "exists-other-set", detail: "existing manifest is a flat set" },
+			{ ...set("d"), outcome: "exists-stale", detail: "--force will refresh it" },
 			{ ...set("e"), outcome: "unreadable-object", detail: '"trip/e/medium_e.webp": Access Denied' },
+			{ ...set("f"), outcome: "exists-other-set", detail: "its manifest key holds another set" },
 		]);
 
 		expect(report).toBe(
 			[
-				"[written] nested trip/a -> manifests/trip/a.json",
-				"[written] nested trip/b -> manifests/trip/b.json",
-				"[exists] nested trip/c -> manifests/trip/c.json",
-				"[exists-other-set] nested trip/d -> manifests/trip/d.json: existing manifest is a flat set",
-				'[unreadable-object] nested trip/e -> manifests/trip/e.json: "trip/e/medium_e.webp": Access Denied',
-				"",
-				"Sets found: 5",
+				"Sets found: 6",
 				"Written: 2",
 				"Skipped: 2",
 				"  exists: 1",
+				"  exists-stale: 1",
+				"Failed: 2",
 				"  exists-other-set: 1",
-				"Failed: 1",
 				"  collision: 0",
 				"  unreadable-object: 1",
 				"  failed: 0",
 			].join("\n"),
 		);
-	});
-});
-
-describe("parseBackfillArgs", () => {
-	it("reads a dry run of one folder, without the folder's trailing slash", () => {
-		expect(parseBackfillArgs(["--bucket", "example-bucket", "--prefix", "japan-2025/"])).toEqual({
-			bucket: "example-bucket",
-			manifestBucket: undefined,
-			pathPrefix: "",
-			folder: "japan-2025",
-			region: undefined,
-			write: false,
-			force: false,
-		});
-	});
-
-	it("reads a forced write run for the second bucket", () => {
-		expect(
-			parseBackfillArgs([
-				"--bucket",
-				"example-legacy-bucket",
-				"--manifest-bucket",
-				"example-bucket",
-				"--path-prefix",
-				"legacy/",
-				"--region",
-				"ap-southeast-2",
-				"--write",
-				"--force",
-			]),
-		).toEqual({
-			bucket: "example-legacy-bucket",
-			manifestBucket: "example-bucket",
-			pathPrefix: "legacy/",
-			folder: undefined,
-			region: "ap-southeast-2",
-			write: true,
-			force: true,
-		});
-	});
-
-	it("accepts an explicitly empty path prefix for a write run", () => {
-		const args = ["--bucket", "example-bucket", "--manifest-bucket", "example-bucket", "--write", "--path-prefix", ""];
-
-		expect(parseBackfillArgs(args)).toMatchObject({ write: true, pathPrefix: "" });
-	});
-
-	it.each([
-		[["--prefix", "japan-2025"], "--bucket is required"],
-		[["--bucket", "example-bucket", "--prefix", "/"], "--prefix must name a folder"],
-		[["--bucket", "example-bucket", "--prefix", ""], "--prefix must name a folder"],
-		[["--bucket", "example-bucket", "--prefix", "/japan-2025"], "--prefix must name a folder"],
-		[["--bucket", "example-bucket", "--path-prefix", "legacy"], 'pathPrefix "legacy" must end with "/"'],
-		[["--bucket", "example-bucket", "--write", "--path-prefix", ""], "--write needs --manifest-bucket"],
-		[["--bucket", "example-bucket", "--write", "--manifest-bucket", "example-bucket"], "--write needs --path-prefix"],
-		[["--bucket", "example-bucket", "--force"], "--force only applies with --write"],
-		[["--bucket", "example-bucket", "--writ"], "Unknown option '--writ'"],
-	])("rejects %j: %s", (argv, message) => {
-		expect(() => parseBackfillArgs(argv)).toThrow(message);
 	});
 });

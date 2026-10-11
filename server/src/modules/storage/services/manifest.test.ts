@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	assertManifestKey,
+	assertPathPrefix,
 	buildManifest,
 	classifyKey,
 	groupImageSets,
@@ -233,6 +234,29 @@ describe("manifestKey", () => {
 
 	it("rejects a path prefix that does not end with a slash", () => {
 		expect(() => manifestKey({ pathPrefix: "legacy", folder: "", name: FLAT_NAME })).toThrow();
+	});
+});
+
+describe("assertPathPrefix", () => {
+	it.each(["", "legacy/", "legacy/2020/"])("accepts %j", (pathPrefix) => {
+		expect(() => assertPathPrefix(pathPrefix)).not.toThrow();
+	});
+
+	it.each([
+		"/",
+		"/legacy/",
+		"legacy",
+		"legacy//",
+		"a//b/",
+		"./",
+		"../",
+		"legacy/../",
+		"legacy/./",
+		"my legacy/",
+		" /",
+		"legacy/\t",
+	])("rejects %j", (pathPrefix) => {
+		expect(() => assertPathPrefix(pathPrefix)).toThrow("pathPrefix");
 	});
 });
 

@@ -192,29 +192,56 @@ export const imageSetExists = async (identity: ManifestLocation, location: Bucke
 };
 
 export type StoreManifestOptions = {
-	/** Replace a manifest that already exists instead of leaving it. */
-	overwrite: boolean;
+	/** Replace a manifest already stored at the key instead of leaving it; the caller decides which ones may be replaced. */
+	force: boolean;
 };
 
-/** Stores a manifest under its derived key in the given bucket. Create-only unless told to overwrite: resolves `false`, storing nothing, when one exists. */
+/** Long enough for a full-size original on a slow link, short enough that a stalled connection fails its set rather than hanging the run. */
+const REQUEST_TIMEOUT_MS = 60_000;
+
+/** Gives one request, body included, a fresh deadline. The abort signal alone does not stop a body that stalls mid-read, and the SDK's abort error does not say why it stopped. */
+export const withDeadline = async <Result>(
+	request: (options: { abortSignal: AbortSignal }) => Promise<Result>,
+): Promise<Result> => {
+	const abortSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+	const timedOut = new Error(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+	let onAbort = () => {};
+	const deadline = new Promise<never>((_, reject) => {
+		onAbort = () => reject(timedOut);
+		abortSignal.addEventListener("abort", onAbort, { once: true });
+	});
+
+	try {
+		return await Promise.race([request({ abortSignal }), deadline]);
+	} catch (error) {
+		throw abortSignal.aborted ? timedOut : error;
+	} finally {
+		abortSignal.removeEventListener("abort", onAbort);
+	}
+};
+
+/** Resolves `false`, storing nothing, when a manifest exists and `force` is off, so "already there" is not mistaken for a failure. */
 export const storeManifest = async (
 	manifest: Manifest,
 	{ bucketName, bucketRegion }: BucketLocation,
-	{ overwrite }: StoreManifestOptions = { overwrite: false },
+	{ force }: StoreManifestOptions = { force: false },
 ): Promise<boolean> => {
 	const key = manifestKey(manifest);
 	assertManifestKey(key);
 
 	try {
-		await getRegionalClient(bucketRegion).send(
-			new PutObjectCommand({
-				Body: JSON.stringify(manifest),
-				Bucket: bucketName,
-				Key: key,
-				ContentType: "application/json",
-				CacheControl: MANIFEST_CACHE_CONTROL,
-				IfNoneMatch: overwrite ? undefined : "*",
-			}),
+		await withDeadline((options) =>
+			getRegionalClient(bucketRegion).send(
+				new PutObjectCommand({
+					Body: JSON.stringify(manifest),
+					Bucket: bucketName,
+					Key: key,
+					ContentType: "application/json",
+					CacheControl: MANIFEST_CACHE_CONTROL,
+					IfNoneMatch: force ? undefined : "*",
+				}),
+				options,
+			),
 		);
 		return true;
 	} catch (error) {
@@ -223,23 +250,21 @@ export const storeManifest = async (
 	}
 };
 
-export const readObject = async (key: string, { bucketName, bucketRegion }: BucketLocation): Promise<Buffer> => {
-	const { Body } = await getRegionalClient(bucketRegion).send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
-	if (!Body) throw new Error(`S3 returned no content for "${key}"`);
+export const readObject = (key: string, { bucketName, bucketRegion }: BucketLocation): Promise<Buffer> =>
+	withDeadline(async (options) => {
+		const { Body } = await getRegionalClient(bucketRegion).send(
+			new GetObjectCommand({ Bucket: bucketName, Key: key }),
+			options,
+		);
+		if (!Body) throw new Error(`S3 returned no content for "${key}"`);
 
-	return Buffer.from(await Body.transformToByteArray());
-};
+		return Buffer.from(await Body.transformToByteArray());
+	});
 
 /** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. */
-export const readManifest = async (
-	identity: ManifestLocation,
-	{ bucketName, bucketRegion }: BucketLocation,
-): Promise<Manifest | null> => {
+export const readManifest = async (identity: ManifestLocation, location: BucketLocation): Promise<Manifest | null> => {
 	try {
-		const { Body } = await getRegionalClient(bucketRegion).send(
-			new GetObjectCommand({ Bucket: bucketName, Key: manifestKey(identity) }),
-		);
-		return Body ? JSON.parse(await Body.transformToString()) : null;
+		return JSON.parse((await readObject(manifestKey(identity), location)).toString("utf8"));
 	} catch (error) {
 		if (isS3Error(error, "NoSuchKey")) return null;
 		throw error;

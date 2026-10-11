@@ -57,7 +57,7 @@ type BuildManifestParams = Pick<Manifest, "bucket" | "pathPrefix" | "createdAt" 
 };
 
 /** Key prefix every manifest is stored under. */
-const MANIFEST_PREFIX = "manifests/";
+export const MANIFEST_PREFIX = "manifests/";
 /** Where only the service writes, so the classifier never mistakes its objects for image sets. */
 const SERVICE_PREFIXES = [MANIFEST_PREFIX, "src/"] as const;
 /** The service prefixes plus `legacy/`, where the CDN publishes the second bucket, so an upload there would collide in URLs. */
@@ -67,8 +67,15 @@ export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
 export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
 
+/** Empty, or clean segments each followed by one slash; it is spliced into a key, so `.`, `..` and `//` would escape its place. */
+const PATH_PREFIX = /^(?:(?!\.\.?\/)[^/\s]+\/)*$/;
+
 export const assertPathPrefix = (pathPrefix: string): void => {
-	if (pathPrefix && !pathPrefix.endsWith("/")) throw new Error(`pathPrefix "${pathPrefix}" must end with "/"`);
+	if (!PATH_PREFIX.test(pathPrefix)) {
+		throw new Error(
+			`pathPrefix "${pathPrefix}" must be empty or segments each ending in "/", e.g. "legacy/", with no ".", ".." or whitespace`,
+		);
+	}
 };
 
 export const hasRefusedUploadPrefix = (key: string): boolean =>
