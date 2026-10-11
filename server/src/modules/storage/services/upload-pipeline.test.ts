@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { makeJpeg } from "../test-support";
+import { makeJpeg } from "../test-helpers";
 import { runUploadPipeline } from "./upload-pipeline";
 
 const { storedKeys } = vi.hoisted(() => {
