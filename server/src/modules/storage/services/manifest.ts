@@ -8,7 +8,14 @@ type ClassifiedKey = Pick<Manifest, "layout" | "folder" | "name"> & {
 };
 
 /** Why a bucket key is not part of any image set. */
-type SkipReason = "reserved-prefix" | "folder-marker" | "not-webp" | "empty-name";
+export const SKIP_REASON = {
+	RESERVED_PREFIX: "reserved-prefix",
+	FOLDER_MARKER: "folder-marker",
+	NOT_WEBP: "not-webp",
+	EMPTY_NAME: "empty-name",
+} as const;
+
+type SkipReason = (typeof SKIP_REASON)[keyof typeof SKIP_REASON];
 
 type ClassifyResult =
 	| {
@@ -62,14 +69,14 @@ const assertPathPrefix = (pathPrefix: string): void => {
  * A flat file's text before its first underscore is a variant prefix only if the rest of the name exists beside it.
  */
 export const classifyKey = (key: string, siblings: ReadonlySet<string>): ClassifyResult => {
-	if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) return { skip: "reserved-prefix" };
-	if (key.endsWith("/")) return { skip: "folder-marker" };
-	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
+	if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) return { skip: SKIP_REASON.RESERVED_PREFIX };
+	if (key.endsWith("/")) return { skip: SKIP_REASON.FOLDER_MARKER };
+	if (!key.endsWith(EXTENSION)) return { skip: SKIP_REASON.NOT_WEBP };
 
 	const segments = key.split("/");
 	const stem = segments[segments.length - 1].slice(0, -EXTENSION.length);
 	const parent: string | undefined = segments[segments.length - 2];
-	if (!stem) return { skip: "empty-name" };
+	if (!stem) return { skip: SKIP_REASON.EMPTY_NAME };
 
 	if (parent && stem === parent) {
 		return { member: { layout: "nested", folder: segments.slice(0, -2).join("/"), name: parent, variant: "original" } };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildManifest, classifyKey, groupImageSets, manifestKey } from "./manifest";
+import { buildManifest, classifyKey, groupImageSets, manifestKey, SKIP_REASON } from "./manifest";
 
 const NESTED_KEYS = [
 	"japan-2025/kyoto/ginsui-sukiyaki-1/thumbnail_ginsui-sukiyaki-1.webp",
@@ -110,11 +110,11 @@ describe("classifyKey", () => {
 	it("skips keys that are not webp, such as a video or a PNG", () => {
 		const keys = ["japan-2025/raw-video/day-1-snow.mp4", "main-profle-image.png"];
 
-		expect(classifyAll(keys)).toEqual([{ skip: "not-webp" }, { skip: "not-webp" }]);
+		expect(classifyAll(keys)).toEqual([{ skip: SKIP_REASON.NOT_WEBP }, { skip: SKIP_REASON.NOT_WEBP }]);
 	});
 
 	it("skips a folder marker", () => {
-		expect(classifyAll(["japan-2025/"])).toEqual([{ skip: "folder-marker" }]);
+		expect(classifyAll(["japan-2025/"])).toEqual([{ skip: SKIP_REASON.FOLDER_MARKER }]);
 	});
 
 	it("skips keys under the reserved manifests/ and src/ prefixes", () => {
@@ -125,9 +125,9 @@ describe("classifyKey", () => {
 		];
 
 		expect(classifyAll(keys)).toEqual([
-			{ skip: "reserved-prefix" },
-			{ skip: "reserved-prefix" },
-			{ skip: "reserved-prefix" },
+			{ skip: SKIP_REASON.RESERVED_PREFIX },
+			{ skip: SKIP_REASON.RESERVED_PREFIX },
+			{ skip: SKIP_REASON.RESERVED_PREFIX },
 		]);
 	});
 });
@@ -163,8 +163,8 @@ describe("groupImageSets", () => {
 			},
 		]);
 		expect(skipped).toEqual([
-			{ key: skippedKey, reason: "not-webp" },
-			{ key: "japan-2025/", reason: "folder-marker" },
+			{ key: skippedKey, reason: SKIP_REASON.NOT_WEBP },
+			{ key: "japan-2025/", reason: SKIP_REASON.FOLDER_MARKER },
 		]);
 	});
 
