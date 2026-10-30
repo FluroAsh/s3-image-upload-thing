@@ -6,6 +6,8 @@ import {
 	classifyKey,
 	groupImageSets,
 	hasRefusedUploadPrefix,
+	isManifest,
+	isSetManifest,
 	manifestKey,
 	setKeyPrefix,
 	uploadSetIdentity,
@@ -126,10 +128,33 @@ describe("classifyKey", () => {
 		expect(classifyAll(["japan-2025/"])).toEqual([{ skip: "folder-marker" }]);
 	});
 
-	it("gives manifest.json inside a set folder its own skip reason, so it is never an image or a member", () => {
-		const keys = [...NESTED_KEYS, "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json", "buff-rick/manifest.json"];
+	it("gives manifest.json beside a set's images its own skip reason, so it is never an image or a member", () => {
+		const keys = [
+			...NESTED_KEYS,
+			"japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
+			"buff-rick/large_buff-rick.webp",
+			"buff-rick/manifest.json",
+		];
 
-		expect(classifyAll(keys).slice(NESTED_KEYS.length)).toEqual([{ skip: "set-manifest" }, { skip: "set-manifest" }]);
+		expect(classifyAll(keys).filter((result) => "skip" in result)).toEqual([
+			{ skip: "set-manifest" },
+			{ skip: "set-manifest" },
+		]);
+	});
+
+	it("treats manifest.json as any other non-image when no image of its folder's set sits beside it", () => {
+		const keys = [
+			"data/manifest.json",
+			"data/large_other.webp",
+			"trip/manifest.json",
+			"trip/beach.webp",
+			"trip/small_beach.webp",
+		];
+
+		expect(classifyAll(keys).filter((result) => "skip" in result)).toEqual([
+			{ skip: "not-webp" },
+			{ skip: "not-webp" },
+		]);
 	});
 
 	it("treats manifest.json at the bucket root, which no set folder holds, as any other non-image", () => {
@@ -142,7 +167,7 @@ describe("classifyKey", () => {
 		expect(classifyAll(keys)).toEqual([{ skip: "reserved-prefix" }, { skip: "reserved-prefix" }]);
 	});
 
-	it("classifies keys under manifests/ like any other folder, now that nothing is stored there", () => {
+	it("classifies keys under manifests/ like any other folder", () => {
 		expect(classifyAll(["manifests/trip/large_trip.webp"])).toEqual([
 			{ member: { layout: "nested", folder: "manifests", name: "trip", variant: "large" } },
 		]);
@@ -154,6 +179,47 @@ describe("classifyKey", () => {
 		expect(classifyAll(keys)).toEqual([
 			{ member: { layout: "nested", folder: "legacy", name: "ginsui-sukiyaki-1", variant: "large" } },
 		]);
+	});
+});
+
+describe("isSetManifest", () => {
+	it("is true only for a manifest.json with an image of its own set beside it", () => {
+		const siblings = new Set(["a/b/large_b.webp", "a/c/c.webp", "a/d/large_other.webp"]);
+
+		expect(isSetManifest("a/b/manifest.json", siblings)).toBe(true);
+		expect(isSetManifest("a/c/manifest.json", siblings)).toBe(true);
+		expect(isSetManifest("a/d/manifest.json", siblings)).toBe(false);
+		expect(isSetManifest("a/b/large_b.webp", siblings)).toBe(false);
+		expect(isSetManifest("manifest.json", siblings)).toBe(false);
+	});
+
+	it("does not take an image of another folder for the set's", () => {
+		expect(isSetManifest("a/b/manifest.json", new Set(["x/a/b/large_b.webp", "a/b/c/large_b.webp"]))).toBe(false);
+	});
+});
+
+describe("isManifest", () => {
+	it("accepts a manifest this service built", () => {
+		expect(
+			isManifest(
+				buildManifest({
+					createdAt: "t",
+					placeholder: null,
+					objects: [{ key: NESTED_KEYS[0], width: 1, height: 1, bytes: 1, etag: '"e"' }],
+				}),
+			),
+		).toBe(true);
+	});
+
+	it.each([
+		["a JSON object of another app", { name: "web app" }],
+		["a different schema", { schema: 2, variants: {} }],
+		["variants that are not an object", { schema: 1, variants: [] }],
+		["null variants", { schema: 1, variants: null }],
+		["a string", "manifest"],
+		["null", null],
+	])("refuses %s", (_label, value) => {
+		expect(isManifest(value)).toBe(false);
 	});
 });
 
@@ -249,29 +315,18 @@ describe("buildManifest", () => {
 			height: 100 + index,
 			bytes: 1000 + index,
 			etag: `"etag-${index}"`,
-			sha256: index === 0 ? "0".repeat(64) : undefined,
 		}));
 
 	const build = (keys: string[], overrides: Partial<Parameters<typeof buildManifest>[0]> = {}) =>
 		buildManifest({
 			createdAt: "2026-10-10T03:12:45Z",
 			placeholder: null,
-			source: null,
 			objects: measured(keys, 120),
 			...overrides,
 		});
 
 	it("records every variant of a nested set under the name its key uses", () => {
-		const source = {
-			key: "src/ginsui-sukiyaki-1.jpg",
-			public: false,
-			sha256: "1".repeat(64),
-			bytes: 9,
-			width: 8,
-			height: 7,
-		};
-
-		expect(build(NESTED_KEYS, { source })).toEqual({
+		expect(build(NESTED_KEYS)).toEqual({
 			schema: 1,
 			name: "ginsui-sukiyaki-1",
 			folder: "japan-2025/kyoto",
@@ -279,7 +334,7 @@ describe("buildManifest", () => {
 			status: "ready",
 			createdAt: "2026-10-10T03:12:45Z",
 			placeholder: null,
-			source,
+			source: null,
 			variants: {
 				thumbnail: {
 					key: NESTED_KEYS[0],
@@ -295,27 +350,8 @@ describe("buildManifest", () => {
 		});
 	});
 
-	it("derives a flat set's source from its original", () => {
-		const manifest = build(FLAT_KEYS, {
-			placeholder: "data:image/webp;base64,AAAA",
-			source: { key: "ignored", public: false, sha256: "f".repeat(64), bytes: 1, width: 1, height: 1 },
-		});
-
-		expect(manifest).toMatchObject({
-			name: FLAT_NAME,
-			folder: "",
-			layout: "flat",
-			placeholder: "data:image/webp;base64,AAAA",
-			source: { key: FLAT_KEYS[0], public: true, sha256: "0".repeat(64), bytes: 1000, width: 120, height: 100 },
-		});
-		expect(Object.keys(manifest.variants)).toEqual(["original", "thumbnail", "small", "medium", "large"]);
-		expect(manifest.variants.small.key).toBe(`small_${FLAT_NAME}.webp`);
-	});
-
-	it("refuses a flat set whose original has no sha256", () => {
-		const objects = measured(FLAT_KEYS, 120).map((object) => ({ ...object, sha256: undefined }));
-
-		expect(() => build(FLAT_KEYS, { objects })).toThrow(/sha256/);
+	it("refuses a flat set, which has no folder to hold a manifest", () => {
+		expect(() => build(FLAT_KEYS)).toThrow(`Cannot build a manifest for flat set "${FLAT_NAME}"`);
 	});
 
 	it("refuses objects that do not form exactly one image set", () => {
@@ -326,7 +362,12 @@ describe("buildManifest", () => {
 });
 
 describe("assertManifestKey", () => {
-	it.each(["japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json", "buff-rick/manifest.json"])("accepts %s", (key) => {
+	it.each([
+		"japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
+		"buff-rick/manifest.json",
+		"a/manifest.json",
+		"a/b/manifest.json",
+	])("accepts %s", (key) => {
 		expect(() => assertManifestKey(key)).not.toThrow();
 	});
 
@@ -340,8 +381,13 @@ describe("assertManifestKey", () => {
 		"manifest.json",
 		"/manifest.json",
 		"src/photo/manifest.json",
+		"src/x/manifest.json",
+		"a//manifest.json",
+		"a/b/manifest.json/",
+		"a/Manifest.json",
+		"a/manifest.jsonx",
 		"",
-	])("refuses '%s', which is not manifest.json inside a set folder", (key) => {
+	])("refuses '%s', which is not manifest.json inside a folder", (key) => {
 		expect(() => assertManifestKey(key)).toThrow(
 			`Refusing to write "${key}": a manifest is only stored as manifest.json inside its set's folder`,
 		);

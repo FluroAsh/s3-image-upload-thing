@@ -15,6 +15,17 @@ describe("constructFileTree", () => {
 		expect(nodes.find(({ id }) => id === "trip/photo/")).toMatchObject({ isFolder: true, childCount: 2 });
 	});
 
+	it("keeps a manifest.json that only sits beside a loose image whose name is not the folder's", () => {
+		const keys = ["trip/beach.webp", "trip/manifest.json"];
+
+		expect(
+			tree(keys)
+				.filter(({ isFolder }) => !isFolder)
+				.map(({ id }) => id)
+				.sort(),
+		).toEqual(keys);
+	});
+
 	it("keeps every other .json file, including a manifest.json in a folder that holds no image set", () => {
 		const keys = [
 			"manifest.json",

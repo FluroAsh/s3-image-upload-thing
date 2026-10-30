@@ -7,7 +7,14 @@ import { TIME } from "~/shared/constants/time";
 import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
-import { assertManifestKey, type ManifestLocation, manifestKey, setKeyPrefix } from "./manifest";
+import {
+	assertManifestKey,
+	isManifest,
+	manifestKey,
+	type NestedSetIdentity,
+	NotAManifestError,
+	setKeyPrefix,
+} from "./manifest";
 
 if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 	throw new Error(
@@ -120,13 +127,13 @@ export type BucketLocation = {
 
 export const uploadImages = async (
 	image: ImageVariants,
-	identity: ManifestLocation,
+	set: NestedSetIdentity,
 	{ bucketName, bucketRegion }: BucketLocation,
 ): Promise<FileVariant[]> =>
 	Promise.all(
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
-				const key = `${setKeyPrefix(identity)}${variant}_${identity.name}.${DEFAULT_FILE_TYPE}`;
+				const key = `${setKeyPrefix(set)}${variant}_${set.name}.${DEFAULT_FILE_TYPE}`;
 
 				const putResponse = await getRegionalClient(bucketRegion).send(
 					new PutObjectCommand({
@@ -159,16 +166,16 @@ export const uploadImages = async (
 
 const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
 
-/** Anything under the set's folder takes the name: its manifest, or variants stored before manifests were written. A failed listing propagates, so it never lets an upload through. */
-export const imageSetExists = async (identity: ManifestLocation, location: BucketLocation): Promise<boolean> => {
+/** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
+export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {
 	const { Contents } = await getRegionalClient(location.bucketRegion).send(
-		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(identity), MaxKeys: 1 }),
+		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
 	);
 	return (Contents?.length ?? 0) > 0;
 };
 
 export type StoreManifestOptions = {
-	/** Replace a manifest already stored at the key instead of leaving it; the caller decides which ones may be replaced. */
+	/** Replace a manifest already stored at the key; without it, an existing one is left and the store resolves `false`. */
 	force: boolean;
 };
 
@@ -237,12 +244,19 @@ export const readObject = (key: string, { bucketName, bucketRegion }: BucketLoca
 		return Buffer.from(await Body.transformToByteArray());
 	});
 
-/** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. */
-export const readManifest = async (identity: ManifestLocation, location: BucketLocation): Promise<Manifest | null> => {
+/** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. Throws `NotAManifestError` for any other file at the key. */
+export const readManifest = async (set: NestedSetIdentity, location: BucketLocation): Promise<Manifest | null> => {
+	const key = manifestKey(set);
+	let stored: unknown;
+
 	try {
-		return JSON.parse((await readObject(manifestKey(identity), location)).toString("utf8"));
+		stored = JSON.parse((await readObject(key, location)).toString("utf8"));
 	} catch (error) {
 		if (isS3Error(error, "NoSuchKey")) return null;
+		if (error instanceof SyntaxError) throw new NotAManifestError(key);
 		throw error;
 	}
+
+	if (!isManifest(stored)) throw new NotAManifestError(key);
+	return stored;
 };

@@ -5,9 +5,11 @@ import { encodeVariant } from "@/modules/storage/processors/variants/processor";
 import {
 	buildManifest,
 	groupImageSets,
+	holdsManifest,
 	type ImageSet,
-	type ManifestLocation,
 	manifestKey,
+	type NestedSetIdentity,
+	NotAManifestError,
 	placeholderDataUri,
 	type SetIdentity,
 } from "@/modules/storage/services/manifest";
@@ -26,8 +28,8 @@ export type ListedObject = BucketObject & {
 export type BackfillIo = {
 	/** Downloads one object of the bucket whole. */
 	readObject: (key: string) => Promise<Buffer>;
-	/** Reads the manifest stored in a set's folder; `null` when there is none. */
-	readManifest: (location: ManifestLocation) => Promise<Manifest | null>;
+	/** Reads the manifest stored in a set's folder; `null` when there is none, and throws `NotAManifestError` for any other file there. */
+	readManifest: (set: NestedSetIdentity) => Promise<Manifest | null>;
 	/** Stores a manifest in its set's folder; resolves `false`, storing nothing, when one exists and `force` is off. */
 	storeManifest: (manifest: Manifest, options: StoreManifestOptions) => Promise<boolean>;
 };
@@ -36,7 +38,7 @@ export type BackfillIo = {
 const SKIPPED_OUTCOMES = ["exists", "exists-stale", "flat-set"] as const;
 
 /** Outcomes that mean a set should have a manifest and has none, which make the run exit non-zero. */
-const FAILED_OUTCOMES = ["unreadable-object", "failed"] as const;
+const FAILED_OUTCOMES = ["unreadable-object", "not-a-manifest", "failed"] as const;
 
 /** What can happen to one image set in a write run. */
 export const SET_OUTCOMES = ["written", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES] as const;
@@ -99,10 +101,16 @@ const backfillSet = async (
 	io: BackfillIo,
 	{ force }: StoreManifestOptions,
 ): Promise<OutcomeWithDetail> => {
-	if (set.layout === "flat") return { outcome: "flat-set", detail: FLAT_SET_NOTE };
+	if (!holdsManifest(set)) return { outcome: "flat-set", detail: FLAT_SET_NOTE };
 
-	const existing = force ? null : await io.readManifest(set);
-	if (existing) return judgeExisting(existing, set);
+	let existing: Manifest | null;
+	try {
+		existing = await io.readManifest(set);
+	} catch (error) {
+		if (error instanceof NotAManifestError) return { outcome: "not-a-manifest", detail: error.message };
+		throw error;
+	}
+	if (existing && !force) return judgeExisting(existing, set);
 
 	let objects: Awaited<ReturnType<typeof measureObject>>[];
 	let placeholder: Buffer;
@@ -118,7 +126,6 @@ const backfillSet = async (
 	const manifest = buildManifest({
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderDataUri(placeholder),
-		source: null,
 		objects,
 	});
 	if (await io.storeManifest(manifest, { force })) {
@@ -169,7 +176,7 @@ export const writeManifests = async (
 		const verdict = await backfillSet(set, listed, io, options).catch(
 			(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
 		);
-		const result = { ...identity, ...(set.layout === "nested" && { manifestKey: manifestKey(set) }), ...verdict };
+		const result = { ...identity, ...(holdsManifest(set) && { manifestKey: manifestKey(set) }), ...verdict };
 		onResult?.(result);
 
 		return result;
@@ -182,7 +189,7 @@ const countOutcomes = (results: readonly SetResult[], outcomes: readonly SetOutc
 export const countFailed = (results: readonly SetResult[]): number => countOutcomes(results, FAILED_OUTCOMES);
 
 export const formatSetResult = ({ outcome, detail, manifestKey: target, ...identity }: SetResult): string =>
-	`[${outcome}] ${setLabel(identity)}${target ? ` -> ${target}` : ""}${detail ? `: ${detail}` : ""}`;
+	`[${outcome}] ${setLabel(identity)}${detail ? `: ${detail}` : ""}${target ? ` -> ${target}` : ""}`;
 
 export const formatWriteTotals = (results: readonly SetResult[]): string => {
 	const perOutcome = (outcomes: readonly SetOutcome[]) =>

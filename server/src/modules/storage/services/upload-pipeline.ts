@@ -5,7 +5,7 @@ import { createImageVariants, prepareImages } from "./image-processing";
 import {
 	buildManifest,
 	hasRefusedUploadPrefix,
-	type ManifestLocation,
+	type NestedSetIdentity,
 	placeholderDataUri,
 	setKeyPrefix,
 	uploadSetIdentity,
@@ -60,16 +60,15 @@ const processImage = async (sourceImage: ProcessedImage): Promise<ImageVariants>
 /** Stores the manifest only after every variant, so a set exists if and only if its manifest does. Resolves `null` when another upload took the name first. */
 const storeImageSet = async (
 	image: ImageVariants,
-	identity: ManifestLocation,
+	set: NestedSetIdentity,
 	location: BucketLocation,
 ): Promise<FileVariant[] | null> => {
-	const stored = await uploadImages(image, identity, location);
+	const stored = await uploadImages(image, set, location);
 	const placeholderBuffer = image.variations.placeholder?.buffer;
 
 	const manifest = buildManifest({
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderBuffer ? placeholderDataUri(placeholderBuffer) : null,
-		source: null,
 		objects: stored.map(({ key, width, height, bytes, ETag }) => ({ key, width, height, bytes, etag: ETag })),
 	});
 
@@ -80,21 +79,19 @@ export const runUploadPipeline = async (params: UploadPipelineParams): Promise<U
 	const { fileEntries, destination, ...location } = params;
 
 	const preparedImages = await prepareImages(fileEntries);
-	const identities = preparedImages.map(({ fileName }) => uploadSetIdentity(destination, fileName));
+	const sets = preparedImages.map(({ fileName }) => uploadSetIdentity(destination, fileName));
 
-	const reserved = identities.map(setKeyPrefix).filter(hasRefusedUploadPrefix);
+	const reserved = sets.map(setKeyPrefix).filter(hasRefusedUploadPrefix);
 	if (reserved.length > 0) return { refused: "reserved", names: reserved };
 
-	const exists = await Promise.all(identities.map((identity) => imageSetExists(identity, location)));
-	const taken = identities.filter((_, index) => exists[index]);
+	const exists = await Promise.all(sets.map((set) => imageSetExists(set, location)));
+	const taken = sets.filter((_, index) => exists[index]);
 	if (taken.length > 0) return { refused: "exists", names: taken.map(({ name }) => name) };
 
 	const processedImages = await Promise.all(preparedImages.map((image) => processImage(image)));
-	const results = await Promise.all(
-		processedImages.map((image, index) => storeImageSet(image, identities[index], location)),
-	);
+	const results = await Promise.all(processedImages.map((image, index) => storeImageSet(image, sets[index], location)));
 
-	const lost = identities.filter((_, index) => results[index] === null);
+	const lost = sets.filter((_, index) => results[index] === null);
 	if (lost.length > 0) return { refused: "exists", names: lost.map(({ name }) => name) };
 
 	return { files: results.flatMap((stored) => stored ?? []) };

@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { manifestKey } from "@/modules/storage/services/manifest";
+import { manifestKey, NotAManifestError } from "@/modules/storage/services/manifest";
 import { makeJpeg } from "@/modules/storage/test-helpers";
 import type { Manifest } from "~/shared/types";
 
@@ -19,8 +19,8 @@ const webp = async (width: number, height: number) =>
 		.webp()
 		.toBuffer();
 
-/** An in-memory bucket holding `files`, plus the `manifests` already stored in their sets' folders. */
-const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = []) => {
+/** An in-memory bucket holding `files`, the `manifests` already stored in their sets' folders and the keys held by `foreign` files. */
+const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = [], foreign: string[] = []) => {
 	const stored = new Map(manifests.map((manifest) => [manifestKey(manifest), manifest]));
 	const read: string[] = [];
 
@@ -30,7 +30,10 @@ const buckets = (files: Record<string, Buffer>, manifests: Manifest[] = []) => {
 			if (!files[key]) throw new Error("The specified key does not exist.");
 			return files[key];
 		},
-		readManifest: async (location) => stored.get(manifestKey(location)) ?? null,
+		readManifest: async (location) => {
+			if (foreign.includes(manifestKey(location))) throw new NotAManifestError(manifestKey(location));
+			return stored.get(manifestKey(location)) ?? null;
+		},
 		storeManifest: async (manifest, { force }) => {
 			if (stored.has(manifestKey(manifest)) && !force) return false;
 			stored.set(manifestKey(manifest), manifest);
@@ -286,6 +289,42 @@ describe("writeManifests", () => {
 		]);
 	});
 
+	describe("a file that is not a set manifest at the manifest key", () => {
+		const KEY = "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json";
+
+		it.each([
+			["a plain write", UNFORCED],
+			["a forced write", { force: true }],
+		])("fails the set under %s, naming the key, and replaces nothing", async (_label, options) => {
+			const { io, objects, stored, read } = buckets(await nestedSet(), [], [KEY]);
+
+			const results = await writeManifests(objects, io, options);
+
+			expect(results).toMatchObject([
+				{
+					outcome: "not-a-manifest",
+					detail: `a file that is not a set manifest occupies ${KEY} and was not replaced`,
+				},
+			]);
+			expect(countFailed(results)).toBe(1);
+			expect(stored.size).toBe(0);
+			expect(read).toEqual([]);
+		});
+
+		it("does not stop the other sets", async () => {
+			const { io, objects } = buckets(
+				{ ...(await nestedSet()), "japan-2025/kyoto/second/medium_second.webp": await webp(80, 40) },
+				[],
+				[KEY],
+			);
+
+			expect(await writeManifests(objects, io, UNFORCED)).toMatchObject([
+				{ name: "ginsui-sukiyaki-1", outcome: "not-a-manifest" },
+				{ name: "second", outcome: "written" },
+			]);
+		});
+	});
+
 	it("works on at most four sets at a time", async () => {
 		const image = await webp(80, 40);
 		const names = Array.from({ length: 12 }, (_, index) => `photo-${index}`);
@@ -331,12 +370,12 @@ describe("writeManifests progress", () => {
 });
 
 describe("formatSetResult", () => {
-	it("puts the outcome, the set and its manifest key on one line, with the detail after", () => {
+	it("puts the outcome, the set and its detail on one line, ending in the manifest key", () => {
 		const set = { layout: "nested", folder: "trip", name: "a", manifestKey: "trip/a/manifest.json" } as const;
 
 		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] nested trip/a -> trip/a/manifest.json");
 		expect(formatSetResult({ ...set, outcome: "exists-stale", detail: "--force will refresh it" })).toBe(
-			"[exists-stale] nested trip/a -> trip/a/manifest.json: --force will refresh it",
+			"[exists-stale] nested trip/a: --force will refresh it -> trip/a/manifest.json",
 		);
 	});
 });
@@ -356,19 +395,21 @@ describe("formatWriteTotals", () => {
 			{ ...set("c"), outcome: "exists" },
 			{ ...set("d"), outcome: "exists-stale", detail: "--force will refresh it" },
 			{ ...set("e"), outcome: "unreadable-object", detail: '"trip/e/medium_e.webp": Access Denied' },
+			{ ...set("g"), outcome: "not-a-manifest" },
 			{ layout: "flat", folder: "", name: "f", outcome: "flat-set" },
 		]);
 
 		expect(report).toBe(
 			[
-				"Sets found: 6",
+				"Sets found: 7",
 				"Written: 2",
 				"Skipped: 3",
 				"  exists: 1",
 				"  exists-stale: 1",
 				"  flat-set: 1",
-				"Failed: 1",
+				"Failed: 2",
 				"  unreadable-object: 1",
+				"  not-a-manifest: 1",
 				"  failed: 0",
 			].join("\n"),
 		);

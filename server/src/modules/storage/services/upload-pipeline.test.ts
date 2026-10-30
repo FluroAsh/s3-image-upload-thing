@@ -70,8 +70,6 @@ describe("runUploadPipeline", () => {
 			layout: "nested",
 			source: null,
 		});
-		expect(manifest).not.toHaveProperty("bucket");
-		expect(manifest).not.toHaveProperty("pathPrefix");
 		expect(manifest.variants).toEqual({
 			placeholder: {
 				key: "trip/photo/placeholder_photo.webp",
@@ -180,7 +178,7 @@ describe("runUploadPipeline", () => {
 		["src.jpg", "trip"],
 		["manifests.jpg", ""],
 		["photo.jpg", "manifests/trip"],
-	])("accepts %s into destination '%s': only the start of a key is reserved, and manifests/ no longer is", async (fileName, destination) => {
+	])("accepts %s into destination '%s': only the start of a key is reserved", async (fileName, destination) => {
 		await expect(upload(fileName, destination)).resolves.toHaveProperty("files");
 	});
 

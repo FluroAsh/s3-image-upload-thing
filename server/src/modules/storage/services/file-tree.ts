@@ -4,7 +4,7 @@ import type { ValidObject } from "@/shared/types/s3";
 import { readableSize } from "@/shared/utils/helpers";
 import type { TreeNode } from "~/shared/types";
 
-import { groupImageSets, manifestKey } from "./manifest";
+import { isSetManifest } from "./manifest";
 
 const parseKey = (key: string) => {
 	const segments = key.split("/").filter(Boolean);
@@ -87,14 +87,10 @@ const createNode = (key: string, childrenMap: Map<string, string[]>, size?: numb
 };
 
 export const constructFileTree = ({ objects }: { objects: _Object[] }): TreeNode[] => {
-	const keys = objects.flatMap(({ Key }) => Key ?? []);
+	const withKey = objects.filter((obj): obj is ValidObject => obj.Key !== undefined);
+	const keys = new Set(withKey.map(({ Key }) => Key));
 	// A set's manifest is not one of its images, and beside them it would stop the explorer seeing the folder as a set.
-	const setManifests = new Set(
-		groupImageSets(keys)
-			.sets.filter(({ layout }) => layout === "nested")
-			.map(manifestKey),
-	);
-	const validObjects = objects.filter((obj): obj is ValidObject => obj.Key !== undefined && !setManifests.has(obj.Key));
+	const validObjects = withKey.filter(({ Key }) => !isSetManifest(Key, keys));
 
 	if (!validObjects.length) return [];
 
