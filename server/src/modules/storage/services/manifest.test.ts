@@ -11,6 +11,7 @@ import {
 	manifestKey,
 	setKeyPrefix,
 	uploadSetIdentity,
+	variantKey,
 } from "./manifest";
 
 const NESTED_KEYS = [
@@ -292,6 +293,13 @@ describe("groupImageSets", () => {
 
 		expect(sets).toHaveLength(1);
 		expect(sets[0]).toMatchObject({ layout: "nested", folder: "a", name: "pier" });
+	});
+});
+
+describe("variantKey", () => {
+	it("puts a variant in its set's folder, prefixed with its name", () => {
+		expect(variantKey({ folder: "trip", name: "photo" }, "large")).toBe("trip/photo/large_photo.webp");
+		expect(variantKey({ folder: "", name: "photo" }, "lossless")).toBe("photo/lossless_photo.webp");
 	});
 });
 
