@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 450" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">What the backfill script reads and writes</title>
-  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set that has a folder of its own, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A flat set, whose files sit at the bucket root with no folder of their own, is listed and reported but never given a manifest. The CDN serves a set's images and its manifest from the same folder to the site that displays them.</desc>
+  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set that has a folder of its own, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A flat set, whose files sit directly in a folder (the bucket root or any other) with no folder of their own, is listed and reported but never given a manifest. The CDN serves a set's images and its manifest from the same folder to the site that displays them.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -52,7 +52,7 @@
   <text class="p" x="64" y="204">one per set, beside its images</text>
 
   <rect class="flat" x="40" y="262" width="278" height="140" rx="6"/>
-  <text class="h" x="52" y="286" font-size="13">Flat set, at the bucket root</text>
+  <text class="h" x="52" y="286" font-size="13">Flat set, in any folder</text>
   <text class="p" x="52" y="310">photo_ab12.webp</text>
   <text class="p" x="52" y="330">large_photo_ab12.webp</text>
   <text class="p" x="52" y="362">No folder of its own, so</text>
