@@ -1,4 +1,6 @@
-import { VARIANT_WIDTH } from "@/modules/storage/processors/variants/config";
+import * as path from "node:path";
+
+import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE, VARIANT_WIDTH } from "@/modules/storage/processors/variants/config";
 import {
 	EXTENSION,
 	groupImageSets,
@@ -13,11 +15,24 @@ import {
 } from "@/modules/storage/services/manifest";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 
-/** The widest sized variant first, the full-size file last; never the placeholder, which is a blur shown while an image loads. */
-const LINK_PREFERENCE = [
-	...IMAGE_VARIANTS.filter((variant) => variant !== "placeholder" && VARIANT_WIDTH[variant] !== null).reverse(),
-	...IMAGE_VARIANTS.filter((variant) => VARIANT_WIDTH[variant] === null),
-];
+import { findNonWebpSets, type NON_EXTENSION_IMAGE_EXTENSIONS } from "../shared/non-webp-sets";
+
+/** The widest resized variant first; never the placeholder, a blur shown while an image loads, nor the lossless file, which is the original's own size. */
+const LINK_PREFERENCE = IMAGE_VARIANTS.filter(
+	(variant) => variant !== "placeholder" && VARIANT_WIDTH[variant] !== null,
+).reverse();
+
+/** What a flat original's extension says it holds, since the pipeline reads the type from the file it is handed. */
+const MIME_BY_EXTENSION = {
+	[DEFAULT_FILE_TYPE]: DEFAULT_MIME_TYPE,
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	png: "image/png",
+} as const satisfies Record<typeof DEFAULT_FILE_TYPE | (typeof NON_EXTENSION_IMAGE_EXTENSIONS)[number], string>;
+
+const mimeTypeOf = (fileName: string): string =>
+	MIME_BY_EXTENSION[path.extname(fileName).slice(1).toLowerCase() as keyof typeof MIME_BY_EXTENSION] ??
+	DEFAULT_MIME_TYPE;
 
 /** The key site content should link to, of the keys a set holds; `null` when it holds none worth linking. */
 export const linkToKey = (members: ImageSet["members"]): string | null => {
@@ -31,6 +46,8 @@ export const PLAN_REFUSALS = ["no-original", "reserved", "unsafe-target"] as con
 export type FlatSetPlan = SetIdentity & {
 	/** File name the original is handed to the upload pipeline under, which names the new set. */
 	fileName: string;
+	/** Type of the original's bytes, from its extension. */
+	mimeType: string;
 	/** Key prefix of the set folder the pipeline stores into, ending in a slash. */
 	setPrefix: string;
 	/** Key to link to among those already listed in that folder; `null` when the listing shows none. */
@@ -71,14 +88,19 @@ export const refuseUnsafeSetFolder = (
 };
 
 // ponytail: scans every set per set, which is nothing for a bucket of a few thousand keys; index the sets once if that grows.
-export const planFlatSet = ({ members, ...identity }: ImageSet, sets: readonly ImageSet[]): FlatSetPlan => {
-	const fileName = `${identity.name}${EXTENSION}`;
-	const original = members.find(({ variant }) => variant === "original")?.key ?? null;
+export const planFlatSet = (identity: SetIdentity, original: string | null, sets: readonly ImageSet[]): FlatSetPlan => {
+	const fileName = original ? path.posix.basename(original) : `${identity.name}${EXTENSION}`;
 	const setPrefix = setKeyPrefix(uploadSetIdentity(identity.folder, fileName));
 	const alreadyListed = sets.find((set) => setId(set) === setId({ ...identity, layout: "nested" }));
 	const flatKeys = sets.filter((set) => !holdsManifest(set)).flatMap((set) => set.members.map(({ key }) => key));
 
-	const base = { ...identity, fileName, setPrefix, listedLinkTo: linkToKey(alreadyListed?.members ?? []) };
+	const base = {
+		...identity,
+		fileName,
+		mimeType: mimeTypeOf(fileName),
+		setPrefix,
+		listedLinkTo: linkToKey(alreadyListed?.members ?? []),
+	};
 
 	if (original === null) {
 		return {
@@ -96,9 +118,38 @@ export const planFlatSet = ({ members, ...identity }: ImageSet, sets: readonly I
 	return { ...base, original, refusal: null };
 };
 
-/** One plan per flat set of a listing, in listing order; nested sets are what a migration produces, so they are left alone. */
+/**
+ * One plan per flat original of a listing: webp ones first, then jpg, jpeg and png ones, each in listing order.
+ * Nested sets are what a migration produces, so they are left alone. An original whose set folder an earlier one already claims is refused, so two files never share a folder.
+ */
 export const planFlatSets = (keys: readonly string[]): FlatSetPlan[] => {
 	const { sets } = groupImageSets(keys);
+	const originals = [
+		...sets.filter((set) => !holdsManifest(set)),
+		...findNonWebpSets(keys, sets).filter((set) => !holdsManifest(set)),
+	].flatMap(({ members, layout, folder, name }) => {
+		const identity = { layout, folder, name };
+		const keysOfOriginals = members.filter(({ variant }) => variant === "original").map(({ key }) => key);
+		return (keysOfOriginals.length ? keysOfOriginals : [null]).map((original) => ({ identity, original }));
+	});
 
-	return sets.filter((set) => !holdsManifest(set)).map((set) => planFlatSet(set, sets));
+	const claimedBy = new Map<string, string>();
+
+	return originals.map(({ identity, original }) => {
+		const plan = planFlatSet(identity, original, sets);
+		const first = claimedBy.get(plan.setPrefix);
+		if (original === null || plan.refusal !== null) return plan;
+		if (first === undefined) {
+			claimedBy.set(plan.setPrefix, original);
+			return plan;
+		}
+
+		return {
+			...plan,
+			refusal: {
+				outcome: "unsafe-target",
+				detail: `"${original}" and "${first}" would both be stored in "${plan.setPrefix}"; only the first is migrated`,
+			},
+		};
+	});
 };

@@ -1,5 +1,4 @@
-import { DEFAULT_MIME_TYPE } from "@/modules/storage/processors/variants/config";
-import { type NestedSetIdentity, type SetIdentity, variantKey } from "@/modules/storage/services/manifest";
+import type { NestedSetIdentity, SetIdentity } from "@/modules/storage/services/manifest";
 import type { UploadOutcome, UploadRefusal } from "@/modules/storage/services/upload-pipeline";
 import { errorMessage } from "@/shared/utils/helpers";
 
@@ -56,13 +55,13 @@ const PIPELINE_REFUSALS = {
 /** `claim` answers whether this set may still be put through the pipeline, and counts it if so. */
 const migrateSet = async (plan: FlatSetPlan, io: MigrateIo, claim: () => boolean): Promise<Verdict> => {
 	if (plan.refusal !== null) return { ...plan.refusal, linkTo: null };
-	const { original, fileName, folder } = plan;
+	const { original, fileName, mimeType, folder } = plan;
 	if (await io.setExists(plan)) return { outcome: "already-migrated", linkTo: plan.listedLinkTo };
 
-	// The original's width decides which sizes exist and it is only downloaded to migrate, so `large`, the usual case, is expected.
-	if (!claim()) return { outcome: "to-migrate", linkTo: variantKey(plan, "large") };
+	// Which sizes exist depends on the original's width, which only a download shows, so a set not migrated has no link.
+	if (!claim()) return { outcome: "to-migrate", linkTo: null };
 
-	const file = new File([await io.readObject(original)], fileName, { type: DEFAULT_MIME_TYPE });
+	const file = new File([await io.readObject(original)], fileName, { type: mimeType });
 	const uploaded = await io.upload(file, folder);
 	if ("refused" in uploaded) return { ...PIPELINE_REFUSALS[uploaded.refused], linkTo: null };
 
@@ -94,7 +93,7 @@ export const migrateFlatSets = async (
 	});
 };
 
-/** One line of the mapping file; `outcome` says whether `linkTo` is stored (`migrated`), listed (`already-migrated`) or only expected. */
+/** One line of the mapping file; `linkTo` is set only for `migrated` (what the pipeline stored) and `already-migrated` (what the listing shows). */
 export type MappingEntry = Pick<MigrateResult, "setPrefix" | "linkTo" | "outcome"> & {
 	/** Key of the flat original that site content links to today. */
 	original: string;

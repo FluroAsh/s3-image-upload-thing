@@ -53,17 +53,17 @@ describe("migrateFlatSets", () => {
 		const results = await migrateFlatSets(keys, io, { write: false });
 
 		expect(summary(results)).toEqual([
-			{ name: "cat_ab12", outcome: "to-migrate", linkTo: "cat_ab12/large_cat_ab12.webp" },
+			{ name: "cat_ab12", outcome: "to-migrate", linkTo: null },
 			{ name: "dog_cd34", outcome: "already-migrated", linkTo: "blog/dog_cd34/medium_dog_cd34.webp" },
 		]);
 		expect(read).toEqual([]);
 		expect(uploads).toEqual([]);
 	});
 
-	it("with write, hands each original to the pipeline as <name>.webp, destined for the flat set's own folder", async () => {
+	it("with write, hands each original to the pipeline under its own file name, destined for the flat set's own folder", async () => {
 		const { keys, io, read, uploads } = bucket([...CAT, ...DOG], (file, destination) => {
 			const prefix = `${destination ? `${destination}/` : ""}${file.name.replace(".webp", "")}/`;
-			return { files: [stored(`${prefix}placeholder.webp`, "placeholder"), stored(`${prefix}full.webp`, "lossless")] };
+			return { files: [stored(`${prefix}placeholder.webp`, "placeholder"), stored(`${prefix}large.webp`, "large")] };
 		});
 
 		const results = await migrateFlatSets(keys, io, { write: true });
@@ -74,9 +74,45 @@ describe("migrateFlatSets", () => {
 			{ name: "dog_cd34.webp", type: "image/webp", destination: "blog", text: "bytes of blog/dog_cd34.webp" },
 		]);
 		expect(summary(results)).toEqual([
-			{ name: "cat_ab12", outcome: "migrated", linkTo: "cat_ab12/full.webp" },
-			{ name: "dog_cd34", outcome: "migrated", linkTo: "blog/dog_cd34/full.webp" },
+			{ name: "cat_ab12", outcome: "migrated", linkTo: "cat_ab12/large.webp" },
+			{ name: "dog_cd34", outcome: "migrated", linkTo: "blog/dog_cd34/large.webp" },
 		]);
+	});
+
+	it("with write, migrates a non-webp original under its real key, name and type, and maps the key with its extension", async () => {
+		const original = "images/spiderman_x.jpg";
+		const { keys, io, read, uploads } = bucket([original, "images/small_spiderman_x.jpg"], () => ({
+			files: [stored("images/spiderman_x/small_spiderman_x.webp", "small")],
+		}));
+
+		const results = await migrateFlatSets(keys, io, { write: true });
+
+		expect(read).toEqual([original]);
+		expect(uploads).toEqual([
+			{ name: "spiderman_x.jpg", type: "image/jpeg", destination: "images", text: `bytes of ${original}` },
+		]);
+		expect(buildMapping(results)).toEqual([
+			{
+				original,
+				setPrefix: "images/spiderman_x/",
+				linkTo: "images/spiderman_x/small_spiderman_x.webp",
+				outcome: "migrated",
+			},
+		]);
+	});
+
+	it("with write, fails the second original of a shared set folder without reading or storing it", async () => {
+		const { keys, io, read } = bucket(["x.webp", "small_x.webp", "x.jpg"], () => ({ files: [] }));
+
+		const results = await migrateFlatSets(keys, io, { write: true });
+
+		expect(read).toEqual(["x.webp"]);
+		expect(results.map(({ original, outcome }) => ({ original, outcome }))).toEqual([
+			{ original: "x.webp", outcome: "migrated" },
+			{ original: "x.jpg", outcome: "unsafe-target" },
+		]);
+		expect(results[1].detail).toContain('"x.jpg" and "x.webp"');
+		expect(countFailedMigrations(results)).toBe(1);
 	});
 
 	it.each([
@@ -143,7 +179,7 @@ const result = (overrides: Partial<MigrateResult>): MigrateResult => ({
 });
 
 describe("buildMapping", () => {
-	it("has one entry per flat set with an original, sorted by that key, saying what to link to and how sure that is", () => {
+	it("has one entry per flat set with an original, sorted by that key, linking only the sets that have a new folder", () => {
 		const mapping = buildMapping([
 			result({ name: "dog", original: "dog.webp", setPrefix: "dog/", outcome: "failed", linkTo: null, detail: "x" }),
 			result({ original: null, outcome: "no-original", linkTo: null }),
@@ -153,12 +189,12 @@ describe("buildMapping", () => {
 				original: "ant.webp",
 				setPrefix: "ant/",
 				outcome: "to-migrate",
-				linkTo: "ant/large_ant.webp",
+				linkTo: null,
 			}),
 		]);
 
 		expect(mapping).toEqual([
-			{ original: "ant.webp", setPrefix: "ant/", linkTo: "ant/large_ant.webp", outcome: "to-migrate" },
+			{ original: "ant.webp", setPrefix: "ant/", linkTo: null, outcome: "to-migrate" },
 			{
 				original: "cat_ab12.webp",
 				setPrefix: "cat_ab12/",

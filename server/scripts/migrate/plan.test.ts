@@ -8,7 +8,8 @@ describe("linkToKey", () => {
 	it.each([
 		[["placeholder", "small", "medium", "large", "lossless"], "photo/large_photo.webp"],
 		[["placeholder", "small", "medium", "lossless"], "photo/medium_photo.webp"],
-		[["placeholder", "lossless"], "photo/lossless_photo.webp"],
+		[["placeholder", "small", "lossless"], "photo/small_photo.webp"],
+		[["placeholder", "lossless"], null],
 		[["placeholder"], null],
 	])("of a set holding %j is %s", (variants, expected) => {
 		expect(linkToKey(variants.map(member))).toBe(expected);
@@ -32,6 +33,7 @@ describe("planFlatSets", () => {
 				name: "DSC_1963_f6f8bf29c4",
 				original: "DSC_1963_f6f8bf29c4.webp",
 				fileName: "DSC_1963_f6f8bf29c4.webp",
+				mimeType: "image/webp",
 				setPrefix: "DSC_1963_f6f8bf29c4/",
 				listedLinkTo: null,
 				refusal: null,
@@ -56,6 +58,60 @@ describe("planFlatSets", () => {
 			setPrefix: "blog/cat_ab12/",
 			listedLinkTo: "blog/cat_ab12/medium_cat_ab12.webp",
 		});
+	});
+
+	it.each([
+		["jpg", "image/jpeg"],
+		["jpeg", "image/jpeg"],
+		["png", "image/png"],
+		["PNG", "image/png"],
+	])("plans a flat set whose original is a .%s inside its own folder as a folder named without the extension", (extension, mimeType) => {
+		const original = `images/spiderman_x.${extension}`;
+
+		expect(planFlatSets([original, `images/small_spiderman_x.${extension}`])).toEqual([
+			{
+				layout: "flat",
+				folder: "images",
+				name: "spiderman_x",
+				original,
+				fileName: `spiderman_x.${extension}`,
+				mimeType,
+				setPrefix: "images/spiderman_x/",
+				listedLinkTo: null,
+				refusal: null,
+			},
+		]);
+	});
+
+	it("plans a webp original and a non-webp one side by side when their names differ", () => {
+		const plans = planFlatSets(["a.webp", "small_a.webp", "b.jpg", "small_b.jpg"]);
+
+		expect(plans.map(({ original, setPrefix, refusal }) => ({ original, setPrefix, refusal }))).toEqual([
+			{ original: "a.webp", setPrefix: "a/", refusal: null },
+			{ original: "b.jpg", setPrefix: "b/", refusal: null },
+		]);
+	});
+
+	it("refuses the second of two originals that share a set folder, naming both, so neither overwrites or merges into the other", () => {
+		const plans = planFlatSets(["x.webp", "small_x.webp", "x.jpg", "x.png"]);
+
+		expect(plans.map(({ original, refusal }) => ({ original, refusal }))).toEqual([
+			{ original: "x.webp", refusal: null },
+			{
+				original: "x.jpg",
+				refusal: {
+					outcome: "unsafe-target",
+					detail: '"x.jpg" and "x.webp" would both be stored in "x/"; only the first is migrated',
+				},
+			},
+			{
+				original: "x.png",
+				refusal: {
+					outcome: "unsafe-target",
+					detail: '"x.png" and "x.webp" would both be stored in "x/"; only the first is migrated',
+				},
+			},
+		]);
 	});
 
 	it("refuses a set whose folder would sit under a path uploads are refused for", () => {
@@ -93,7 +149,7 @@ describe("planFlatSet", () => {
 			members: [{ key: "small_cat_ab12.webp", variant: "small" }],
 		};
 
-		expect(planFlatSet(set, [set])).toMatchObject({
+		expect(planFlatSet(set, null, [set])).toMatchObject({
 			original: null,
 			refusal: { outcome: "no-original", detail: "it has no un-prefixed file to make the sizes from" },
 		});
