@@ -58,7 +58,7 @@ const migrateSet = async (plan: FlatSetPlan, io: MigrateIo, claim: () => boolean
 	const { original, fileName, mimeType, folder } = plan;
 	if (await io.setExists(plan)) return { outcome: "already-migrated", linkTo: plan.listedLinkTo };
 
-	// Which sizes exist depends on the original's width, which only a download shows, so a set not migrated has no link.
+	// Which sizes exist depends on the original's longest edge, which only a download shows, so a set not migrated has no link.
 	if (!claim()) return { outcome: "to-migrate", linkTo: null };
 
 	const file = new File([await io.readObject(original)], fileName, { type: mimeType });

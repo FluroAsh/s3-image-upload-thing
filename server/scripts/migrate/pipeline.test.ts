@@ -48,7 +48,7 @@ describe("migrateFlatSets through the upload pipeline", () => {
 		const putKeys = s3.sent.filter(({ command }) => command === "PutObject").map(({ input }) => input.Key);
 		expect(putKeys.every((key) => key.startsWith("blog/cat_ab12/") && !LISTED.includes(key))).toBe(true);
 		expect(putKeys[putKeys.length - 1]).toBe("blog/cat_ab12/manifest.json");
-		expect(result).toMatchObject({ outcome: "migrated", linkTo: "blog/cat_ab12/medium_cat_ab12.webp" });
+		expect(result).toMatchObject({ outcome: "migrated", linkTo: "blog/cat_ab12/large_cat_ab12.webp" });
 		expect(putKeys).toContain(result.linkTo);
 	});
 

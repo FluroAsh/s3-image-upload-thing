@@ -1,6 +1,10 @@
 import * as path from "node:path";
 
-import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE, VARIANT_WIDTH } from "@/modules/storage/processors/variants/config";
+import {
+	DEFAULT_FILE_TYPE,
+	DEFAULT_MIME_TYPE,
+	VARIANT_LONGEST_EDGE,
+} from "@/modules/storage/processors/variants/config";
 import {
 	EXTENSION,
 	groupImageSets,
@@ -17,9 +21,9 @@ import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 
 import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
-/** The widest resized variant first; never the placeholder, a blur shown while an image loads, nor the lossless file, which is the original's own size. */
+/** The largest resized variant first; never the placeholder, a blur shown while an image loads, nor the lossless file, which is the original's own size. */
 const LINK_PREFERENCE = IMAGE_VARIANTS.filter(
-	(variant) => variant !== "placeholder" && VARIANT_WIDTH[variant] !== null,
+	(variant) => variant !== "placeholder" && VARIANT_LONGEST_EDGE[variant] !== null,
 ).reverse();
 
 /** What a flat original's extension says it holds, since the pipeline reads the type from the file it is handed. */
