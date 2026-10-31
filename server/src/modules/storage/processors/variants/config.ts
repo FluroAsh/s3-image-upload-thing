@@ -9,7 +9,7 @@ export const VARIANT_LONGEST_EDGE = {
 	small: 400,
 	medium: 800,
 	large: 1440,
-	lossless: null,
+	full: null,
 } as const satisfies Record<ImageVariant, number | null>;
 
 /** Output quality (eg. WebP) per variant. */
@@ -18,7 +18,7 @@ export const VARIANT_QUALITY = {
 	small: 80,
 	medium: 85,
 	large: 90,
-	lossless: 95,
+	full: 95,
 } as const satisfies Record<ImageVariant, number>;
 
 /** Sharp effort (compression) per variant. */
@@ -27,5 +27,5 @@ export const VARIANT_EFFORT = {
 	small: 6,
 	medium: 6,
 	large: 6,
-	lossless: 6,
+	full: 6,
 } as const satisfies Record<ImageVariant, number>;

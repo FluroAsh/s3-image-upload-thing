@@ -62,7 +62,7 @@
   <text class="p" x="620" y="138">small_photo_ab12.webp</text>
   <text class="p" x="620" y="160">medium_photo_ab12.webp</text>
   <text class="p" x="620" y="182">large_photo_ab12.webp</text>
-  <text class="p" x="620" y="204">lossless_photo_ab12.webp</text>
+  <text class="p" x="620" y="204">full_photo_ab12.webp</text>
   <text class="p" x="620" y="226" font-weight="600">manifest.json (written last)</text>
   <text class="keep" x="620" y="256">Only sizes that fit the original's</text>
   <text class="keep" x="620" y="276">longest edge are made</text>

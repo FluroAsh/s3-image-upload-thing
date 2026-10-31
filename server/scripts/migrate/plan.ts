@@ -21,7 +21,7 @@ import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 
 import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
-/** The largest resized variant first; never the placeholder, a blur shown while an image loads, nor the lossless file, which is the original's own size. */
+/** The largest resized variant first; never the placeholder, a blur shown while an image loads, nor the full file, which is the original's own size. */
 const LINK_PREFERENCE = IMAGE_VARIANTS.filter(
 	(variant) => variant !== "placeholder" && VARIANT_LONGEST_EDGE[variant] !== null,
 ).reverse();

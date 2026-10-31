@@ -6,10 +6,10 @@ const member = (variant: string) => ({ variant, key: `photo/${variant}_photo.web
 
 describe("linkToKey", () => {
 	it.each([
-		[["placeholder", "small", "medium", "large", "lossless"], "photo/large_photo.webp"],
-		[["placeholder", "small", "medium", "lossless"], "photo/medium_photo.webp"],
-		[["placeholder", "small", "lossless"], "photo/small_photo.webp"],
-		[["placeholder", "lossless"], null],
+		[["placeholder", "small", "medium", "large", "full"], "photo/large_photo.webp"],
+		[["placeholder", "small", "medium", "full"], "photo/medium_photo.webp"],
+		[["placeholder", "small", "full"], "photo/small_photo.webp"],
+		[["placeholder", "full"], null],
 		[["placeholder"], null],
 	])("of a set holding %j is %s", (variants, expected) => {
 		expect(linkToKey(variants.map(member))).toBe(expected);
@@ -47,7 +47,7 @@ describe("planFlatSets", () => {
 			"blog/small_cat_ab12.webp",
 			"blog/cat_ab12/placeholder_cat_ab12.webp",
 			"blog/cat_ab12/medium_cat_ab12.webp",
-			"blog/cat_ab12/lossless_cat_ab12.webp",
+			"blog/cat_ab12/full_cat_ab12.webp",
 			"blog/cat_ab12/manifest.json",
 		]);
 

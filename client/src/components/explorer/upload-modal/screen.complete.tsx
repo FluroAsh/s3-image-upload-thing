@@ -30,7 +30,7 @@ const variantSizeLabel: Record<ImageVariant, string> = {
 	small: "sm",
 	medium: "md",
 	large: "lg",
-	lossless: "loss",
+	full: "full",
 };
 
 const FileItem = ({ file }: { file: FileVariant }) => {
