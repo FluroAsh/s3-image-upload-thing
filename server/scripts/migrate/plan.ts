@@ -17,7 +17,7 @@ import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
 
 import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
-const LINK_PREFERENCE = [...INLINE_VARIANTS].reverse();
+const LINK_PREFERENCE = INLINE_VARIANTS.toReversed();
 
 /** What a flat original's extension says it holds, since the pipeline reads the type from the file it is handed. */
 const MIME_BY_EXTENSION = {
