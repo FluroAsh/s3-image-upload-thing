@@ -6,7 +6,7 @@ import { readableSize } from "@/shared/utils/helpers";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant } from "~/shared/types";
 
-import { VARIANT_EFFORT, VARIANT_QUALITY, VARIANT_WIDTH } from "./config";
+import { VARIANT_EFFORT, VARIANT_LONGEST_EDGE, VARIANT_QUALITY } from "./config";
 
 const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => (Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
 
@@ -15,17 +15,18 @@ const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
 	effort: VARIANT_EFFORT[variant],
 });
 
-/** A null target width means "source size", which always fits; a sized variant fits only without upscaling. */
-export const planVariants = (sourceWidth: number): ImageVariant[] =>
-	IMAGE_VARIANTS.filter((variant) => (VARIANT_WIDTH[variant] ?? 0) <= sourceWidth);
+/** A null bound means "source size", which always fits; a sized variant fits only without upscaling. */
+export const planVariants = (sourceLongestEdge: number): ImageVariant[] =>
+	IMAGE_VARIANTS.filter((variant) => (VARIANT_LONGEST_EDGE[variant] ?? 0) <= sourceLongestEdge);
 
 const createImageVariant = async (variant: ImageVariant, source: ProcessedImage): Promise<VariantOutput> => {
 	const outputFormat: keyof FormatEnum = "webp";
 	const outputOptions = getOutputOptions(variant);
 
 	let pipeline = sharp(ensureBuffer(source.buffer)).rotate();
-	if (variant !== "lossless") {
-		pipeline = pipeline.resize({ width: VARIANT_WIDTH[variant] ?? undefined, withoutEnlargement: true });
+	const bound = VARIANT_LONGEST_EDGE[variant];
+	if (bound !== null) {
+		pipeline = pipeline.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true });
 	}
 	pipeline = pipeline.toFormat(outputFormat, outputOptions);
 
@@ -38,10 +39,10 @@ const createImageVariant = async (variant: ImageVariant, source: ProcessedImage)
 	return { buffer, size, width: info.width, height: info.height };
 };
 
-/** Creates the variants that fit the source; a size equal to the source width still differs from the full-size file in encoding. */
+/** Creates the variants that fit the source; a size equal to the source's longest edge still differs from the full-size file in encoding. */
 export const createImageVariants = async (sourceImage: ProcessedImage): Promise<ImageVariants["variations"]> => {
 	const sourceBuffer = ensureBuffer(sourceImage.buffer);
-	// `autoOrient` is the size after EXIF rotation; the raw width of a sideways-stored portrait is its height.
+	// `autoOrient` is the size after EXIF rotation; the raw dimensions of a sideways-stored photo are swapped.
 	const { autoOrient } = await sharp(sourceBuffer).metadata();
 
 	console.log(
@@ -51,7 +52,7 @@ export const createImageVariants = async (sourceImage: ProcessedImage): Promise<
 	);
 
 	const outputs = await Promise.all(
-		planVariants(autoOrient.width).map(
+		planVariants(Math.max(autoOrient.width, autoOrient.height)).map(
 			async (variant) => [variant, await createImageVariant(variant, sourceImage)] as const,
 		),
 	);

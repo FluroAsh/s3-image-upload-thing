@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "~/shared/types";
 
-import { makeJpeg } from "../test-helpers";
+import { dimensionsOf, makeJpeg } from "../test-helpers";
 import { runUploadPipeline } from "./upload-pipeline";
 
 type SentCommand = {
@@ -66,8 +66,12 @@ const puts = () => s3.sent.filter(({ command }) => command === "PutObject").map(
 
 const manifestPut = () => puts().find(({ Key }) => Key.startsWith("manifests/"));
 
-const upload = async (fileName = "photo.jpg", destination = "trip") => {
-	const jpeg = await makeJpeg({ width: 300, height: 150 });
+const upload = async (
+	fileName = "photo.jpg",
+	destination = "trip",
+	{ width, height } = { width: 300, height: 150 },
+) => {
+	const jpeg = await makeJpeg({ width, height });
 
 	return runUploadPipeline({
 		fileEntries: [["0", new File([jpeg], fileName, { type: "image/jpeg" })]],
@@ -137,6 +141,20 @@ describe("runUploadPipeline", () => {
 				bytes: (lossless.Body as Buffer).length,
 				etag: '"etag-of-trip/photo/lossless_photo.webp"',
 			},
+		});
+	});
+
+	it("lists every size of a portrait in the manifest with its real dimensions, fitted to its height", async () => {
+		await upload("photo.jpg", "trip", { width: 960, height: 1440 });
+
+		const { variants }: Manifest = JSON.parse(manifestPut()?.Body as string);
+
+		expect(dimensionsOf(variants)).toEqual({
+			placeholder: { width: 13, height: 20 },
+			small: { width: 267, height: 400 },
+			medium: { width: 533, height: 800 },
+			large: { width: 960, height: 1440 },
+			lossless: { width: 960, height: 1440 },
 		});
 	});
 

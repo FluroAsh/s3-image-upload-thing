@@ -1,7 +1,7 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
-import { makeJpeg } from "../../test-helpers";
+import { dimensionsOf, makeJpeg } from "../../test-helpers";
 import { createImageVariants, planVariants } from "./processor";
 
 const sourceImage = async (width: number, height: number, orientation?: number, noisy?: boolean) => {
@@ -22,11 +22,11 @@ describe("planVariants", () => {
 		expect(planVariants(2000)).toEqual(["placeholder", "small", "medium", "large", "lossless"]);
 	});
 
-	it("keeps a size whose target width equals the source width", () => {
+	it("keeps a size whose bound equals the source's longest edge", () => {
 		expect(planVariants(400)).toEqual(["placeholder", "small", "lossless"]);
 	});
 
-	it("plans only the full-size variant for a source narrower than the placeholder", () => {
+	it("plans only the full-size variant for a source smaller than the placeholder", () => {
 		expect(planVariants(10)).toEqual(["lossless"]);
 	});
 });
@@ -40,27 +40,48 @@ describe("createImageVariants", () => {
 		expect(new Set(contents).size).toBe(contents.length);
 	});
 
-	it("reports the measured width and height of every variant it produced", async () => {
-		const variations = await createImageVariants(await sourceImage(2000, 1000));
-		const dimensions = Object.fromEntries(
-			Object.entries(variations).map(([variant, { width, height }]) => [variant, { width, height }]),
-		);
+	it("fits every size of a landscape to its width, reporting each one's measured dimensions", async () => {
+		const variations = await createImageVariants(await sourceImage(2160, 1440));
 
-		expect(dimensions).toEqual({
-			placeholder: { width: 20, height: 10 },
-			small: { width: 400, height: 200 },
-			medium: { width: 800, height: 400 },
-			large: { width: 1440, height: 720 },
-			lossless: { width: 2000, height: 1000 },
+		expect(dimensionsOf(variations)).toEqual({
+			placeholder: { width: 20, height: 13 },
+			small: { width: 400, height: 267 },
+			medium: { width: 800, height: 533 },
+			large: { width: 1440, height: 960 },
+			lossless: { width: 2160, height: 1440 },
 		});
 	});
 
-	it("measures a portrait photo with an EXIF orientation flag by its displayed width", async () => {
+	it("fits every size of a portrait to its height, keeping the aspect ratio", async () => {
+		const variations = await createImageVariants(await sourceImage(960, 1440));
+
+		expect(dimensionsOf(variations)).toEqual({
+			placeholder: { width: 13, height: 20 },
+			small: { width: 267, height: 400 },
+			medium: { width: 533, height: 800 },
+			large: { width: 960, height: 1440 },
+			lossless: { width: 960, height: 1440 },
+		});
+	});
+
+	it.each([
+		["portrait", 400, 600],
+		["landscape", 600, 400],
+		["square", 600, 600],
+	])("never upscales a %s source to a size above its longest edge", async (_shape, width, height) => {
+		const variations = await createImageVariants(await sourceImage(width, height));
+
+		expect(Object.keys(variations)).toEqual(["placeholder", "small", "lossless"]);
+		expect(Math.max(variations.small?.width ?? 0, variations.small?.height ?? 0)).toBe(400);
+	});
+
+	it("measures and fits a portrait photo with an EXIF orientation flag after rotating it", async () => {
 		const storedSideways = await sourceImage(600, 300, 6);
 
 		const variations = await createImageVariants(storedSideways);
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "lossless"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "small", "lossless"]);
+		expect(variations.small).toMatchObject({ width: 200, height: 400 });
 		expect(variations.lossless).toMatchObject({ width: 300, height: 600 });
 	});
 
