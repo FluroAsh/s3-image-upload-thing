@@ -64,8 +64,8 @@
   <text class="p" x="620" y="182">large_photo_ab12.webp</text>
   <text class="p" x="620" y="204">lossless_photo_ab12.webp</text>
   <text class="p" x="620" y="226" font-weight="600">manifest.json (written last)</text>
-  <text class="keep" x="620" y="256">Sizes that fit the original's width;</text>
-  <text class="keep" x="620" y="276">wider ones are left out</text>
+  <text class="keep" x="620" y="256">Only sizes that fit the original's</text>
+  <text class="keep" x="620" y="276">longest edge are made</text>
 
   <path class="read" d="M300 116 C322 116 322 140 344 140" marker-end="url(#a)"/>
   <text class="lr" x="306" y="102">read</text>
