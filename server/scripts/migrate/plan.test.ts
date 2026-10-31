@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { assertNewSetFolder, linkToKey, planFlatSet, planFlatSets } from "./plan";
+import { linkToKey, planFlatSet, planFlatSets, refuseUnsafeSetFolder } from "./plan";
 
 const member = (variant: string) => ({ variant, key: `photo/${variant}_photo.webp` });
 
@@ -100,12 +100,12 @@ describe("planFlatSet", () => {
 	});
 });
 
-describe("assertNewSetFolder", () => {
+describe("refuseUnsafeSetFolder", () => {
 	const set = { folder: "blog", name: "cat_ab12" };
 	const flatKeys = ["blog/cat_ab12.webp", "blog/small_cat_ab12.webp"];
 
-	it("accepts the set's own folder when no flat file is inside it", () => {
-		expect(() => assertNewSetFolder("blog/cat_ab12/", set, flatKeys)).not.toThrow();
+	it("returns nothing for the set's own folder when no flat file is inside it", () => {
+		expect(refuseUnsafeSetFolder("blog/cat_ab12/", set, flatKeys)).toBeUndefined();
 	});
 
 	it.each([
@@ -115,11 +115,11 @@ describe("assertNewSetFolder", () => {
 		"cat_ab12/",
 		"blog/small_cat_ab12/",
 	])("refuses %j, which is not the set's own folder", (prefix) => {
-		expect(() => assertNewSetFolder(prefix, set, flatKeys)).toThrow('is not the set folder "blog/cat_ab12/"');
+		expect(refuseUnsafeSetFolder(prefix, set, flatKeys)).toContain('is not the set folder "blog/cat_ab12/"');
 	});
 
 	it("refuses a folder that already holds a flat file, which a put could then replace", () => {
-		expect(() => assertNewSetFolder("blog/cat_ab12/", set, [...flatKeys, "blog/cat_ab12/dog_cd34.webp"])).toThrow(
+		expect(refuseUnsafeSetFolder("blog/cat_ab12/", set, [...flatKeys, "blog/cat_ab12/dog_cd34.webp"])).toContain(
 			'flat file "blog/cat_ab12/dog_cd34.webp" is inside "blog/cat_ab12/"',
 		);
 	});

@@ -8,12 +8,7 @@ import {
 } from "@/modules/storage/services/manifest";
 import type { ImageVariant, Manifest } from "~/shared/types";
 
-export type BucketObject = {
-	/** Bucket key of the object. */
-	key: string;
-	/** S3 ETag as listed, quotes included; only ever compared for equality. */
-	etag: string;
-};
+import { type BucketObject, setLabel } from "../shared/listed";
 
 /** Variants the portfolio always asks for, so a set without one cannot be served whole. */
 export const REQUIRED_VARIANTS = ["medium", "large"] as const satisfies readonly ImageVariant[];
@@ -154,9 +149,6 @@ export const assertImageSets = ({ sets, keyCount }: BackfillReport, scope: strin
 
 /** Said wherever a flat set is reported: it has no folder of its own to hold a manifest. */
 export const FLAT_SET_NOTE = "needs migrating into a set folder before it can have a manifest";
-
-export const setLabel = ({ layout, folder, name }: SetIdentity): string =>
-	`${layout} ${folder ? `${folder}/` : ""}${name}`;
 
 export const formatBackfillReport = (report: BackfillReport): string => {
 	const { skipped, sharedEtags, missingRequired, nonWebpSets } = report;

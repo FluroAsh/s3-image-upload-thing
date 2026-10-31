@@ -17,13 +17,9 @@ import type { StoreManifestOptions } from "@/modules/storage/services/s3-operati
 import { errorMessage } from "@/shared/utils/helpers";
 import type { Manifest } from "~/shared/types";
 
+import { type ListedObject, setLabel } from "../shared/listed";
 import { mapLimited, SET_CONCURRENCY } from "../shared/map-limited";
-import { type BucketObject, FLAT_SET_NOTE, setLabel } from "./report";
-
-export type ListedObject = BucketObject & {
-	/** Size of the object in bytes, as listed. */
-	bytes: number;
-};
+import { FLAT_SET_NOTE } from "./report";
 
 /** The bucket requests a write run makes, so the run itself can be tested without the network. */
 export type BackfillIo = {

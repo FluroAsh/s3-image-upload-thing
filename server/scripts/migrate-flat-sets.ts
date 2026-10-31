@@ -1,17 +1,22 @@
 import { writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { defaultRegion, imageSetExists, readObject } from "@/modules/storage/services/s3-operations";
+import { imageSetExists, readObject } from "@/modules/storage/services/s3-operations";
 import { runUploadPipeline } from "@/modules/storage/services/upload-pipeline";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { parseMigrateArgs } from "./migrate/args";
-import { buildMapping, countFailed, formatMigrateResult, formatMigrateTotals, migrateFlatSets } from "./migrate/run";
+import {
+	buildMapping,
+	countFailedMigrations,
+	formatMigrateResult,
+	formatMigrateTotals,
+	migrateFlatSets,
+} from "./migrate/run";
 import { listObjects, scopeLabel } from "./shared/list-objects";
 
 const main = async (): Promise<void> => {
-	const { bucket, folder, region, write, limit, map } = parseMigrateArgs(process.argv.slice(2));
-	const location = { bucketName: bucket, bucketRegion: region ?? defaultRegion };
+	const { location, folder, write, limit, map } = parseMigrateArgs(process.argv.slice(2));
 
 	const listStarted = performance.now();
 	const objects = await listObjects(location, folder);
@@ -22,7 +27,7 @@ const main = async (): Promise<void> => {
 			write
 				? `Migration write run${limit ? ` (--limit ${limit})` : ""}`
 				: "Migration dry run: nothing is written to the bucket",
-			`Bucket: ${scopeLabel(bucket, folder)}, ${objects.length} keys listed in ${listSeconds}s`,
+			`Bucket: ${scopeLabel(location.bucketName, folder)}, ${objects.length} keys listed in ${listSeconds}s`,
 			"Flat files are never changed; each migrated set gets a new folder beside them.",
 			"",
 		].join("\n"),
@@ -42,7 +47,7 @@ const main = async (): Promise<void> => {
 
 	await writeFile(map, `${JSON.stringify(buildMapping(results), null, "\t")}\n`);
 	console.log(`\n${formatMigrateTotals(results)}\nMapping written to ${path.resolve(map)}`);
-	if (countFailed(results)) process.exitCode = 1;
+	if (countFailedMigrations(results)) process.exitCode = 1;
 };
 
 main().catch((error: unknown) => {

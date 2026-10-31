@@ -11,7 +11,6 @@ import {
 	setKeyPrefix,
 	uploadSetIdentity,
 } from "@/modules/storage/services/manifest";
-import { errorMessage } from "@/shared/utils/helpers";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 
 /** The widest sized variant first, the full-size file last; never the placeholder, which is a blur shown while an image loads. */
@@ -56,17 +55,19 @@ export type FlatSetPlan = SetIdentity & {
 		  }
 	);
 
-/** The script's one promise is that it never replaces a flat file, so the pipeline's target is checked against the listing before anything is read. */
-export const assertNewSetFolder = (targetPrefix: string, set: NestedSetIdentity, flatKeys: readonly string[]): void => {
+/** The script's one promise is that it never replaces a flat file, so the pipeline's target is checked against the listing before anything is read. Returns why it is unsafe, or nothing. */
+export const refuseUnsafeSetFolder = (
+	targetPrefix: string,
+	set: NestedSetIdentity,
+	flatKeys: readonly string[],
+): string | undefined => {
 	const expected = setKeyPrefix(set);
 	if (targetPrefix !== expected) {
-		throw new Error(
-			`the upload pipeline would store under "${targetPrefix}", which is not the set folder "${expected}"`,
-		);
+		return `the upload pipeline would store under "${targetPrefix}", which is not the set folder "${expected}"`;
 	}
 
 	const inside = flatKeys.find((key) => key.startsWith(targetPrefix));
-	if (inside) throw new Error(`flat file "${inside}" is inside "${targetPrefix}", where the new set would be stored`);
+	if (inside) return `flat file "${inside}" is inside "${targetPrefix}", where the new set would be stored`;
 };
 
 // ponytail: scans every set per set, which is nothing for a bucket of a few thousand keys; index the sets once if that grows.
@@ -89,11 +90,8 @@ export const planFlatSet = ({ members, ...identity }: ImageSet, sets: readonly I
 	if (hasRefusedUploadPrefix(setPrefix)) {
 		return { ...base, original, refusal: { outcome: "reserved", detail: `uploads are refused under "${setPrefix}"` } };
 	}
-	try {
-		assertNewSetFolder(setPrefix, identity, flatKeys);
-	} catch (error) {
-		return { ...base, original, refusal: { outcome: "unsafe-target", detail: errorMessage(error) } };
-	}
+	const unsafe = refuseUnsafeSetFolder(setPrefix, identity, flatKeys);
+	if (unsafe) return { ...base, original, refusal: { outcome: "unsafe-target", detail: unsafe } };
 
 	return { ...base, original, refusal: null };
 };

@@ -2,7 +2,7 @@ import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
 import { type BucketLocation, getRegionalClient, withDeadline } from "@/modules/storage/services/s3-operations";
 
-import type { ListedObject } from "../backfill/write";
+import type { ListedObject } from "./listed";
 
 /** How a run names what it covers, in its output and its errors. */
 export const scopeLabel = (bucket: string, folder?: string): string =>
@@ -31,7 +31,7 @@ export const listObjects = async (
 	} while (ContinuationToken);
 
 	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
-	if (!objects.length) throw new Error(`No keys found in ${scopeLabel(bucketName, folder)}; nothing was written`);
+	if (!objects.length) throw new Error(`No keys found in ${scopeLabel(bucketName, folder)}`);
 
 	return objects;
 };

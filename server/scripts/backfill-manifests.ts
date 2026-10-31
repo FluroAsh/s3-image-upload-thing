@@ -1,5 +1,5 @@
 import { MANIFEST_FILE_NAME } from "@/modules/storage/services/manifest";
-import { defaultRegion, readManifest, readObject, storeManifest } from "@/modules/storage/services/s3-operations";
+import { readManifest, readObject, storeManifest } from "@/modules/storage/services/s3-operations";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { parseBackfillArgs } from "./backfill/args";
@@ -8,11 +8,10 @@ import { countFailed, formatSetResult, formatWriteTotals, writeManifests } from 
 import { listObjects, scopeLabel } from "./shared/list-objects";
 
 const main = async (): Promise<void> => {
-	const { bucket, folder, region, write, force } = parseBackfillArgs(process.argv.slice(2));
-	const location = { bucketName: bucket, bucketRegion: region ?? defaultRegion };
+	const { location, folder, write, force } = parseBackfillArgs(process.argv.slice(2));
 
 	const objects = await listObjects(location, folder);
-	const scope = scopeLabel(bucket, folder);
+	const scope = scopeLabel(location.bucketName, folder);
 
 	const report = buildBackfillReport(objects);
 	assertImageSets(report, scope);

@@ -3,7 +3,7 @@ import { type NestedSetIdentity, type SetIdentity, variantKey } from "@/modules/
 import type { UploadOutcome, UploadRefusal } from "@/modules/storage/services/upload-pipeline";
 import { errorMessage } from "@/shared/utils/helpers";
 
-import { setLabel } from "../backfill/report";
+import { setLabel } from "../shared/listed";
 import { mapLimited, SET_CONCURRENCY } from "../shared/map-limited";
 import { type FlatSetPlan, linkToKey, planFlatSets } from "./plan";
 
@@ -109,7 +109,8 @@ export const buildMapping = (results: readonly MigrateResult[]): MappingEntry[] 
 const countOutcomes = (results: readonly MigrateResult[], outcomes: readonly MigrateOutcome[]): number =>
 	results.filter(({ outcome }) => outcomes.includes(outcome)).length;
 
-export const countFailed = (results: readonly MigrateResult[]): number => countOutcomes(results, FAILED_OUTCOMES);
+export const countFailedMigrations = (results: readonly MigrateResult[]): number =>
+	countOutcomes(results, FAILED_OUTCOMES);
 
 export const formatMigrateResult = ({ outcome, setPrefix, linkTo, detail, ...identity }: MigrateResult): string =>
 	`[${outcome}] ${setLabel(identity)} -> ${setPrefix}${linkTo ? ` (link to ${linkTo})` : ""}${detail ? `: ${detail}` : ""}`;
@@ -124,7 +125,7 @@ export const formatMigrateTotals = (results: readonly MigrateResult[]): string =
 		`Left to migrate: ${countOutcomes(results, ["to-migrate"])}`,
 		`Skipped: ${countOutcomes(results, SKIPPED_OUTCOMES)}`,
 		...perOutcome(SKIPPED_OUTCOMES),
-		`Failed: ${countFailed(results)}`,
+		`Failed: ${countFailedMigrations(results)}`,
 		...perOutcome(FAILED_OUTCOMES),
 	].join("\n");
 };

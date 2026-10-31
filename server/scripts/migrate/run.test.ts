@@ -6,7 +6,7 @@ import type { FileVariant } from "~/shared/types";
 
 import {
 	buildMapping,
-	countFailed,
+	countFailedMigrations,
 	formatMigrateResult,
 	formatMigrateTotals,
 	type MigrateIo,
@@ -191,7 +191,7 @@ describe("formatMigrateTotals", () => {
 			result({ outcome: "unsafe-target", linkTo: null }),
 		];
 
-		expect(countFailed(results)).toBe(1);
+		expect(countFailedMigrations(results)).toBe(1);
 		expect(formatMigrateTotals(results)).toBe(
 			[
 				"Flat sets found: 5",

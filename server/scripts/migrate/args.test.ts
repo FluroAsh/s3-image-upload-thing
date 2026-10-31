@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseMigrateArgs } from "./args";
+
+// The real module throws at import without AWS credentials; only its default region matters here.
+vi.mock("@/modules/storage/services/s3-operations", () => ({ defaultRegion: "us-default-1" }));
 
 describe("parseMigrateArgs", () => {
 	it("reads a dry run of one folder, writing the mapping to the current directory", () => {
 		expect(parseMigrateArgs(["--bucket", "example-bucket", "--prefix", "blog/"])).toEqual({
-			bucket: "example-bucket",
+			location: { bucketName: "example-bucket", bucketRegion: "us-default-1" },
 			folder: "blog",
-			region: undefined,
 			write: false,
 			map: "flat-set-mapping.json",
 			limit: undefined,
