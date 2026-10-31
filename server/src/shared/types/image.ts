@@ -32,6 +32,6 @@ export type ImageVariants = {
 	size: string;
 	/** The upload the variants were made from. */
 	source: ProcessedImage;
-	/** Only the variants that were produced; a size wider than the source is absent. */
+	/** Only the variants that were produced; a size larger than the source on its longest edge is absent. */
 	variations: Partial<Record<ImageVariant, VariantOutput>>;
 };

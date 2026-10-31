@@ -2,6 +2,9 @@ import { randomBytes } from "node:crypto";
 
 import sharp from "sharp";
 
+import type { VariantOutput } from "@/shared/types/image";
+import type { ImageVariant } from "~/shared/types";
+
 type JpegOptions = {
 	/** Stored pixel width, before any EXIF rotation. */
 	width: number;
@@ -22,7 +25,7 @@ export const makeJpeg = async ({ width, height, orientation, noisy }: JpegOption
 };
 
 /** Keeps only each variant's width and height, so a test can compare sizes without the bytes. */
-export const dimensionsOf = (variants: Partial<Record<string, { width: number; height: number }>>) =>
+export const dimensionsOf = (variants: Partial<Record<ImageVariant, Pick<VariantOutput, "width" | "height">>>) =>
 	Object.fromEntries(
 		Object.entries(variants).map(([variant, size]) => [variant, { width: size?.width, height: size?.height }]),
 	);
