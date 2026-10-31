@@ -3,8 +3,8 @@ import type { ImageVariant } from "~/shared/types";
 export const DEFAULT_FILE_TYPE = "webp";
 export const DEFAULT_MIME_TYPE = `image/${DEFAULT_FILE_TYPE}`;
 
-/** Target width in pixels per variant; null = no resize (original dimensions). */
-export const VARIANT_WIDTH = {
+/** Longest-edge bound in pixels per variant, keeping the aspect ratio; null = no resize (original dimensions). */
+export const VARIANT_LONGEST_EDGE = {
 	placeholder: 20,
 	small: 400,
 	medium: 800,

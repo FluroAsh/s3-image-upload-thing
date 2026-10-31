@@ -20,3 +20,9 @@ export const makeJpeg = async ({ width, height, orientation, noisy }: JpegOption
 		: sharp({ create: { width, height, channels: 3, background: "#c0ffee" } }).jpeg();
 	return (orientation ? image.withMetadata({ orientation }) : image).toBuffer();
 };
+
+/** Keeps only each variant's width and height, so a test can compare sizes without the bytes. */
+export const dimensionsOf = (variants: Partial<Record<string, { width: number; height: number }>>) =>
+	Object.fromEntries(
+		Object.entries(variants).map(([variant, size]) => [variant, { width: size?.width, height: size?.height }]),
+	);
