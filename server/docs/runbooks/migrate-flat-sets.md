@@ -143,6 +143,7 @@ Any `Failed` count above zero makes the exit code `1`. One failed set does not s
 | `--limit` without `--write` | `--limit only applies with --write` | `1` |
 | The bucket or folder has no keys | `No keys found in ...` | `1` |
 | Credentials missing from the environment | The server's missing-keys error | `1` |
+| A set's work stops with nothing left to wait for, so the run cannot finish | `The run stopped with <n> of <total> unfinished:`, then one line per unfinished set; no totals and no mapping file | `1`. Re-run the same command with its own `--map`; finished sets show as `already-migrated` |
 
 ## Undo
 
