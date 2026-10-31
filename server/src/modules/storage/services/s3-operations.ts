@@ -215,20 +215,23 @@ const REQUEST_TIMEOUT_MS = 60_000;
 export const withDeadline = async <Result>(
 	request: (options: { abortSignal: AbortSignal }) => Promise<Result>,
 ): Promise<Result> => {
-	const abortSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+	const controller = new AbortController();
 	const timedOut = new Error(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
-	let onAbort = () => {};
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	// Not `AbortSignal.timeout`: Bun keeps nothing alive for its timer, so a request that never settles would let the run exit 0 instead of timing out.
 	const deadline = new Promise<never>((_, reject) => {
-		onAbort = () => reject(timedOut);
-		abortSignal.addEventListener("abort", onAbort, { once: true });
+		timer = setTimeout(() => {
+			controller.abort(timedOut);
+			reject(timedOut);
+		}, REQUEST_TIMEOUT_MS);
 	});
 
 	try {
-		return await Promise.race([request({ abortSignal }), deadline]);
+		return await Promise.race([request({ abortSignal: controller.signal }), deadline]);
 	} catch (error) {
-		throw abortSignal.aborted ? timedOut : error;
+		throw controller.signal.aborted ? timedOut : error;
 	} finally {
-		abortSignal.removeEventListener("abort", onAbort);
+		clearTimeout(timer);
 	}
 };
 

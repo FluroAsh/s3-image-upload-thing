@@ -181,16 +181,21 @@ export const writeManifests = async (
 	const listed = new Map(objects.map((object) => [object.key, object]));
 	const { sets } = groupImageSets(objects.map(({ key }) => key));
 
-	return mapLimited(sets, SET_CONCURRENCY, async (set) => {
-		const { members, ...identity } = set;
-		const verdict = await backfillSet(set, listed, io, options).catch(
-			(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
-		);
-		const result = { ...identity, ...(holdsManifest(set) && { manifestKey: manifestKey(set) }), ...verdict };
-		onResult?.(result);
+	return mapLimited(
+		sets,
+		SET_CONCURRENCY,
+		async (set) => {
+			const { members, ...identity } = set;
+			const verdict = await backfillSet(set, listed, io, options).catch(
+				(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
+			);
+			const result = { ...identity, ...(holdsManifest(set) && { manifestKey: manifestKey(set) }), ...verdict };
+			onResult?.(result);
 
-		return result;
-	});
+			return result;
+		},
+		setLabel,
+	);
 };
 
 const countOutcomes = (results: readonly SetResult[], outcomes: readonly SetOutcome[]): number =>

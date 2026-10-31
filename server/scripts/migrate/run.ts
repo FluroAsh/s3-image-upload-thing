@@ -83,18 +83,23 @@ export const migrateFlatSets = async (
 	// Claimed synchronously after each existence check, so concurrent sets can never exceed the limit.
 	const claim = () => write && attempts < limit && ++attempts > 0;
 
-	return mapLimited(planFlatSets(keys), SET_CONCURRENCY, async (plan) => {
-		const { layout, folder, name, original, setPrefix } = plan;
+	return mapLimited(
+		planFlatSets(keys),
+		SET_CONCURRENCY,
+		async (plan) => {
+			const { layout, folder, name, original, setPrefix } = plan;
 
-		const verdict = await migrateSet(plan, io, claim).catch(
-			(error: unknown): Verdict => ({ outcome: "failed", linkTo: null, detail: errorMessage(error) }),
-		);
+			const verdict = await migrateSet(plan, io, claim).catch(
+				(error: unknown): Verdict => ({ outcome: "failed", linkTo: null, detail: errorMessage(error) }),
+			);
 
-		const result = { layout, folder, name, original, setPrefix, ...verdict };
-		onResult?.(result);
+			const result = { layout, folder, name, original, setPrefix, ...verdict };
+			onResult?.(result);
 
-		return result;
-	});
+			return result;
+		},
+		setLabel,
+	);
 };
 
 /** One line of the mapping file; `linkTo` is set only for `migrated` (what the pipeline stored) and `already-migrated` (what the listing shows). */
