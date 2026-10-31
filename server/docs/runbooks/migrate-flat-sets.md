@@ -108,7 +108,7 @@ Work through these in order. Stop at the first step whose result is not the expe
 | 2. Trial | One `[migrated]` line, the rest `[to-migrate]`; `Migrated: 1`; exit code `0` | Read the `[failed]` line; nothing else was attempted |
 | 2. Trial, between result lines | The pipeline's own `||== ... ==||` progress lines for that set | Nothing to do |
 | 3. Folder | `aws s3 ls s3://<bucket>/<setPrefix>` lists the sizes and `manifest.json` | See the outcomes table |
-| 3. Sizes | Download the new `large_` (or largest) and `full_` files and measure them: `full_` has the original's width and height, a portrait is still portrait | Undo the set and report it |
+| 3. Sizes | Download the new `large_` (or largest) and `full_` files and measure them: `full_` has the original's width and height, or 3840 px on its longest edge when the original is larger; a portrait is still portrait | Undo the set and report it |
 | 3. Flat files | `aws s3api list-objects-v2 --bucket <bucket> --prefix <name>` before and after: the flat keys have the same `Size`, `ETag` and `LastModified` | Stop: this must never happen |
 | 3. Mapping | The trial entry is `migrated`, and its `linkTo` exists in the bucket | Do not use the file for content |
 | 4. Full run | The trial set shows as `already-migrated`; `Failed: 0`; exit code `0` | Re-run; only sets without a folder are attempted again |

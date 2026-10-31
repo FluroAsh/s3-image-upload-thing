@@ -3,14 +3,14 @@ import type { ImageVariant } from "~/shared/types";
 export const DEFAULT_FILE_TYPE = "webp";
 export const DEFAULT_MIME_TYPE = `image/${DEFAULT_FILE_TYPE}`;
 
-/** Longest-edge bound in pixels per variant, keeping the aspect ratio; null = no resize (original dimensions). */
+/** Longest-edge bound in pixels per variant, keeping the aspect ratio; a smaller source is never upscaled. */
 export const VARIANT_LONGEST_EDGE = {
 	placeholder: 20,
 	small: 400,
 	medium: 800,
 	large: 1440,
-	full: null,
-} as const satisfies Record<ImageVariant, number | null>;
+	full: 3840,
+} as const satisfies Record<ImageVariant, number>;
 
 /** Output quality (eg. WebP) per variant. */
 export const VARIANT_QUALITY = {

@@ -104,6 +104,14 @@ describe("runUploadPipeline", () => {
 		});
 	});
 
+	it("lists the full size in the manifest at its capped dimensions", async () => {
+		await upload("photo.jpg", "trip", { width: 6000, height: 4000 });
+
+		const { variants }: Manifest = JSON.parse(manifestPut()?.Body as string);
+
+		expect(dimensionsOf(variants).full).toEqual({ width: 3840, height: 2560 });
+	});
+
 	it("stores the manifest as JSON that caches for five minutes", async () => {
 		await uploadStored();
 

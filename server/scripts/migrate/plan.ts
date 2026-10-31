@@ -1,10 +1,6 @@
 import * as path from "node:path";
 
-import {
-	DEFAULT_FILE_TYPE,
-	DEFAULT_MIME_TYPE,
-	VARIANT_LONGEST_EDGE,
-} from "@/modules/storage/processors/variants/config";
+import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "@/modules/storage/processors/variants/config";
 import {
 	EXTENSION,
 	groupImageSets,
@@ -17,14 +13,12 @@ import {
 	setKeyPrefix,
 	uploadSetIdentity,
 } from "@/modules/storage/services/manifest";
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
+import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
 
 import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
-/** The largest resized variant first; never the placeholder, a blur shown while an image loads, nor the full file, which is the original's own size. */
-const LINK_PREFERENCE = IMAGE_VARIANTS.filter(
-	(variant) => variant !== "placeholder" && VARIANT_LONGEST_EDGE[variant] !== null,
-).reverse();
+/** Content links an inline size, largest first. */
+const LINK_PREFERENCE = [...INLINE_VARIANTS].reverse();
 
 /** What a flat original's extension says it holds, since the pipeline reads the type from the file it is handed. */
 const MIME_BY_EXTENSION = {

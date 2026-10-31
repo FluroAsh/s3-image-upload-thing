@@ -65,6 +65,15 @@ describe("createImageVariants", () => {
 	});
 
 	it.each([
+		["landscape", 6000, 4000, { width: 3840, height: 2560 }],
+		["portrait", 4000, 6000, { width: 2560, height: 3840 }],
+	])("caps the full size of a %s at 3840px on its longest edge", async (_shape, width, height, capped) => {
+		const { full } = await createImageVariants(await sourceImage(width, height));
+
+		expect(full).toMatchObject(capped);
+	});
+
+	it.each([
 		["portrait", 400, 600],
 		["landscape", 600, 400],
 		["square", 600, 600],
