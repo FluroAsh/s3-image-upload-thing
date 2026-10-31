@@ -6,7 +6,7 @@ A self-hosted, single-tenant S3 file management and image processing application
 
 ## Features
 
-- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 400px, 800px, 1440px, lossless)
+- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 400px, 800px and 1440px on the longest edge, plus lossless)
 - 📁 **File Browser**: Browse and manage S3 buckets with an intuitive file tree interface
 - 🔒 **BYO Keys**: Bring your own AWS credentials - no hardcoded keys, fully self-hosted
 - ⚡ **Modern Stack**: Built with Next.js 15, Hono, and Bun for optimal performance
@@ -218,11 +218,11 @@ Create or use an existing IAM user with the following permissions:
 When you upload an image, the server automatically:
 
 1. **Validates** the image format and size
-2. **Generates five variants**:
-   - `placeholder_image.webp` (20px width, 60% quality) - Blur placeholder
-   - `small_image.webp` (400px width, 80% quality) - Mobile optimized
-   - `medium_image.webp` (800px width, 85% quality) - Tablet/desktop
-   - `large_image.webp` (1440px width, 90% quality) - High-res desktop
+2. **Generates up to five variants**, fitting each size to the longest edge (width for landscape, height for portrait) and skipping any size larger than the source:
+   - `placeholder_image.webp` (20px longest edge, 60% quality) - Blur placeholder
+   - `small_image.webp` (400px longest edge, 80% quality) - Mobile optimized
+   - `medium_image.webp` (800px longest edge, 85% quality) - Tablet/desktop
+   - `large_image.webp` (1440px longest edge, 90% quality) - High-res desktop
    - `lossless_image.webp` (original dimensions, 95% quality) - Near-lossless
 3. **Uploads to S3** in organized folder structure
 

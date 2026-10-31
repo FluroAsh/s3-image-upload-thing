@@ -16,10 +16,10 @@ export const getVariantType = (fileName: string) => {
 
 const isSized = (variant: ImageVariant) => variant !== "placeholder" && variant !== "lossless";
 
-/** Widest sized variant first, then the full-size file; the blurred placeholder is only a last resort. */
+/** Largest sized variant first, then the full-size file; the blurred placeholder is only a last resort. */
 const PREVIEW_ORDER: ImageVariant[] = [...IMAGE_VARIANTS.filter(isSized).reverse(), "lossless", "placeholder"];
 
-/** Picks the variant to preview; a set may lack any size its source was too narrow for. */
+/** Picks the variant to preview; a set may lack any size its source was too small for. */
 export const pickPreviewVariant = (variants: TreeNode[]): TreeNode | undefined => {
 	for (const wanted of PREVIEW_ORDER) {
 		const found = variants.find((variant) => variant.name.startsWith(`${wanted}_`));
