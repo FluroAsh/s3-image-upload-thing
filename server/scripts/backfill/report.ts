@@ -8,7 +8,7 @@ import {
 import type { ImageVariant, Manifest } from "~/shared/types";
 
 import { type BucketObject, setLabel } from "../shared/listed";
-import { findNonWebpSets, NON_EXTENSION_IMAGE_EXTENSIONS, type NonWebpSet } from "../shared/non-webp-sets";
+import { findNonWebpSets, NON_WEBP_EXTENSIONS, type NonWebpSet } from "../shared/non-webp-sets";
 
 /** Variants the portfolio always asks for, so a set without one cannot be served whole. */
 export const REQUIRED_VARIANTS = ["medium", "large"] as const satisfies readonly ImageVariant[];
@@ -43,7 +43,7 @@ type BackfillReport = {
 		/** Variant names stored with that ETag, in listing order. */
 		variants: string[];
 	})[];
-	/** Sets found by reading `NON_EXTENSION_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
+	/** Sets found by reading `NON_WEBP_EXTENSIONS` as if they were webp, that hold at least one such key. */
 	nonWebpSets: NonWebpSet[];
 };
 
@@ -130,7 +130,7 @@ export const formatBackfillReport = (report: BackfillReport): string => {
 		`Sets missing ${REQUIRED_VARIANTS.join(" or ")}: ${missingRequired.length}`,
 		...missingRequired.map((set) => `  ${setLabel(set)}: ${set.missing.join(", ")}`),
 		"",
-		`Sets with ${NON_EXTENSION_IMAGE_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
+		`Sets with ${NON_WEBP_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
 		...nonWebpSets.flatMap((set) => [
 			`  ${setLabel(set)}: ${set.members.map(({ variant }) => variant).join(", ")}`,
 			...set.webpSiblings.map(

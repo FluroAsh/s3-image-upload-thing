@@ -2,7 +2,7 @@ import { EXTENSION, groupImageSets, type ImageSet, type SetIdentity } from "@/mo
 import type { Manifest } from "~/shared/types";
 
 /** Image formats that are not WebP, so the classifier skips them and they get no manifest; the report lists them to make that visible. */
-export const NON_EXTENSION_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
+export const NON_WEBP_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
 
 export type NonWebpSet = SetIdentity & {
 	/** The skipped non-webp keys, each with the variant name it would hold if its extension were read. */
@@ -14,15 +14,15 @@ export type NonWebpSet = SetIdentity & {
 	})[];
 };
 
-const NON_EXTENSION_IMAGE = new RegExp(`\\.(${NON_EXTENSION_IMAGE_EXTENSIONS.join("|")})$`, "i");
+const NON_WEBP_KEY = new RegExp(`\\.(${NON_WEBP_EXTENSIONS.join("|")})$`, "i");
 
-/** Sets found by reading `NON_EXTENSION_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
+/** Sets found by reading `NON_WEBP_EXTENSIONS` as if they were webp, that hold at least one such key. */
 export const findNonWebpSets = (keys: readonly string[], sets: readonly ImageSet[]): NonWebpSet[] => {
 	// Grouping each image under a webp name applies the classifier's own rules to formats it does not read.
 	const keysByWebpName = new Map<string, string[]>();
 	for (const key of keys) {
-		if (!key.endsWith(EXTENSION) && !NON_EXTENSION_IMAGE.test(key)) continue;
-		const webpName = key.replace(NON_EXTENSION_IMAGE, EXTENSION);
+		if (!key.endsWith(EXTENSION) && !NON_WEBP_KEY.test(key)) continue;
+		const webpName = key.replace(NON_WEBP_KEY, EXTENSION);
 		keysByWebpName.set(webpName, [...(keysByWebpName.get(webpName) ?? []), key]);
 	}
 

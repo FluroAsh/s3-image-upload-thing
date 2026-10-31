@@ -15,7 +15,7 @@ import {
 } from "@/modules/storage/services/manifest";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 
-import { findNonWebpSets, type NON_EXTENSION_IMAGE_EXTENSIONS } from "../shared/non-webp-sets";
+import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
 /** The widest resized variant first; never the placeholder, a blur shown while an image loads, nor the lossless file, which is the original's own size. */
 const LINK_PREFERENCE = IMAGE_VARIANTS.filter(
@@ -28,7 +28,7 @@ const MIME_BY_EXTENSION = {
 	jpg: "image/jpeg",
 	jpeg: "image/jpeg",
 	png: "image/png",
-} as const satisfies Record<typeof DEFAULT_FILE_TYPE | (typeof NON_EXTENSION_IMAGE_EXTENSIONS)[number], string>;
+} as const satisfies Record<typeof DEFAULT_FILE_TYPE | (typeof NON_WEBP_EXTENSIONS)[number], string>;
 
 const mimeTypeOf = (fileName: string): string =>
 	MIME_BY_EXTENSION[path.extname(fileName).slice(1).toLowerCase() as keyof typeof MIME_BY_EXTENSION] ??
