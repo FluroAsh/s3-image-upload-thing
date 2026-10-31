@@ -1,5 +1,6 @@
 import type { NestedSetIdentity, SetIdentity } from "@/modules/storage/services/manifest";
 import type { UploadOutcome, UploadRefusal } from "@/modules/storage/services/upload-pipeline";
+import type { UploadedFile } from "@/shared/types/image";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { setLabel } from "../shared/listed";
@@ -10,10 +11,10 @@ import { type FlatSetPlan, linkToKey, planFlatSets } from "./plan";
 export type MigrateIo = {
 	/** Whether anything is stored under the set's folder: the check the upload pipeline makes before it stores. */
 	setExists: (identity: NestedSetIdentity) => Promise<boolean>;
-	/** Downloads one object of the bucket whole. */
-	readObject: (key: string) => Promise<Buffer>;
-	/** Puts one file through the upload pipeline, which stores its set in a folder of its own inside `destination`. */
-	upload: (file: File, destination: string) => Promise<UploadOutcome>;
+	/** Downloads one object of the bucket whole, with the ETag of the version that was read. */
+	readObject: (key: string) => Promise<{ body: Buffer; etag: string }>;
+	/** Puts one file through the upload pipeline, which stores its set in a folder of its own inside `destination` and copies the file's `copyOriginalFrom` in as the set's original. */
+	upload: (file: UploadedFile, destination: string) => Promise<UploadOutcome>;
 };
 
 export type MigrateOptions = {
@@ -61,7 +62,10 @@ const migrateSet = async (plan: FlatSetPlan, io: MigrateIo, claim: () => boolean
 	// Which sizes exist depends on the original's longest edge, which only a download shows, so a set not migrated has no link.
 	if (!claim()) return { outcome: "to-migrate", linkTo: null };
 
-	const file = new File([await io.readObject(original)], fileName, { type: mimeType });
+	const { body, etag } = await io.readObject(original);
+	const file: UploadedFile = Object.assign(new File([body], fileName, { type: mimeType }), {
+		copyOriginalFrom: { key: original, etag },
+	});
 	const uploaded = await io.upload(file, folder);
 	if ("refused" in uploaded) return { ...PIPELINE_REFUSALS[uploaded.refused], linkTo: null };
 

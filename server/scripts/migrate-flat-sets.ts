@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import * as path from "node:path";
 
-import { imageSetExists, readObject } from "@/modules/storage/services/s3-operations";
+import { getObject, imageSetExists } from "@/modules/storage/services/s3-operations";
 import { runUploadPipeline } from "@/modules/storage/services/upload-pipeline";
 import { errorMessage } from "@/shared/utils/helpers";
 
@@ -33,12 +33,12 @@ const main = async (): Promise<void> => {
 		].join("\n"),
 	);
 
-	// The pipeline's own puts into a new set folder are the only writes; plan.ts refuses any folder a flat file is in.
+	// Writes go only to new set folders; flat files are just read and copied from, and plan.ts refuses any folder that holds one.
 	const results = await migrateFlatSets(
 		objects.map(({ key }) => key),
 		{
 			setExists: (set) => imageSetExists(set, location),
-			readObject: (key) => readObject(key, location),
+			readObject: (key) => getObject(key, location),
 			upload: (file, destination) => runUploadPipeline({ fileEntries: [["0", file]], destination, ...location }),
 		},
 		{ write, limit },

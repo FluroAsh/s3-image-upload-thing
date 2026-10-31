@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
@@ -169,6 +171,60 @@ describe("writeManifests", () => {
 		expect(await writeManifests(second.objects, second.io, UNFORCED)).toMatchObject([{ outcome: "exists" }]);
 		expect(await writeManifests(second.objects, second.io, { force: true })).toMatchObject([{ outcome: "written" }]);
 		expect(second.read.sort()).toEqual(Object.keys(files).sort());
+	});
+
+	describe("a set that keeps its original", () => {
+		const ORIGINAL = "japan-2025/kyoto/ginsui-sukiyaki-1/original.jpg";
+		const MANIFEST = "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json";
+
+		const withOriginal = async () => ({
+			...(await nestedSet()),
+			[ORIGINAL]: await makeJpeg({ width: 300, height: 150, orientation: 6 }),
+		});
+
+		it("records it as the private source, measured after EXIF rotation, and never as a size", async () => {
+			const files = await withOriginal();
+			const { io, objects, stored } = buckets(files);
+
+			expect(await writeManifests(objects, io, UNFORCED)).toMatchObject([{ outcome: "written" }]);
+			expect(stored.get(MANIFEST)?.source).toEqual({
+				key: ORIGINAL,
+				public: false,
+				sha256: createHash("sha256").update(files[ORIGINAL]).digest("hex"),
+				bytes: files[ORIGINAL].length,
+				width: 150,
+				height: 300,
+			});
+			expect(Object.keys(stored.get(MANIFEST)?.variants ?? {})).toEqual(["medium", "large"]);
+		});
+
+		it("keeps the recorded source when forced, without reading the original again", async () => {
+			const files = await withOriginal();
+			const first = buckets(files);
+			await writeManifests(first.objects, first.io, UNFORCED);
+			const recorded = first.stored.get(MANIFEST)?.source;
+			const second = buckets(files, Array.from(first.stored.values()));
+
+			expect(await writeManifests(second.objects, second.io, { force: true })).toMatchObject([{ outcome: "written" }]);
+			expect(second.stored.get(MANIFEST)?.source).toBe(recorded);
+			expect(second.read).not.toContain(ORIGINAL);
+		});
+
+		it("is stale while its manifest does not record the original, and records it when forced", async () => {
+			const files = await withOriginal();
+			const { [ORIGINAL]: _original, ...sizes } = files;
+			const first = buckets(sizes);
+			await writeManifests(first.objects, first.io, UNFORCED);
+			const second = buckets(files, Array.from(first.stored.values()));
+
+			expect(await writeManifests(second.objects, second.io, UNFORCED)).toMatchObject([
+				{ outcome: "exists-stale", detail: `its source is ${ORIGINAL}, recorded as none; --force will refresh it` },
+			]);
+			expect(second.stored.get(MANIFEST)?.source).toBeNull();
+
+			await writeManifests(second.objects, second.io, { force: true });
+			expect(second.stored.get(MANIFEST)?.source).toMatchObject({ key: ORIGINAL, public: false });
+		});
 	});
 
 	describe("a set that gained or lost a variant since its manifest was written", () => {

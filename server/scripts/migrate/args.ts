@@ -16,8 +16,9 @@ the bucket without --write; the mapping file is always written.
   --bucket <name>    Bucket whose flat sets are read and, with --write, given set folders beside them (required)
   --prefix <folder>  Limit the run to one folder of the bucket
   --region <region>  Region of the bucket (default: the server default region)
-  --write            Put each flat original through the upload pipeline, creating {folder}/{name}/ with every size
-                     and ${MANIFEST_FILE_NAME}; flat files are never changed
+  --write            Put each flat original through the upload pipeline, creating {folder}/{name}/ with every size,
+                     a server-side copy of the original as original.{ext}, and ${MANIFEST_FILE_NAME}; flat files are
+                     never changed
   --limit <n>        With --write, migrate at most n sets (for a trial run)
   --map <file>       Where to write the mapping from old original key to new set (default: ./${DEFAULT_MAP})`;
 

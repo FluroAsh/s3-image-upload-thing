@@ -25,8 +25,17 @@ const FLAT_KEYS = [
 ];
 
 describe("planFlatSets", () => {
-	it("plans a set folder at the bucket root, named after the flat original, and leaves nested sets alone", () => {
-		expect(planFlatSets([...FLAT_KEYS, "trip/photo/large_photo.webp", "notes.txt"])).toEqual([
+	it("plans a set folder at the bucket root, named after the flat original, and leaves nested sets and their originals alone", () => {
+		expect(
+			planFlatSets([
+				...FLAT_KEYS,
+				"trip/photo/large_photo.webp",
+				"trip/photo/original.jpg",
+				"trip/other/large_other.webp",
+				"trip/other/original.webp",
+				"notes.txt",
+			]),
+		).toEqual([
 			{
 				layout: "flat",
 				folder: "",
