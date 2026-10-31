@@ -1,67 +1,100 @@
-import { parseArgs } from "node:util";
+import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 
-import { paginateListObjectsV2 } from "@aws-sdk/client-s3";
-
+import { MANIFEST_PREFIX } from "@/modules/storage/services/manifest";
 import {
-	type BucketObject,
-	buildBackfillReport,
-	formatBackfillReport,
-} from "../src/modules/storage/services/backfill-report";
-import { defaultRegion, getRegionalClient } from "../src/modules/storage/services/s3-operations";
+	type BucketLocation,
+	defaultRegion,
+	getRegionalClient,
+	readManifest,
+	readObject,
+	storeManifest,
+	withDeadline,
+} from "@/modules/storage/services/s3-operations";
+import { errorMessage } from "@/shared/utils/helpers";
 
-const USAGE = `Usage: bun --env-file=.env scripts/backfill-manifests.ts --bucket <name> [options]
+import { parseBackfillArgs } from "./backfill/args";
+import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill/report";
+import { countFailed, formatSetResult, formatWriteTotals, type ListedObject, writeManifests } from "./backfill/write";
 
-Dry run: lists the bucket and prints what a backfill would find. Writes nothing.
-
-  --bucket <name>           Bucket to read (required)
-  --manifest-bucket <name>  Bucket manifests belong in; only echoed in a dry run
-  --path-prefix <prefix>    How the read bucket's keys appear under the CDN host: "" (default) or e.g. "legacy/"
-  --prefix <folder>         Limit the run to one folder of the read bucket
-  --region <region>         Region of the read bucket (default: the server default region)`;
-
-const listObjects = async (bucket: string, region: string, folder?: string): Promise<BucketObject[]> => {
-	const objects: BucketObject[] = [];
+const listObjects = async ({ bucketName, bucketRegion }: BucketLocation, folder?: string): Promise<ListedObject[]> => {
+	const objects: ListedObject[] = [];
 	// A trailing slash stops `japan` from also matching `japan-2025/`.
-	const Prefix = folder ? `${folder.replace(/\/+$/, "")}/` : undefined;
+	const Prefix = folder ? `${folder}/` : undefined;
+	let ContinuationToken: string | undefined;
 
-	for await (const page of paginateListObjectsV2({ client: getRegionalClient(region) }, { Bucket: bucket, Prefix })) {
-		for (const { Key, ETag } of page.Contents ?? []) {
-			if (Key) objects.push({ key: Key, etag: ETag ?? "" });
+	do {
+		const page = await withDeadline((options) =>
+			getRegionalClient(bucketRegion).send(
+				new ListObjectsV2Command({ Bucket: bucketName, Prefix, ContinuationToken }),
+				options,
+			),
+		);
+		for (const { Key, ETag, Size } of page.Contents ?? []) {
+			if (Key) objects.push({ key: Key, etag: ETag ?? "", bytes: Size ?? 0 });
 		}
-	}
+		ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+	} while (ContinuationToken);
 
 	return objects;
 };
 
 const main = async (): Promise<void> => {
-	const { values } = parseArgs({
-		options: {
-			bucket: { type: "string" },
-			"manifest-bucket": { type: "string" },
-			"path-prefix": { type: "string", default: "" },
-			prefix: { type: "string" },
-			region: { type: "string", default: defaultRegion },
-		},
-	});
+	const args = parseBackfillArgs(process.argv.slice(2));
+	const { bucket, pathPrefix, folder, region } = args;
+	const bucketRegion = region ?? defaultRegion;
+	const readLocation = { bucketName: bucket, bucketRegion };
 
-	const { bucket, region, prefix } = values;
-	if (!bucket) throw new Error(`--bucket is required\n\n${USAGE}`);
+	const objects = await listObjects(readLocation, folder);
+	const scope = `${bucket}${folder ? ` (folder ${folder})` : ""}`;
+	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
+	if (!objects.length) throw new Error(`No keys found in ${scope}; nothing was written`);
 
-	const pathPrefix = values["path-prefix"];
-	const report = buildBackfillReport(await listObjects(bucket, region, prefix), { pathPrefix });
+	const report = buildBackfillReport(objects, { pathPrefix });
+	assertImageSets(report, scope);
+	const manifestRoot = `${MANIFEST_PREFIX}${pathPrefix}`;
 
+	if (!args.write) {
+		console.log(
+			[
+				`Backfill dry run: nothing was written`,
+				`Bucket read: ${scope}`,
+				`Manifests would go to: ${args.manifestBucket ?? "(no --manifest-bucket given)"} under ${manifestRoot}`,
+				"",
+				formatBackfillReport(report),
+			].join("\n"),
+		);
+		return;
+	}
+
+	const { manifestBucket, force } = args;
+	// The only bucket this run writes to, and `storeManifest` refuses any key outside manifests/.
+	const manifestLocation = { bucketName: manifestBucket, bucketRegion };
 	console.log(
 		[
-			`Backfill dry run: nothing was written`,
-			`Bucket read: ${bucket}${prefix ? ` (folder ${prefix})` : ""}`,
-			`Manifests would go to: ${values["manifest-bucket"] ?? "(no --manifest-bucket given)"} under manifests/${pathPrefix}`,
+			`Backfill write run${force ? " (--force: manifests of the same set are replaced)" : ""}`,
+			`Bucket read: ${scope}, ${objects.length} keys`,
+			`Manifests go to: ${manifestBucket} under ${manifestRoot}`,
+			"Measuring every set; this downloads each object once...",
 			"",
-			formatBackfillReport(report),
 		].join("\n"),
 	);
+
+	const results = await writeManifests(
+		objects,
+		{
+			readObject: (key) => readObject(key, readLocation),
+			readManifest: (location) => readManifest(location, manifestLocation),
+			storeManifest: (manifest, options) => storeManifest(manifest, manifestLocation, options),
+		},
+		{ bucket, pathPrefix, force },
+		(result) => console.log(formatSetResult(result)),
+	);
+
+	console.log(`\n${formatWriteTotals(results)}`);
+	if (countFailed(results)) process.exitCode = 1;
 };
 
 main().catch((error: unknown) => {
-	console.error(error instanceof Error ? error.message : error);
+	console.error(errorMessage(error));
 	process.exit(1);
 });

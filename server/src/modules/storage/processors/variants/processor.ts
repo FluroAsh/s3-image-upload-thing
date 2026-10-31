@@ -1,4 +1,4 @@
-import sharp, { type FormatEnum } from "sharp";
+import sharp from "sharp";
 
 import type { OutputOptions } from "@/modules/storage/processors/tools/sharp";
 import type { ImageVariants, ProcessedImage, VariantOutput } from "@/shared/types/image";
@@ -6,7 +6,7 @@ import { readableSize } from "@/shared/utils/helpers";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant } from "~/shared/types";
 
-import { VARIANT_EFFORT, VARIANT_LONGEST_EDGE, VARIANT_QUALITY } from "./config";
+import { DEFAULT_FILE_TYPE, VARIANT_EFFORT, VARIANT_LONGEST_EDGE, VARIANT_QUALITY } from "./config";
 
 const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => (Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
 
@@ -19,20 +19,22 @@ const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
 export const planVariants = (sourceLongestEdge: number): ImageVariant[] =>
 	IMAGE_VARIANTS.filter((variant) => (VARIANT_LONGEST_EDGE[variant] ?? 0) <= sourceLongestEdge);
 
-const createImageVariant = async (variant: ImageVariant, source: ProcessedImage): Promise<VariantOutput> => {
-	const outputFormat: keyof FormatEnum = "webp";
-	const outputOptions = getOutputOptions(variant);
-
-	let pipeline = sharp(ensureBuffer(source.buffer)).rotate();
+/** Shared with the backfill, so a blur it makes for an old set matches one an upload would have stored. */
+export const encodeVariant = (variant: ImageVariant, source: Buffer) => {
+	let pipeline = sharp(source).rotate();
 	const bound = VARIANT_LONGEST_EDGE[variant];
 	if (bound !== null) {
 		pipeline = pipeline.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true });
 	}
-	pipeline = pipeline.toFormat(outputFormat, outputOptions);
+	pipeline = pipeline.toFormat(DEFAULT_FILE_TYPE, getOutputOptions(variant));
 
 	if (variant === "placeholder") pipeline = pipeline.blur(10);
 
-	const { data: buffer, info } = await pipeline.toBuffer({ resolveWithObject: true });
+	return pipeline.toBuffer({ resolveWithObject: true });
+};
+
+const createImageVariant = async (variant: ImageVariant, source: ProcessedImage): Promise<VariantOutput> => {
+	const { data: buffer, info } = await encodeVariant(variant, ensureBuffer(source.buffer));
 	const size = readableSize(buffer.length);
 
 	console.log(`||== ✅ "${source.fileName}" | ${variant} | successfully compressed image to ${size} ==||`);

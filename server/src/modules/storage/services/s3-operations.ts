@@ -13,7 +13,7 @@ import { TIME } from "~/shared/constants/time";
 import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
-import { type ManifestLocation, manifestKey, setKeyPrefix } from "./manifest";
+import { assertManifestKey, type ManifestLocation, manifestKey, setKeyPrefix } from "./manifest";
 
 if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 	throw new Error(
@@ -66,10 +66,6 @@ export const getRegionalClient = (region: string): S3Client => {
 	return client;
 };
 
-// ---------------------------------------------------------------------------
-// Bucket stats
-// ---------------------------------------------------------------------------
-
 export const getBucketStats = async (bucketName: string, bucketRegion: string): Promise<BucketStats> => {
 	const stats: BucketStats = { objectCount: 0, totalSize: 0 };
 	const client = getRegionalClient(bucketRegion);
@@ -98,10 +94,6 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 	}
 	return stats;
 };
-
-// ---------------------------------------------------------------------------
-// Presigned URLs
-// ---------------------------------------------------------------------------
 
 export const generatePresignedUrl = async (
 	bucketName: string,
@@ -171,6 +163,8 @@ export const uploadImages = async (
 		),
 	);
 
+const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
+
 /** Only "not found" means free; any other failure propagates, so a failed check never lets an upload through. */
 const manifestExists = async (
 	identity: ManifestLocation,
@@ -182,7 +176,7 @@ const manifestExists = async (
 		);
 		return true;
 	} catch (error) {
-		if (error instanceof Error && error.name === "NotFound") return false;
+		if (isS3Error(error, "NotFound")) return false;
 		throw error;
 	}
 };
@@ -197,25 +191,82 @@ export const imageSetExists = async (identity: ManifestLocation, location: Bucke
 	return (Contents?.length ?? 0) > 0;
 };
 
-/** Stores a manifest under its derived key in the given bucket. Create-only: resolves `false`, storing nothing, when one exists. */
+export type StoreManifestOptions = {
+	/** Replace a manifest already stored at the key instead of leaving it; the caller decides which ones may be replaced. */
+	force: boolean;
+};
+
+/** Long enough for a full-size original on a slow link, short enough that a stalled connection fails its set rather than hanging the run. */
+const REQUEST_TIMEOUT_MS = 60_000;
+
+/** Gives one request, body included, a fresh deadline. The abort signal alone does not stop a body that stalls mid-read, and the SDK's abort error does not say why it stopped. */
+export const withDeadline = async <Result>(
+	request: (options: { abortSignal: AbortSignal }) => Promise<Result>,
+): Promise<Result> => {
+	const abortSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+	const timedOut = new Error(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+	let onAbort = () => {};
+	const deadline = new Promise<never>((_, reject) => {
+		onAbort = () => reject(timedOut);
+		abortSignal.addEventListener("abort", onAbort, { once: true });
+	});
+
+	try {
+		return await Promise.race([request({ abortSignal }), deadline]);
+	} catch (error) {
+		throw abortSignal.aborted ? timedOut : error;
+	} finally {
+		abortSignal.removeEventListener("abort", onAbort);
+	}
+};
+
+/** Resolves `false`, storing nothing, when a manifest exists and `force` is off, so "already there" is not mistaken for a failure. */
 export const storeManifest = async (
 	manifest: Manifest,
 	{ bucketName, bucketRegion }: BucketLocation,
+	{ force }: StoreManifestOptions = { force: false },
 ): Promise<boolean> => {
+	const key = manifestKey(manifest);
+	assertManifestKey(key);
+
 	try {
-		await getRegionalClient(bucketRegion).send(
-			new PutObjectCommand({
-				Body: JSON.stringify(manifest),
-				Bucket: bucketName,
-				Key: manifestKey(manifest),
-				ContentType: "application/json",
-				CacheControl: MANIFEST_CACHE_CONTROL,
-				IfNoneMatch: "*",
-			}),
+		await withDeadline((options) =>
+			getRegionalClient(bucketRegion).send(
+				new PutObjectCommand({
+					Body: JSON.stringify(manifest),
+					Bucket: bucketName,
+					Key: key,
+					ContentType: "application/json",
+					CacheControl: MANIFEST_CACHE_CONTROL,
+					IfNoneMatch: force ? undefined : "*",
+				}),
+				options,
+			),
 		);
 		return true;
 	} catch (error) {
-		if (error instanceof Error && error.name === "PreconditionFailed") return false;
+		if (isS3Error(error, "PreconditionFailed")) return false;
+		throw error;
+	}
+};
+
+export const readObject = (key: string, { bucketName, bucketRegion }: BucketLocation): Promise<Buffer> =>
+	withDeadline(async (options) => {
+		const { Body } = await getRegionalClient(bucketRegion).send(
+			new GetObjectCommand({ Bucket: bucketName, Key: key }),
+			options,
+		);
+		if (!Body) throw new Error(`S3 returned no content for "${key}"`);
+
+		return Buffer.from(await Body.transformToByteArray());
+	});
+
+/** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. */
+export const readManifest = async (identity: ManifestLocation, location: BucketLocation): Promise<Manifest | null> => {
+	try {
+		return JSON.parse((await readObject(manifestKey(identity), location)).toString("utf8"));
+	} catch (error) {
+		if (isS3Error(error, "NoSuchKey")) return null;
 		throw error;
 	}
 };

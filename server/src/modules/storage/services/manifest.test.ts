@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	assertManifestKey,
+	assertPathPrefix,
 	buildManifest,
 	classifyKey,
 	groupImageSets,
@@ -235,6 +237,29 @@ describe("manifestKey", () => {
 	});
 });
 
+describe("assertPathPrefix", () => {
+	it.each(["", "legacy/", "legacy/2020/"])("accepts %j", (pathPrefix) => {
+		expect(() => assertPathPrefix(pathPrefix)).not.toThrow();
+	});
+
+	it.each([
+		"/",
+		"/legacy/",
+		"legacy",
+		"legacy//",
+		"a//b/",
+		"./",
+		"../",
+		"legacy/../",
+		"legacy/./",
+		"my legacy/",
+		" /",
+		"legacy/\t",
+	])("rejects %j", (pathPrefix) => {
+		expect(() => assertPathPrefix(pathPrefix)).toThrow("pathPrefix");
+	});
+});
+
 describe("buildManifest", () => {
 	const measured = (keys: string[], width: number) =>
 		keys.map((key, index) => ({
@@ -329,5 +354,23 @@ describe("buildManifest", () => {
 		expect(() => build([])).toThrow();
 		expect(() => build(["japan-2025/raw-video/day-1-snow.mp4"])).toThrow();
 		expect(() => build([NESTED_KEYS[0], "japan-2025/kyoto/ginsui-sukiyaki-2/large_ginsui-sukiyaki-2.webp"])).toThrow();
+	});
+});
+
+describe("assertManifestKey", () => {
+	it("accepts a key under manifests/", () => {
+		expect(() => assertManifestKey("manifests/legacy/DSC_1963_f6f8bf29c4.json")).not.toThrow();
+	});
+
+	it.each([
+		"japan-2025/kyoto/ginsui-sukiyaki-1/medium_ginsui-sukiyaki-1.webp",
+		"DSC_1963_f6f8bf29c4.webp",
+		"legacy/manifests/a.json",
+		"manifests.json",
+		"",
+	])("refuses '%s', which is outside manifests/", (key) => {
+		expect(() => assertManifestKey(key)).toThrow(
+			`Refusing to write "${key}": manifests are only stored under manifests/`,
+		);
 	});
 });

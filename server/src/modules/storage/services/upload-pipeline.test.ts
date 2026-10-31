@@ -3,64 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "~/shared/types";
 
+import { s3 } from "../fake-s3";
 import { dimensionsOf, makeJpeg } from "../test-helpers";
 import { runUploadPipeline } from "./upload-pipeline";
 
-type SentCommand = {
-	/** Which SDK command was sent, e.g. `"PutObject"`. */
-	command: string;
-	/** The input the command was built with. */
-	input: Record<string, unknown> & {
-		/** Bucket key the command targets. */
-		Key: string;
-		/** Bytes or text to store; only on a put. */
-		Body?: Buffer | string;
-	};
-};
-
-type S3Response = {
-	/** ETag S3 returns for a stored object; only on a put. */
-	ETag?: string;
-	/** Objects found under a prefix; only on a listing. */
-	Contents?: {
-		/** Bucket key of the listed object. */
-		Key: string;
-	}[];
-};
-
-const s3 = vi.hoisted(() => {
-	process.env.ACCESS_KEY_ID = "test-key-id";
-	process.env.SECRET_ACCESS_KEY = "test-secret";
-
-	const defaultRespond = async ({ command, input }: SentCommand): Promise<S3Response> => {
-		if (command === "HeadObject") throw Object.assign(new Error("Not Found"), { name: "NotFound" });
-		return { ETag: `"etag-of-${input.Key}"` };
-	};
-
-	return { sent: [] as SentCommand[], defaultRespond, respond: defaultRespond };
-});
-
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: async () => "https://cdn.example.test/signed" }));
-vi.mock("@aws-sdk/client-s3", () => {
-	const commandClass = (command: string) =>
-		class {
-			command = command;
-			constructor(public input: SentCommand["input"]) {}
-		};
-
-	return {
-		GetObjectCommand: commandClass("GetObject"),
-		HeadObjectCommand: commandClass("HeadObject"),
-		ListObjectsV2Command: commandClass("ListObjectsV2"),
-		PutObjectCommand: commandClass("PutObject"),
-		S3Client: class {
-			send = async ({ command, input }: SentCommand) => {
-				s3.sent.push({ command, input });
-				return s3.respond({ command, input });
-			};
-		},
-	};
-});
+vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
 const puts = () => s3.sent.filter(({ command }) => command === "PutObject").map(({ input }) => input);
 
