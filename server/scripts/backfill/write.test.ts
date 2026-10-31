@@ -246,15 +246,15 @@ describe("writeManifests", () => {
 	it("records the format a .webp key really holds, and says so, rather than describing a JPEG as WebP", async () => {
 		const { io, objects, stored } = buckets({
 			"static/portrait/medium_portrait.webp": await webp(80, 40),
-			"static/portrait/lossless_portrait.webp": await makeJpeg({ width: 300, height: 600, orientation: 6 }),
+			"static/portrait/full_portrait.webp": await makeJpeg({ width: 300, height: 600, orientation: 6 }),
 		});
 
 		const results = await writeManifests(objects, io, UNFORCED);
 
-		expect(results).toMatchObject([{ outcome: "written", detail: "lossless holds jpeg, not webp" }]);
+		expect(results).toMatchObject([{ outcome: "written", detail: "full holds jpeg, not webp" }]);
 		expect(stored.get("static/portrait/manifest.json")?.variants).toMatchObject({
 			medium: { format: "webp" },
-			lossless: { format: "jpeg", width: 600, height: 300 },
+			full: { format: "jpeg", width: 600, height: 300 },
 		});
 	});
 

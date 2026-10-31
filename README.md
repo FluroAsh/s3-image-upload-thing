@@ -6,7 +6,7 @@ A self-hosted, single-tenant S3 file management and image processing application
 
 ## Features
 
-- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 400px, 800px and 1440px on the longest edge, plus lossless)
+- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 400px, 800px, 1440px and 3840px on the longest edge)
 - 📁 **File Browser**: Browse and manage S3 buckets with an intuitive file tree interface
 - 🔒 **BYO Keys**: Bring your own AWS credentials - no hardcoded keys, fully self-hosted
 - ⚡ **Modern Stack**: Built with Next.js 15, Hono, and Bun for optimal performance
@@ -59,7 +59,7 @@ This is a monorepo containing two main applications:
 
 **Key Features:**
 
-- Automatic image variant generation (placeholder, small, medium, large, lossless)
+- Automatic image variant generation (placeholder, small, medium, large, full)
 - WebP conversion for optimal file sizes
 
 ## Getting Started
@@ -223,7 +223,7 @@ When you upload an image, the server automatically:
    - `small_image.webp` (400px longest edge, 80% quality) - Mobile optimized
    - `medium_image.webp` (800px longest edge, 85% quality) - Tablet/desktop
    - `large_image.webp` (1440px longest edge, 90% quality) - High-res desktop
-   - `lossless_image.webp` (original dimensions, 95% quality) - Near-lossless
+   - `full_image.webp` (3840px longest edge, 95% quality) - Lightbox and gallery; always stored, at the source size when smaller
 3. **Uploads to S3** in organized folder structure
 
 **Folder Structure:**
@@ -236,7 +236,7 @@ your-bucket/
         ├── small_image-name.webp
         ├── medium_image-name.webp
         ├── large_image-name.webp
-        └── lossless_image-name.webp
+        └── full_image-name.webp
 ```
 
 ## Security
@@ -261,7 +261,7 @@ This is a personal project, but contributions are welcome! Feel free to:
 
 - [ ] Background upload jobs with BullMQ
 - [ ] Image replacement feature
-- [ ] Lossless optimization opt-in
+- [ ] Opt-in exact (no quality loss) encoding
 - [ ] Source image storage option
 - [ ] Multi-region support
 - [ ] Batch operations

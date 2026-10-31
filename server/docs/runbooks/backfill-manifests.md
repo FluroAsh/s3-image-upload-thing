@@ -129,7 +129,7 @@ Each of these exits with code `1` before any request is made.
 
 | Outcome | Counts as | What it means | What to do |
 |---|---|---|---|
-| `written` | Written | The manifest was stored in the set's folder. A detail such as `lossless holds jpeg, not webp` means a file's bytes do not match its name; the manifest records the real format | Nothing |
+| `written` | Written | The manifest was stored in the set's folder. A detail such as `full holds jpeg, not webp` means a file's bytes do not match its name; the manifest records the real format | Nothing |
 | `exists` | Skipped | The set already has a manifest listing exactly its current files | Nothing |
 | `exists-stale` | Skipped | The set has a manifest, but a size has been added or removed since. The line lists which keys | Re-run with `--force` to refresh it |
 | `flat-set` | Skipped | The set has no folder of its own, so there is nowhere to store a manifest. The line says it needs migrating into a set folder | Migrate it, then run the backfill again; until then it has no manifest |

@@ -16,7 +16,7 @@ import {
 
 const CAT = ["cat_ab12.webp", "small_cat_ab12.webp"];
 const DOG = ["blog/dog_cd34.webp", "blog/large_dog_cd34.webp"];
-const DOG_MIGRATED = ["blog/dog_cd34/medium_dog_cd34.webp", "blog/dog_cd34/lossless_dog_cd34.webp"];
+const DOG_MIGRATED = ["blog/dog_cd34/medium_dog_cd34.webp", "blog/dog_cd34/full_dog_cd34.webp"];
 
 const stored = (key: string, variant: FileVariant["variant"]) => ({ key, variant }) as FileVariant;
 

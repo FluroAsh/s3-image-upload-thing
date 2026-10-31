@@ -1,4 +1,4 @@
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
+import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 24;
@@ -14,10 +14,8 @@ export const getVariantType = (fileName: string) => {
 	return variant ? `${variant[0].toUpperCase()}${variant.slice(1)}` : "";
 };
 
-const isSized = (variant: ImageVariant) => variant !== "placeholder" && variant !== "lossless";
-
-/** Largest sized variant first, then the full-size file; the blurred placeholder is only a last resort. */
-const PREVIEW_ORDER: ImageVariant[] = [...IMAGE_VARIANTS.filter(isSized).reverse(), "lossless", "placeholder"];
+/** Largest inline size first, as `full` is a far bigger download; the blurred placeholder is only a last resort. */
+const PREVIEW_ORDER: ImageVariant[] = [...INLINE_VARIANTS.toReversed(), "full", "placeholder"];
 
 /** Picks the variant to preview; a set may lack any size its source was too small for. */
 export const pickPreviewVariant = (variants: TreeNode[]): TreeNode | undefined => {

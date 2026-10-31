@@ -15,18 +15,17 @@ const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
 	effort: VARIANT_EFFORT[variant],
 });
 
-/** A null bound means "source size", which always fits; a sized variant fits only without upscaling. */
+/** `full` is the one size every set has, stored at the source's own size when that is below its bound; any other size is skipped rather than upscaled. */
 export const planVariants = (sourceLongestEdge: number): ImageVariant[] =>
-	IMAGE_VARIANTS.filter((variant) => (VARIANT_LONGEST_EDGE[variant] ?? 0) <= sourceLongestEdge);
+	IMAGE_VARIANTS.filter((variant) => variant === "full" || VARIANT_LONGEST_EDGE[variant] <= sourceLongestEdge);
 
 /** Shared with the backfill, so a blur it makes for an old set matches one an upload would have stored. */
 export const encodeVariant = (variant: ImageVariant, source: Buffer) => {
-	let pipeline = sharp(source).rotate();
 	const bound = VARIANT_LONGEST_EDGE[variant];
-	if (bound !== null) {
-		pipeline = pipeline.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true });
-	}
-	pipeline = pipeline.toFormat(DEFAULT_FILE_TYPE, getOutputOptions(variant));
+	let pipeline = sharp(source)
+		.rotate()
+		.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true })
+		.toFormat(DEFAULT_FILE_TYPE, getOutputOptions(variant));
 
 	if (variant === "placeholder") pipeline = pipeline.blur(10);
 

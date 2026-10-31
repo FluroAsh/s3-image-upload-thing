@@ -17,16 +17,16 @@ const pick = (...names: string[]) => pickPreviewVariant(names.map(node))?.name;
 
 describe("pickPreviewVariant", () => {
 	it("prefers large over every other variant", () => {
-		expect(pick("placeholder_a.webp", "lossless_a.webp", "large_a.webp", "small_a.webp")).toBe("large_a.webp");
+		expect(pick("placeholder_a.webp", "full_a.webp", "large_a.webp", "small_a.webp")).toBe("large_a.webp");
 	});
 
 	it("falls from large to medium to small", () => {
-		expect(pick("placeholder_a.webp", "small_a.webp", "medium_a.webp", "lossless_a.webp")).toBe("medium_a.webp");
-		expect(pick("placeholder_a.webp", "small_a.webp", "lossless_a.webp")).toBe("small_a.webp");
+		expect(pick("placeholder_a.webp", "small_a.webp", "medium_a.webp", "full_a.webp")).toBe("medium_a.webp");
+		expect(pick("placeholder_a.webp", "small_a.webp", "full_a.webp")).toBe("small_a.webp");
 	});
 
-	it("falls back to lossless when no sized variant exists", () => {
-		expect(pick("placeholder_a.webp", "lossless_a.webp")).toBe("lossless_a.webp");
+	it("falls back to full when no inline size exists", () => {
+		expect(pick("placeholder_a.webp", "full_a.webp")).toBe("full_a.webp");
 	});
 
 	it("uses the placeholder only when nothing else exists", () => {

@@ -11,23 +11,23 @@ const sourceImage = async (width: number, height: number, orientation?: number, 
 
 describe("planVariants", () => {
 	it("plans only the placeholder and the full-size variant for a source below the size table", () => {
-		expect(planVariants(300)).toEqual(["placeholder", "lossless"]);
+		expect(planVariants(300)).toEqual(["placeholder", "full"]);
 	});
 
 	it("adds only the sizes that fit for a source between two entries of the size table", () => {
-		expect(planVariants(600)).toEqual(["placeholder", "small", "lossless"]);
+		expect(planVariants(600)).toEqual(["placeholder", "small", "full"]);
 	});
 
 	it("plans every variant for a source above the size table", () => {
-		expect(planVariants(2000)).toEqual(["placeholder", "small", "medium", "large", "lossless"]);
+		expect(planVariants(2000)).toEqual(["placeholder", "small", "medium", "large", "full"]);
 	});
 
 	it("keeps a size whose bound equals the source's longest edge", () => {
-		expect(planVariants(400)).toEqual(["placeholder", "small", "lossless"]);
+		expect(planVariants(400)).toEqual(["placeholder", "small", "full"]);
 	});
 
 	it("plans only the full-size variant for a source smaller than the placeholder", () => {
-		expect(planVariants(10)).toEqual(["lossless"]);
+		expect(planVariants(10)).toEqual(["full"]);
 	});
 });
 
@@ -36,7 +36,7 @@ describe("createImageVariants", () => {
 		const variations = await createImageVariants(await sourceImage(600, 400));
 		const contents = Object.values(variations).map(({ buffer }) => buffer.toString("base64"));
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "lossless"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
 		expect(new Set(contents).size).toBe(contents.length);
 	});
 
@@ -48,7 +48,7 @@ describe("createImageVariants", () => {
 			small: { width: 400, height: 267 },
 			medium: { width: 800, height: 533 },
 			large: { width: 1440, height: 960 },
-			lossless: { width: 2160, height: 1440 },
+			full: { width: 2160, height: 1440 },
 		});
 	});
 
@@ -60,8 +60,17 @@ describe("createImageVariants", () => {
 			small: { width: 267, height: 400 },
 			medium: { width: 533, height: 800 },
 			large: { width: 960, height: 1440 },
-			lossless: { width: 960, height: 1440 },
+			full: { width: 960, height: 1440 },
 		});
+	});
+
+	it.each([
+		["landscape", 6000, 4000, { width: 3840, height: 2560 }],
+		["portrait", 4000, 6000, { width: 2560, height: 3840 }],
+	])("caps the full size of a %s at 3840px on its longest edge", async (_shape, width, height, capped) => {
+		const { full } = await createImageVariants(await sourceImage(width, height));
+
+		expect(full).toMatchObject(capped);
 	});
 
 	it.each([
@@ -71,7 +80,7 @@ describe("createImageVariants", () => {
 	])("never upscales a %s source to a size above its longest edge", async (_shape, width, height) => {
 		const variations = await createImageVariants(await sourceImage(width, height));
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "lossless"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
 		expect(Math.max(variations.small?.width ?? 0, variations.small?.height ?? 0)).toBe(400);
 	});
 
@@ -80,21 +89,21 @@ describe("createImageVariants", () => {
 
 		const variations = await createImageVariants(storedSideways);
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "lossless"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
 		expect(variations.small).toMatchObject({ width: 200, height: 400 });
-		expect(variations.lossless).toMatchObject({ width: 300, height: 600 });
+		expect(variations.full).toMatchObject({ width: 300, height: 600 });
 	});
 
 	it("stores the full-size variant as a rotated WebP even when it is larger than the upload", async () => {
 		const upload = await sourceImage(600, 300, 6, true);
 
-		const { lossless } = await createImageVariants(upload);
-		if (!lossless) throw new Error("no lossless variant produced");
-		const stored = await sharp(lossless.buffer).metadata();
+		const { full } = await createImageVariants(upload);
+		if (!full) throw new Error("no full variant produced");
+		const stored = await sharp(full.buffer).metadata();
 
-		expect(lossless.buffer.length).toBeGreaterThan((upload.buffer as Buffer).length);
+		expect(full.buffer.length).toBeGreaterThan((upload.buffer as Buffer).length);
 		expect(stored.format).toBe("webp");
-		expect({ width: stored.width, height: stored.height }).toEqual({ width: lossless.width, height: lossless.height });
-		expect(lossless).toMatchObject({ width: 300, height: 600 });
+		expect({ width: stored.width, height: stored.height }).toEqual({ width: full.width, height: full.height });
+		expect(full).toMatchObject({ width: 300, height: 600 });
 	});
 });

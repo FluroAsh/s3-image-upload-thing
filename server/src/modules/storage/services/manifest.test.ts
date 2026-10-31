@@ -299,7 +299,7 @@ describe("groupImageSets", () => {
 describe("variantKey", () => {
 	it("puts a variant in its set's folder, prefixed with its name", () => {
 		expect(variantKey({ folder: "trip", name: "photo" }, "large")).toBe("trip/photo/large_photo.webp");
-		expect(variantKey({ folder: "", name: "photo" }, "lossless")).toBe("photo/lossless_photo.webp");
+		expect(variantKey({ folder: "", name: "photo" }, "full")).toBe("photo/full_photo.webp");
 	});
 });
 

@@ -48,10 +48,10 @@ describe("runUploadPipeline", () => {
 			puts()
 				.map(({ Key }) => Key)
 				.filter((key) => key.endsWith(".webp")),
-		).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/lossless_photo.webp"]);
+		).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/full_photo.webp"]);
 		expect(files.map(({ variant, width, height }) => ({ variant, width, height }))).toEqual([
 			{ variant: "placeholder", width: 20, height: 10 },
-			{ variant: "lossless", width: 300, height: 150 },
+			{ variant: "full", width: 300, height: 150 },
 		]);
 	});
 
@@ -59,7 +59,7 @@ describe("runUploadPipeline", () => {
 		await uploadStored();
 
 		expect(puts()).toHaveLength(3);
-		const [placeholder, lossless, last] = puts();
+		const [placeholder, full, last] = puts();
 		expect(last.Key).toBe("trip/photo/manifest.json");
 
 		const manifest: Manifest = JSON.parse(last.Body as string);
@@ -79,13 +79,13 @@ describe("runUploadPipeline", () => {
 				bytes: (placeholder.Body as Buffer).length,
 				etag: '"etag-of-trip/photo/placeholder_photo.webp"',
 			},
-			lossless: {
-				key: "trip/photo/lossless_photo.webp",
+			full: {
+				key: "trip/photo/full_photo.webp",
 				format: "webp",
 				width: 300,
 				height: 150,
-				bytes: (lossless.Body as Buffer).length,
-				etag: '"etag-of-trip/photo/lossless_photo.webp"',
+				bytes: (full.Body as Buffer).length,
+				etag: '"etag-of-trip/photo/full_photo.webp"',
 			},
 		});
 	});
@@ -100,8 +100,16 @@ describe("runUploadPipeline", () => {
 			small: { width: 267, height: 400 },
 			medium: { width: 533, height: 800 },
 			large: { width: 960, height: 1440 },
-			lossless: { width: 960, height: 1440 },
+			full: { width: 960, height: 1440 },
 		});
+	});
+
+	it("lists the full size in the manifest at its capped dimensions", async () => {
+		await upload("photo.jpg", "trip", { width: 6000, height: 4000 });
+
+		const { variants }: Manifest = JSON.parse(manifestPut()?.Body as string);
+
+		expect(dimensionsOf(variants).full).toEqual({ width: 3840, height: 2560 });
 	});
 
 	it("stores the manifest as JSON that caches for five minutes", async () => {
@@ -119,7 +127,7 @@ describe("runUploadPipeline", () => {
 
 		expect(puts().slice(0, 2)).toEqual([
 			expect.objectContaining({ Key: "trip/photo/placeholder_photo.webp", CacheControl: "public, max-age=86400" }),
-			expect.objectContaining({ Key: "trip/photo/lossless_photo.webp", CacheControl: "public, max-age=86400" }),
+			expect.objectContaining({ Key: "trip/photo/full_photo.webp", CacheControl: "public, max-age=86400" }),
 		]);
 	});
 
@@ -136,16 +144,13 @@ describe("runUploadPipeline", () => {
 
 	it("writes no manifest when a variant fails to store", async () => {
 		s3.respond = async (sent) => {
-			if (sent.command === "PutObject" && sent.input.Key.includes("lossless_")) throw new Error("S3 is down");
+			if (sent.command === "PutObject" && sent.input.Key.includes("full_")) throw new Error("S3 is down");
 			return s3.defaultRespond(sent);
 		};
 
 		await expect(upload()).rejects.toThrow("S3 is down");
 
-		expect(puts().map(({ Key }) => Key)).toEqual([
-			"trip/photo/placeholder_photo.webp",
-			"trip/photo/lossless_photo.webp",
-		]);
+		expect(puts().map(({ Key }) => Key)).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/full_photo.webp"]);
 	});
 
 	it.each([
