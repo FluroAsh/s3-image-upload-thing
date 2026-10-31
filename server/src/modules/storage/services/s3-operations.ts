@@ -218,7 +218,7 @@ export const withDeadline = async <Result>(
 	const controller = new AbortController();
 	const timedOut = new Error(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	// Not `AbortSignal.timeout`: Bun keeps nothing alive for its timer, so a request that never settles would let the run exit 0 instead of timing out.
+	// Not `AbortSignal.timeout`: Bun exits 0 when nothing keeps the event loop alive, and that timer does not, so a stalled request ended the run silently.
 	const deadline = new Promise<never>((_, reject) => {
 		timer = setTimeout(() => {
 			controller.abort(timedOut);

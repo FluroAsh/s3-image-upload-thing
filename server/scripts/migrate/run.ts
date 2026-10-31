@@ -1,16 +1,19 @@
-import type { NestedSetIdentity, SetIdentity } from "@/modules/storage/services/manifest";
+import { MANIFEST_FILE_NAME, type NestedSetIdentity, type SetIdentity } from "@/modules/storage/services/manifest";
 import type { UploadOutcome, UploadRefusal } from "@/modules/storage/services/upload-pipeline";
 import type { UploadedFile } from "@/shared/types/image";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { setLabel } from "../shared/listed";
-import { mapLimited, SET_CONCURRENCY } from "../shared/map-limited";
+import { mapLimited, SET_CONCURRENCY, type Unfinished } from "../shared/map-limited";
+import { guardStall } from "../shared/stall-guard";
 import { type FlatSetPlan, linkToKey, planFlatSets } from "./plan";
 
 /** The bucket requests a migration makes, so the run itself can be tested without the network. */
 export type MigrateIo = {
 	/** Whether anything is stored under the set's folder: the check the upload pipeline makes before it stores. */
 	setExists: (identity: NestedSetIdentity) => Promise<boolean>;
+	/** Whether the set's folder holds a manifest, which the pipeline writes last. */
+	hasManifest: (identity: NestedSetIdentity) => Promise<boolean>;
 	/** Downloads one object of the bucket whole, with the ETag of the version that was read. */
 	readObject: (key: string) => Promise<{ body: Buffer; etag: string }>;
 	/** Puts one file through the upload pipeline, which stores its set in a folder of its own inside `destination` and copies the file's `copyOriginalFrom` in as the set's original. */
@@ -28,7 +31,7 @@ export type MigrateOptions = {
 const SKIPPED_OUTCOMES = ["already-migrated", "no-original", "reserved"] as const;
 
 /** Outcomes that mean a set should have been migrated and was not, which make the run exit non-zero. */
-const FAILED_OUTCOMES = ["unsafe-target", "failed"] as const;
+const FAILED_OUTCOMES = ["unsafe-target", "incomplete", "failed"] as const;
 
 /** What can happen to one flat set; `to-migrate` is a set this run left as it found it (a dry run, or past `--limit`). */
 export const MIGRATE_OUTCOMES = ["migrated", "to-migrate", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES] as const;
@@ -57,7 +60,15 @@ const PIPELINE_REFUSALS = {
 const migrateSet = async (plan: FlatSetPlan, io: MigrateIo, claim: () => boolean): Promise<Verdict> => {
 	if (plan.refusal !== null) return { ...plan.refusal, linkTo: null };
 	const { original, fileName, mimeType, folder } = plan;
-	if (await io.setExists(plan)) return { outcome: "already-migrated", linkTo: plan.listedLinkTo };
+	if (await io.setExists(plan)) {
+		if (await io.hasManifest(plan)) return { outcome: "already-migrated", linkTo: plan.listedLinkTo };
+
+		return {
+			outcome: "incomplete",
+			linkTo: null,
+			detail: `its folder "${plan.setPrefix}" has no ${MANIFEST_FILE_NAME}, so an earlier run did not finish it; delete the folder before re-running`,
+		};
+	}
 
 	// Which sizes exist depends on the original's longest edge, which only a download shows, so a set not migrated has no link.
 	if (!claim()) return { outcome: "to-migrate", linkTo: null };
@@ -78,6 +89,7 @@ export const migrateFlatSets = async (
 	io: MigrateIo,
 	{ write, limit = Number.POSITIVE_INFINITY }: MigrateOptions,
 	onResult?: (result: MigrateResult) => void,
+	unfinished?: Unfinished<SetIdentity>,
 ): Promise<MigrateResult[]> => {
 	let attempts = 0;
 	// Claimed synchronously after each existence check, so concurrent sets can never exceed the limit.
@@ -98,7 +110,7 @@ export const migrateFlatSets = async (
 
 			return result;
 		},
-		setLabel,
+		unfinished,
 	);
 };
 
@@ -113,6 +125,34 @@ export const buildMapping = (results: readonly MigrateResult[]): MappingEntry[] 
 	results
 		.flatMap(({ original, setPrefix, linkTo, outcome }) => (original ? [{ original, setPrefix, linkTo, outcome }] : []))
 		.sort((a, b) => (a.original < b.original ? -1 : 1));
+
+/** Runs the migration and writes the mapping file, including when the run stops early, so what it did stays undoable. */
+export const migrateAndMap = async (
+	keys: readonly string[],
+	io: MigrateIo,
+	options: MigrateOptions,
+	writeMapping: (mapping: MappingEntry[]) => void,
+	onResult?: (result: MigrateResult) => void,
+): Promise<MigrateResult[]> => {
+	const finished: MigrateResult[] = [];
+	const results = await guardStall(
+		(unfinished) =>
+			migrateFlatSets(
+				keys,
+				io,
+				options,
+				(result) => {
+					finished.push(result);
+					onResult?.(result);
+				},
+				unfinished,
+			),
+		() => writeMapping(buildMapping(finished)),
+	);
+	writeMapping(buildMapping(results));
+
+	return results;
+};
 
 const countOutcomes = (results: readonly MigrateResult[], outcomes: readonly MigrateOutcome[]): number =>
 	results.filter(({ outcome }) => outcomes.includes(outcome)).length;

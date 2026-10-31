@@ -4,7 +4,7 @@ import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { s3 } from "@/modules/storage/fake-s3";
-import { getObject, imageSetExists } from "@/modules/storage/services/s3-operations";
+import { getObject, imageSetExists, readManifest } from "@/modules/storage/services/s3-operations";
 import { runUploadPipeline } from "@/modules/storage/services/upload-pipeline";
 import { makeJpeg } from "@/modules/storage/test-helpers";
 import type { Manifest } from "~/shared/types";
@@ -44,6 +44,7 @@ beforeEach(async () => {
 
 const io: MigrateIo = {
 	setExists: (set) => imageSetExists(set, location),
+	hasManifest: async (set) => (await readManifest(set, location)) !== null,
 	readObject: (key) => getObject(key, location),
 	upload: (file, destination) => runUploadPipeline({ fileEntries: [["0", file]], destination, ...location }),
 };

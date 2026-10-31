@@ -19,7 +19,7 @@ import { errorMessage } from "@/shared/utils/helpers";
 import type { Manifest } from "~/shared/types";
 
 import { type ListedObject, setLabel } from "../shared/listed";
-import { mapLimited, SET_CONCURRENCY } from "../shared/map-limited";
+import { mapLimited, SET_CONCURRENCY, type Unfinished } from "../shared/map-limited";
 import { FLAT_SET_NOTE } from "./report";
 
 /** The bucket requests a write run makes, so the run itself can be tested without the network. */
@@ -177,6 +177,7 @@ export const writeManifests = async (
 	io: BackfillIo,
 	options: StoreManifestOptions,
 	onResult?: (result: SetResult) => void,
+	unfinished?: Unfinished<SetIdentity>,
 ): Promise<SetResult[]> => {
 	const listed = new Map(objects.map((object) => [object.key, object]));
 	const { sets } = groupImageSets(objects.map(({ key }) => key));
@@ -194,7 +195,7 @@ export const writeManifests = async (
 
 			return result;
 		},
-		setLabel,
+		unfinished,
 	);
 };
 

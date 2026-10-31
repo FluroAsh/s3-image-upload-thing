@@ -1,18 +1,12 @@
-import { writeFile } from "node:fs/promises";
+import { writeFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { getObject, imageSetExists } from "@/modules/storage/services/s3-operations";
+import { getObject, imageSetExists, readManifest } from "@/modules/storage/services/s3-operations";
 import { runUploadPipeline } from "@/modules/storage/services/upload-pipeline";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { parseMigrateArgs } from "./migrate/args";
-import {
-	buildMapping,
-	countFailedMigrations,
-	formatMigrateResult,
-	formatMigrateTotals,
-	migrateFlatSets,
-} from "./migrate/run";
+import { countFailedMigrations, formatMigrateResult, formatMigrateTotals, migrateAndMap } from "./migrate/run";
 import { listObjects, scopeLabel } from "./shared/list-objects";
 
 const main = async (): Promise<void> => {
@@ -34,18 +28,19 @@ const main = async (): Promise<void> => {
 	);
 
 	// Writes go only to new set folders; flat files are just read and copied from, and plan.ts refuses any folder that holds one.
-	const results = await migrateFlatSets(
+	const results = await migrateAndMap(
 		objects.map(({ key }) => key),
 		{
 			setExists: (set) => imageSetExists(set, location),
+			hasManifest: async (set) => (await readManifest(set, location)) !== null,
 			readObject: (key) => getObject(key, location),
 			upload: (file, destination) => runUploadPipeline({ fileEntries: [["0", file]], destination, ...location }),
 		},
 		{ write, limit },
+		(mapping) => writeFileSync(map, `${JSON.stringify(mapping, null, "\t")}\n`),
 		(result) => console.log(formatMigrateResult(result)),
 	);
 
-	await writeFile(map, `${JSON.stringify(buildMapping(results), null, "\t")}\n`);
 	console.log(`\n${formatMigrateTotals(results)}\nMapping written to ${path.resolve(map)}`);
 	if (countFailedMigrations(results)) process.exitCode = 1;
 };

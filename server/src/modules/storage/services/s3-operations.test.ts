@@ -33,7 +33,6 @@ const bodyOf = (content: string | Buffer) => ({
 	},
 });
 
-/** Makes the next request's deadline already passed, and S3 fail the way a request aborted by it does. */
 /** Answers requests the way the SDK does once aborted, with no response before then. */
 const respondOnlyToAbort = () => {
 	s3.respond = (_sent, options) =>
@@ -226,7 +225,6 @@ describe("request deadline", () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	// Bun exits 0 the moment its event loop is empty, so only a Bun process shows whether the deadline keeps it alive.
 	it("keeps a Bun process alive while a request that never settles waits for its deadline", async () => {
 		const child = spawn(
 			"bun",
@@ -242,7 +240,12 @@ describe("request deadline", () => {
 		);
 		const exited = new Promise<number | null>((resolve) => child.once("exit", resolve));
 
-		const early = await Promise.race([exited, new Promise((resolve) => setTimeout(() => resolve("alive"), 1500))]);
+		let aliveTimer: ReturnType<typeof setTimeout> | undefined;
+		const alive = new Promise((resolve) => {
+			aliveTimer = setTimeout(() => resolve("alive"), 1500);
+		});
+		const early = await Promise.race([exited, alive]);
+		clearTimeout(aliveTimer);
 		child.kill();
 		await exited;
 
