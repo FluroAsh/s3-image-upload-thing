@@ -70,7 +70,7 @@ All commands run from `server/`.
 
 ## Procedure
 
-Work through these in order. Stop at the first step whose result is not the expected one. Keep the output of every write run (`| tee <file>.log`) and give each write run its own `--map`, so it can be undone.
+Work through these in order. Stop at the first step whose result is not the expected one. Keep the output of every write run (`2>&1 | tee <file>.log`) and give each write run its own `--map`, so it can be undone.
 
 1. **Dry run.**
    ```bash
@@ -78,12 +78,12 @@ Work through these in order. Stop at the first step whose result is not the expe
    ```
 2. **Trial with `--limit`.**
    ```bash
-   bun --env-file=.env scripts/migrate-flat-sets.ts --bucket <bucket> --write --limit 1 --map trial.json | tee trial.log
+   bun --env-file=.env scripts/migrate-flat-sets.ts --bucket <bucket> --write --limit 1 --map trial.json 2>&1 | tee trial.log
    ```
 3. **Check the trial set** (table below).
 4. **Full run.**
    ```bash
-   bun --env-file=.env scripts/migrate-flat-sets.ts --bucket <bucket> --write --map full.json | tee full.log
+   bun --env-file=.env scripts/migrate-flat-sets.ts --bucket <bucket> --write --map full.json 2>&1 | tee full.log
    ```
 5. **Verify with the backfill dry run.**
    ```bash
@@ -125,25 +125,28 @@ Work through these in order. Stop at the first step whose result is not the expe
 |---|---|---|---|
 | `migrated` | Migrated | The pipeline copied the original in, stored the sizes and wrote the manifest in the new folder | Nothing |
 | `to-migrate` | Left to migrate | A dry run, or a write run that reached `--limit`. Nothing was read or written for it | Run without `--limit` |
-| `already-migrated` | Skipped | Something is already stored under the new folder, by an earlier run or because the pipeline found it taken | Nothing; check the folder if this was not expected |
+| `already-migrated` | Skipped | The new folder already holds a `manifest.json`, from an earlier run, or the pipeline found the folder taken | Nothing; check the folder if this was not expected |
 | `no-original` | Skipped | The set has no un-prefixed file to make the sizes from. The current classifier always finds one, so this should not appear | Look at the keys by hand |
 | `reserved` | Skipped | The new folder would be under a path uploads are refused for (`src/`, `legacy/`, or any folder named `original.<anything>`, which the CDN's deny rule would hide) | Decide by hand where the set should go |
 | `unsafe-target` | Failed | The new folder already holds a flat file, so the pipeline could replace it, or an earlier original of this run already claims the same folder. Refused before anything was read | Look at the keys named in the line; migrate by hand |
-| `failed` | Failed | Any other error for that set: the original could not be read, decoded or copied, or a request timed out. The original changing after it was read also lands here. A failure after the copy deletes what was written, so a re-run starts clean. If that delete fails too, the line ends `could not delete <keys>, which were left behind`, and a re-run reports the set `already-migrated` | Re-run. If keys were left behind, delete exactly those keys (`aws s3 rm s3://<bucket>/<key>`), then re-run |
+| `incomplete` | Failed | The set's folder exists but has no `manifest.json`, which is written last, so an earlier run did not finish it | Delete exactly that folder (`aws s3 rm s3://<bucket>/<setPrefix> --recursive`), then re-run |
+| `failed` | Failed | Any other error for that set: the original could not be read, decoded or copied, or a request timed out. The original changing after it was read also lands here. A failure after the copy deletes what was written, so a re-run starts clean. If that delete fails too, the line ends `could not delete <keys>, which were left behind`, and a re-run reports the set `incomplete` | Re-run. If keys were left behind, delete exactly those keys (`aws s3 rm s3://<bucket>/<key>`), then re-run |
 
 Any `Failed` count above zero makes the exit code `1`. One failed set does not stop the others.
 
 ## Runs that stop early
 
-| Situation | It says | Exit code |
-|---|---|---|
-| No `--bucket` | `--bucket is required` | `1` |
-| `--prefix /` or an empty `--prefix` | `--prefix must name a folder without a leading "/"` | `1` |
-| `--limit` that is not a whole number above 0 | `--limit must be a whole number above 0` | `1` |
-| `--limit` without `--write` | `--limit only applies with --write` | `1` |
-| The bucket or folder has no keys | `No keys found in ...` | `1` |
-| Credentials missing from the environment | The server's missing-keys error | `1` |
-| A set's work stops with nothing left to wait for, so the run cannot finish | `The run stopped with <n> of <total> unfinished:`, then one line per unfinished set; no totals and no mapping file | `1`. Re-run the same command with its own `--map`; finished sets show as `already-migrated` |
+| Situation | It says | Exit code | Action |
+|---|---|---|---|
+| No `--bucket` | `--bucket is required` | `1` | Pass `--bucket` |
+| `--prefix /` or an empty `--prefix` | `--prefix must name a folder without a leading "/"` | `1` | Pass a folder name, or leave `--prefix` out |
+| `--limit` that is not a whole number above 0 | `--limit must be a whole number above 0` | `1` | Pass a whole number above 0 |
+| `--limit` without `--write` | `--limit only applies with --write` | `1` | Add `--write`, or drop `--limit` |
+| The bucket or folder has no keys | `No keys found in ...` | `1` | Check the bucket and `--prefix` |
+| Credentials missing from the environment | The server's missing-keys error | `1` | Set the credentials in `.env` |
+| A set's work stops with nothing left to wait for, so the run cannot finish | `The run stopped with <n> of <total> unfinished:`, then one line per unfinished set; no totals | `1` | Re-run the same command with its own `--map`; finished sets show as `already-migrated`. |
+
+When a run stops early, the mapping file lists only the sets that finished, so it still undoes what that run did. The unfinished list can include sets that never started: with every worker stalled, nothing else gets picked up. A set that stalled mid-write may have left a folder without a `manifest.json`; the re-run reports it `incomplete`.
 
 ## Undo
 
