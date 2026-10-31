@@ -1,13 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { parseBackfillArgs } from "./args";
+
+// The real module throws at import without AWS credentials; only its default region matters here.
+vi.mock("@/modules/storage/services/s3-operations", () => ({ defaultRegion: "us-default-1" }));
 
 describe("parseBackfillArgs", () => {
 	it("reads a dry run of one folder, without the folder's trailing slash", () => {
 		expect(parseBackfillArgs(["--bucket", "example-bucket", "--prefix", "japan-2025/"])).toEqual({
-			bucket: "example-bucket",
+			location: { bucketName: "example-bucket", bucketRegion: "us-default-1" },
 			folder: "japan-2025",
-			region: undefined,
 			write: false,
 			force: false,
 		});
@@ -17,9 +19,8 @@ describe("parseBackfillArgs", () => {
 		expect(
 			parseBackfillArgs(["--bucket", "example-bucket", "--region", "ap-southeast-2", "--write", "--force"]),
 		).toEqual({
-			bucket: "example-bucket",
+			location: { bucketName: "example-bucket", bucketRegion: "ap-southeast-2" },
 			folder: undefined,
-			region: "ap-southeast-2",
 			write: true,
 			force: true,
 		});

@@ -6,7 +6,7 @@ import type { BucketStats } from "@/shared/types/s3";
 import { TIME } from "~/shared/constants/time";
 import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
+import { DEFAULT_MIME_TYPE } from "../processors/variants/config";
 import {
 	assertManifestKey,
 	isManifest,
@@ -14,6 +14,7 @@ import {
 	type NestedSetIdentity,
 	NotAManifestError,
 	setKeyPrefix,
+	variantKey,
 } from "./manifest";
 
 if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
@@ -133,7 +134,7 @@ export const uploadImages = async (
 	Promise.all(
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
-				const key = `${setKeyPrefix(set)}${variant}_${set.name}.${DEFAULT_FILE_TYPE}`;
+				const key = variantKey(set, variant);
 
 				const putResponse = await getRegionalClient(bucketRegion).send(
 					new PutObjectCommand({

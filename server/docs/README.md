@@ -11,6 +11,7 @@ Documentation for the upload server and the scripts that live beside it. Keep it
 ## Runbooks
 
 - [Backfill manifests](runbooks/backfill-manifests.md): write manifests for image sets stored before uploads wrote their own
+- [Migrate flat sets](runbooks/migrate-flat-sets.md): move flat image sets into set folders through the upload pipeline (temporary)
 
 ## Conventions
 

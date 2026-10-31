@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="t">What the flat-set migration reads and writes</title>
+  <desc id="d">A flat image set sits at the bucket root: an un-prefixed original, photo_ab12.webp, with prefixed copies beside it. The original may be a webp, jpg, jpeg or png file. The script reads only the original and hands it to the upload pipeline under its own file name, which creates a new set folder, photo_ab12/, beside the flat files in the same bucket, holding the current sizes, always as webp, and a manifest.json. The flat files are not changed, moved or deleted, so existing links keep working.</desc>
+  <style>
+    .bg { fill: #ffffff; }
+    .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
+    .script { fill: #eef2ff; stroke: #6366f1; stroke-width: 1.5; }
+    .write { fill: #ecfdf5; stroke: #059669; stroke-width: 1.5; }
+    .flat { fill: none; stroke: #a1a1aa; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .h { font-size: 15px; font-weight: 600; fill: #18181b; }
+    .p { font-size: 13px; fill: #3f3f46; }
+    .read { stroke: #52525b; stroke-width: 1.5; fill: none; }
+    .wr { stroke: #059669; stroke-width: 2; fill: none; }
+    .lr { font-size: 12px; fill: #52525b; }
+    .lw { font-size: 12px; fill: #047857; font-weight: 600; }
+    .keep { font-size: 12px; fill: #52525b; font-style: italic; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #18181b; }
+      .box { fill: #27272a; stroke: #71717a; }
+      .script { fill: #1e1b4b; stroke: #818cf8; }
+      .write { fill: #052e2b; stroke: #34d399; }
+      .flat { stroke: #71717a; }
+      .h { fill: #f4f4f5; }
+      .p { fill: #d4d4d8; }
+      .read { stroke: #a1a1aa; }
+      .wr { stroke: #34d399; }
+      .lr, .keep { fill: #a1a1aa; }
+      .lw { fill: #6ee7b7; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#71717a"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#059669"/></marker>
+  </defs>
+
+  <rect class="bg" width="920" height="440"/>
+
+  <rect class="box" x="24" y="24" width="872" height="392" rx="8"/>
+  <text class="h" x="40" y="50">Bucket root</text>
+
+  <rect class="flat" x="40" y="66" width="260" height="214" rx="6"/>
+  <text class="h" x="52" y="90" font-size="13">Flat set (left as it is)</text>
+  <text class="p" x="52" y="116" font-weight="600">photo_ab12.webp</text>
+  <text class="p" x="52" y="138">thumbnail_photo_ab12.webp</text>
+  <text class="p" x="52" y="160">small_photo_ab12.webp</text>
+  <text class="p" x="52" y="182">medium_photo_ab12.webp</text>
+  <text class="p" x="52" y="204">large_photo_ab12.webp</text>
+  <text class="keep" x="52" y="234">Not changed, moved or deleted:</text>
+  <text class="keep" x="52" y="254">old links keep working</text>
+
+  <rect class="script" x="344" y="96" width="220" height="152" rx="8"/>
+  <text class="h" x="360" y="124">Migration script</text>
+  <text class="p" x="360" y="148">Reads the original only</text>
+  <text class="p" x="360" y="168">(webp, jpg, jpeg or png),</text>
+  <text class="p" x="360" y="188">hands it to the upload</text>
+  <text class="p" x="360" y="208">pipeline under its own</text>
+  <text class="p" x="360" y="228">file name</text>
+
+  <rect class="write" x="608" y="66" width="272" height="236" rx="6"/>
+  <text class="h" x="620" y="90" font-size="13">New set folder  photo_ab12/</text>
+  <text class="p" x="620" y="116">placeholder_photo_ab12.webp</text>
+  <text class="p" x="620" y="138">small_photo_ab12.webp</text>
+  <text class="p" x="620" y="160">medium_photo_ab12.webp</text>
+  <text class="p" x="620" y="182">large_photo_ab12.webp</text>
+  <text class="p" x="620" y="204">lossless_photo_ab12.webp</text>
+  <text class="p" x="620" y="226" font-weight="600">manifest.json (written last)</text>
+  <text class="keep" x="620" y="256">Only sizes that fit the original's</text>
+  <text class="keep" x="620" y="276">longest edge are made</text>
+
+  <path class="read" d="M300 116 C322 116 322 140 344 140" marker-end="url(#a)"/>
+  <text class="lr" x="306" y="102">read</text>
+
+  <path class="wr" d="M564 162 C586 162 586 140 608 140" marker-end="url(#g)"/>
+  <text class="lw" x="566" y="186">write</text>
+
+  <text class="p" x="40" y="330" font-weight="600">Mapping file (local)</text>
+  <text class="p" x="40" y="354">One entry per flat set: the old original key, the new set's folder, and, once migrated, the key</text>
+  <text class="p" x="40" y="376">content should link to. It drives the content find-and-replace; the flat files</text>
+  <text class="p" x="40" y="398">are pruned by a person afterwards, not by this script.</text>
+</svg>

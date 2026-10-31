@@ -1,51 +1,17 @@
-import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-
 import { MANIFEST_FILE_NAME } from "@/modules/storage/services/manifest";
-import {
-	type BucketLocation,
-	defaultRegion,
-	getRegionalClient,
-	readManifest,
-	readObject,
-	storeManifest,
-	withDeadline,
-} from "@/modules/storage/services/s3-operations";
+import { readManifest, readObject, storeManifest } from "@/modules/storage/services/s3-operations";
 import { errorMessage } from "@/shared/utils/helpers";
 
 import { parseBackfillArgs } from "./backfill/args";
 import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill/report";
-import { countFailed, formatSetResult, formatWriteTotals, type ListedObject, writeManifests } from "./backfill/write";
-
-const listObjects = async ({ bucketName, bucketRegion }: BucketLocation, folder?: string): Promise<ListedObject[]> => {
-	const objects: ListedObject[] = [];
-	// A trailing slash stops `japan` from also matching `japan-2025/`.
-	const Prefix = folder ? `${folder}/` : undefined;
-	let ContinuationToken: string | undefined;
-
-	do {
-		const page = await withDeadline((options) =>
-			getRegionalClient(bucketRegion).send(
-				new ListObjectsV2Command({ Bucket: bucketName, Prefix, ContinuationToken }),
-				options,
-			),
-		);
-		for (const { Key, ETag, Size } of page.Contents ?? []) {
-			if (Key) objects.push({ key: Key, etag: ETag ?? "", bytes: Size ?? 0 });
-		}
-		ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
-	} while (ContinuationToken);
-
-	return objects;
-};
+import { countFailed, formatSetResult, formatWriteTotals, writeManifests } from "./backfill/write";
+import { listObjects, scopeLabel } from "./shared/list-objects";
 
 const main = async (): Promise<void> => {
-	const { bucket, folder, region, write, force } = parseBackfillArgs(process.argv.slice(2));
-	const location = { bucketName: bucket, bucketRegion: region ?? defaultRegion };
+	const { location, folder, write, force } = parseBackfillArgs(process.argv.slice(2));
 
 	const objects = await listObjects(location, folder);
-	const scope = `${bucket}${folder ? ` (folder ${folder})` : ""}`;
-	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
-	if (!objects.length) throw new Error(`No keys found in ${scope}; nothing was written`);
+	const scope = scopeLabel(location.bucketName, folder);
 
 	const report = buildBackfillReport(objects);
 	assertImageSets(report, scope);

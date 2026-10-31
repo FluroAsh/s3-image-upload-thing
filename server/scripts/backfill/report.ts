@@ -1,5 +1,4 @@
 import {
-	EXTENSION,
 	groupImageSets,
 	type ImageSet,
 	type SetIdentity,
@@ -8,18 +7,11 @@ import {
 } from "@/modules/storage/services/manifest";
 import type { ImageVariant, Manifest } from "~/shared/types";
 
-export type BucketObject = {
-	/** Bucket key of the object. */
-	key: string;
-	/** S3 ETag as listed, quotes included; only ever compared for equality. */
-	etag: string;
-};
+import { type BucketObject, setLabel } from "../shared/listed";
+import { findNonWebpSets, NON_WEBP_EXTENSIONS, type NonWebpSet } from "../shared/non-webp-sets";
 
 /** Variants the portfolio always asks for, so a set without one cannot be served whole. */
 export const REQUIRED_VARIANTS = ["medium", "large"] as const satisfies readonly ImageVariant[];
-
-/** Image formats that are not WebP, so the classifier skips them and they get no manifest; the report lists them to make that visible. */
-export const NON_EXTENSION_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png"] as const;
 
 type BackfillReport = {
 	/** Number of keys the report was built from. */
@@ -51,49 +43,8 @@ type BackfillReport = {
 		/** Variant names stored with that ETag, in listing order. */
 		variants: string[];
 	})[];
-	/** Sets found by reading `NON_EXTENSION_IMAGE_EXTENSIONS` as if they were webp, that hold at least one such key. */
-	nonWebpSets: (SetIdentity & {
-		/** The skipped non-webp keys, each with the variant name it would hold if its extension were read. */
-		members: ImageSet["members"];
-		/** Webp keys that share the set's name; empty when the set is non-webp throughout. */
-		webpSiblings: (ImageSet["members"][number] & {
-			/** Set name and variant the classifier really gives the key, which cannot see its non-webp siblings. */
-			classifiedAs: Pick<Manifest, "name"> & Pick<ImageSet["members"][number], "variant">;
-		})[];
-	})[];
-};
-
-const NON_EXTENSION_IMAGE = new RegExp(`\\.(${NON_EXTENSION_IMAGE_EXTENSIONS.join("|")})$`, "i");
-
-const findNonWebpSets = (keys: readonly string[], sets: readonly ImageSet[]): BackfillReport["nonWebpSets"] => {
-	// Grouping each image under a webp name applies the classifier's own rules to formats it does not read.
-	const keysByWebpName = new Map<string, string[]>();
-	for (const key of keys) {
-		if (!key.endsWith(EXTENSION) && !NON_EXTENSION_IMAGE.test(key)) continue;
-		const webpName = key.replace(NON_EXTENSION_IMAGE, EXTENSION);
-		keysByWebpName.set(webpName, [...(keysByWebpName.get(webpName) ?? []), key]);
-	}
-
-	const classifiedByKey = new Map(
-		sets.flatMap(({ name, members }) => members.map(({ key, variant }) => [key, { name, variant }] as const)),
-	);
-
-	return groupImageSets(Array.from(keysByWebpName.keys())).sets.flatMap(
-		({ members: webpNamedMembers, ...identity }) => {
-			const allMembers = webpNamedMembers.flatMap(({ key: webpName, variant }) =>
-				(keysByWebpName.get(webpName) ?? []).map((key) => ({ key, variant })),
-			);
-			const members = allMembers.filter(({ key }) => !key.endsWith(EXTENSION));
-			if (!members.length) return [];
-
-			const webpSiblings = allMembers.flatMap((member) => {
-				const classifiedAs = classifiedByKey.get(member.key);
-				return classifiedAs ? [{ ...member, classifiedAs }] : [];
-			});
-
-			return [{ ...identity, members, webpSiblings }];
-		},
-	);
+	/** Sets found by reading `NON_WEBP_EXTENSIONS` as if they were webp, that hold at least one such key. */
+	nonWebpSets: NonWebpSet[];
 };
 
 /** Everything the dry run prints, worked out from a bucket listing alone so it needs no network to test. */
@@ -155,9 +106,6 @@ export const assertImageSets = ({ sets, keyCount }: BackfillReport, scope: strin
 /** Said wherever a flat set is reported: it has no folder of its own to hold a manifest. */
 export const FLAT_SET_NOTE = "needs migrating into a set folder before it can have a manifest";
 
-export const setLabel = ({ layout, folder, name }: SetIdentity): string =>
-	`${layout} ${folder ? `${folder}/` : ""}${name}`;
-
 export const formatBackfillReport = (report: BackfillReport): string => {
 	const { skipped, sharedEtags, missingRequired, nonWebpSets } = report;
 	const webpSiblingCount = nonWebpSets.reduce((count, { webpSiblings }) => count + webpSiblings.length, 0);
@@ -182,7 +130,7 @@ export const formatBackfillReport = (report: BackfillReport): string => {
 		`Sets missing ${REQUIRED_VARIANTS.join(" or ")}: ${missingRequired.length}`,
 		...missingRequired.map((set) => `  ${setLabel(set)}: ${set.missing.join(", ")}`),
 		"",
-		`Sets with ${NON_EXTENSION_IMAGE_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
+		`Sets with ${NON_WEBP_EXTENSIONS.join("/")} members: ${nonWebpSets.length} (webp keys beside them: ${webpSiblingCount})`,
 		...nonWebpSets.flatMap((set) => [
 			`  ${setLabel(set)}: ${set.members.map(({ variant }) => variant).join(", ")}`,
 			...set.webpSiblings.map(

@@ -17,12 +17,9 @@ import type { StoreManifestOptions } from "@/modules/storage/services/s3-operati
 import { errorMessage } from "@/shared/utils/helpers";
 import type { Manifest } from "~/shared/types";
 
-import { type BucketObject, FLAT_SET_NOTE, setLabel } from "./report";
-
-export type ListedObject = BucketObject & {
-	/** Size of the object in bytes, as listed. */
-	bytes: number;
-};
+import { type ListedObject, setLabel } from "../shared/listed";
+import { mapLimited, SET_CONCURRENCY } from "../shared/map-limited";
+import { FLAT_SET_NOTE } from "./report";
 
 /** The bucket requests a write run makes, so the run itself can be tested without the network. */
 export type BackfillIo = {
@@ -138,27 +135,6 @@ const backfillSet = async (
 	}
 
 	return { outcome: "exists", detail: "a manifest was stored for it during this run" };
-};
-
-/** Sets worked on at once; each downloads its handful of objects together, so requests in flight stay in the low tens. */
-const SET_CONCURRENCY = 4;
-
-const mapLimited = async <Item, Result>(
-	items: readonly Item[],
-	limit: number,
-	run: (item: Item) => Promise<Result>,
-): Promise<Result[]> => {
-	const results: Result[] = [];
-	let next = 0;
-	const worker = async (): Promise<void> => {
-		while (next < items.length) {
-			const index = next++;
-			results[index] = await run(items[index]);
-		}
-	};
-	await Promise.all(Array.from({ length: limit }, worker));
-
-	return results;
 };
 
 /** Sets finish in any order, so `onResult` hears them as they do; the returned results keep listing order. */

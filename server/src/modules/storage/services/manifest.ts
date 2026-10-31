@@ -1,6 +1,6 @@
 import * as path from "node:path";
 
-import type { Manifest, ManifestVariant } from "~/shared/types";
+import type { ImageVariant, Manifest, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
 
@@ -113,6 +113,10 @@ export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boole
 		);
 	});
 };
+
+/** The key an upload stores one variant of a set under; the one place that shape is written. */
+export const variantKey = (location: NestedSetIdentity, variant: ImageVariant): string =>
+	`${setKeyPrefix(location)}${variant}_${location.name}${EXTENSION}`;
 
 /**
  * `siblings` is every key that could sit beside it, normally the whole bucket listing.
