@@ -25,7 +25,7 @@ describe("pickPreviewVariant", () => {
 		expect(pick("placeholder_a.webp", "small_a.webp", "full_a.webp")).toBe("small_a.webp");
 	});
 
-	it("falls back to full when no sized variant exists", () => {
+	it("falls back to full when no inline size exists", () => {
 		expect(pick("placeholder_a.webp", "full_a.webp")).toBe("full_a.webp");
 	});
 
