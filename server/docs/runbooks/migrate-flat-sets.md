@@ -2,7 +2,7 @@
 
 Turns every flat image set in a bucket into an ordinary set with a folder of its own, by putting the flat set's original through the same pipeline an upload uses. Run by hand from a checkout; it is not part of the deployed server.
 
-**Temporary.** This script and this page are deleted once the migration is done and flat-layout support is removed (see the cleanup issue).
+**Temporary.** This script and this page are deleted once the migration is done and flat-layout support is removed (see issue #29, the cleanup).
 
 - **Script:** `server/scripts/migrate-flat-sets.ts`, with its modules in `server/scripts/migrate/`
 - **Reads:** one bucket per run: a listing, an existence check per flat set, and each migrated set's original
@@ -14,9 +14,11 @@ Turns every flat image set in a bucket into an ordinary set with a folder of its
 
 ![A flat set at the bucket root keeps its original and prefixed copies untouched; the script reads only the original and the upload pipeline writes a new photo_ab12/ folder beside them holding the current sizes and manifest.json](../diagrams/migrate-flat-sets.svg)
 
-A **flat set** is what the old CMS left: an un-prefixed original such as `DSC_1963_f6f8bf29c4.webp` with prefixed copies (`thumbnail_`, `small_`, `medium_`, `large_`) beside it. For a flat original `<folder>/<name>.webp` the migration creates `<folder>/<name>/` (`<name>/` at the bucket root) exactly as an upload of `<name>.webp` to `<folder>` would.
+A **flat set** is what the old CMS left: an un-prefixed original such as `DSC_1963_f6f8bf29c4.webp` with prefixed copies (`thumbnail_`, `small_`, `medium_`, `large_`) beside it. For a flat original `<folder>/<name>.<ext>` the migration creates `<folder>/<name>/` (`<name>/` at the bucket root) exactly as an upload of `<name>.<ext>` to `<folder>` would. For example `images/spiderman_x.jpg` with `images/small_spiderman_x.jpg` beside it becomes `images/spiderman_x/`.
 
-Only `.webp` flat sets are migrated: the classifier only groups `.webp` files into sets. Originals in other formats (`jpg`, `jpeg`, `png`) are not touched and not reported by this script; the backfill dry run already lists them under `Sets with jpg/jpeg/png members`.
+The original may be `.webp`, `.jpg`, `.jpeg` or `.png`. Non-WebP sets are found with the same grouping the backfill dry run uses for `Sets with jpg/jpeg/png members`, and the original is handed to the pipeline under its real file name and type. The pipeline still writes WebP variants, so `linkTo` is always a `.webp` key, while `original` keeps its real extension.
+
+If two originals would map to the same set folder (for example `x.webp` and `x.jpg`), only the first is migrated: webp originals come before the others, then listing order. Each later one is reported as `unsafe-target`, naming both keys, and nothing of it is read or written.
 
 ## The mapping file
 
@@ -37,10 +39,10 @@ Always written, dry run included; by default `./flat-set-mapping.json` in the di
 |---|---|
 | `original` | The flat original's key: what site content links to today |
 | `setPrefix` | The new set's folder, ending in `/` |
-| `linkTo` | The key content should link to: `large` when the set has it, otherwise the widest sized variant, otherwise the full-size (`lossless`) file. `null` when the set has no new folder |
-| `outcome` | Where `linkTo` came from. `migrated`: what the pipeline stored in this run. `already-migrated`: what the listing shows in the existing folder. `to-migrate`: only expected (`large`), since the original was not downloaded. Anything else: no new folder |
+| `linkTo` | The key content should link to: `large`, otherwise `medium`, otherwise `small`; never the placeholder or the `lossless` file. `null` unless the set is `migrated` or `already-migrated` |
+| `outcome` | Where `linkTo` came from. `migrated`: what the pipeline stored in this run. `already-migrated`: what the listing shows in the existing folder. Anything else (`to-migrate` included): `linkTo` is `null` |
 
-Only drive the content find-and-replace from entries whose `outcome` is `migrated` or `already-migrated`.
+Only drive the content find-and-replace from entries whose `outcome` is `migrated` or `already-migrated`. A dry run therefore has no links: its entries are `to-migrate` with `linkTo: null`, since which sizes exist depends on the original's width and a dry run does not download originals.
 
 ## Before you start
 
@@ -85,6 +87,16 @@ Work through these in order. Stop at the first step whose result is not the expe
    ```bash
    bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket>
    ```
+6. **Check the missing sizes.** A size is left out only when the original is narrower than it (`large` is 1440 px wide, `medium` is 800 px), so a set missing one with a wider `lossless` file is wrong. Prints one line per such set; no output is the expected result:
+   ```bash
+   jq -r '.[] | select(.outcome == "migrated") | .setPrefix' full.json | while IFS= read -r prefix; do
+     aws s3 cp "s3://<bucket>/${prefix}manifest.json" - | jq -r --arg prefix "$prefix" '
+       .variants as $v
+       | select((($v.large == null) and ($v.lossless.width >= 1440)) or (($v.medium == null) and ($v.lossless.width >= 800)))
+       | "\($prefix): lossless is \($v.lossless.width) px wide but a size is missing"'
+   done
+   ```
+   Repeat with `trial.json` if the full run did not cover the trial set.
 
 ### Expected results per step
 
@@ -100,6 +112,7 @@ Work through these in order. Stop at the first step whose result is not the expe
 | 3. Mapping | The trial entry is `migrated`, and its `linkTo` exists in the bucket | Do not use the file for content |
 | 4. Full run | The trial set shows as `already-migrated`; `Failed: 0`; exit code `0` | Re-run; only sets without a folder are attempted again |
 | 5. Backfill dry run | One nested set per migrated flat set, `Sets missing medium or large` lists only sets you know are small, the flat sets still listed | Compare against `full.json` |
+| 6. Missing sizes | No output: every migrated set missing `large` has a `lossless` width below 1440, and every one missing `medium` has one below 800 | Undo that set and report it |
 
 ## What can happen to one set
 
@@ -110,7 +123,7 @@ Work through these in order. Stop at the first step whose result is not the expe
 | `already-migrated` | Skipped | Something is already stored under the new folder, by an earlier run or because the pipeline found it taken | Nothing; check the folder if this was not expected |
 | `no-original` | Skipped | The set has no un-prefixed file to make the sizes from. The current classifier always finds one, so this should not appear | Look at the keys by hand |
 | `reserved` | Skipped | The new folder would be under a path uploads are refused for (`src/`, `legacy/`) | Decide by hand where the set should go |
-| `unsafe-target` | Failed | The new folder already holds a flat file, so the pipeline could replace it. Refused before anything was read | Look at the keys named in the line; migrate by hand |
+| `unsafe-target` | Failed | The new folder already holds a flat file, so the pipeline could replace it, or an earlier original of this run already claims the same folder. Refused before anything was read | Look at the keys named in the line; migrate by hand |
 | `failed` | Failed | Any other error for that set: the original could not be read or decoded, or a request timed out | Read the message; re-run |
 
 Any `Failed` count above zero makes the exit code `1`. One failed set does not stop the others.
@@ -123,7 +136,7 @@ Any `Failed` count above zero makes the exit code `1`. One failed set does not s
 | `--prefix /` or an empty `--prefix` | `--prefix must name a folder without a leading "/"` | `1` |
 | `--limit` that is not a whole number above 0 | `--limit must be a whole number above 0` | `1` |
 | `--limit` without `--write` | `--limit only applies with --write` | `1` |
-| The bucket or folder has no keys | `No keys found in ...; nothing was written` | `1` |
+| The bucket or folder has no keys | `No keys found in ...` | `1` |
 | Credentials missing from the environment | The server's missing-keys error | `1` |
 
 ## Undo
@@ -151,6 +164,5 @@ while IFS= read -r prefix; do aws s3 rm "s3://<bucket>/$prefix" --recursive; don
 ## Limits
 
 - Each migrated original is downloaded whole and re-encoded, four sets at a time.
-- Only `.webp` flat sets are migrated; see "What it touches".
-- In a dry run, `linkTo` assumes the set will have a `large` size. A smaller original gets a narrower link once migrated; use the write run's mapping file.
+- Anything sharp can decode would be accepted by the pipeline, but only `.webp`, `.jpg`, `.jpeg` and `.png` originals are looked for.
 - With `--limit`, which sets are attempted depends on the order their existence checks return, so a trial picks roughly the first sets of the listing, not exactly.

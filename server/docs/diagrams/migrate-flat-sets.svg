@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 440" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">What the flat-set migration reads and writes</title>
-  <desc id="d">A flat image set sits at the bucket root: an un-prefixed original, photo_ab12.webp, with prefixed copies beside it. The script reads only the original and hands it to the upload pipeline as photo_ab12.webp, which creates a new set folder, photo_ab12/, beside the flat files in the same bucket, holding the current sizes and a manifest.json. The flat files are not changed, moved or deleted, so existing links keep working.</desc>
+  <desc id="d">A flat image set sits at the bucket root: an un-prefixed original, photo_ab12.webp, with prefixed copies beside it. The original may be a webp, jpg, jpeg or png file. The script reads only the original and hands it to the upload pipeline under its own file name, which creates a new set folder, photo_ab12/, beside the flat files in the same bucket, holding the current sizes, always as webp, and a manifest.json. The flat files are not changed, moved or deleted, so existing links keep working.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -48,12 +48,13 @@
   <text class="keep" x="52" y="234">Not changed, moved or deleted:</text>
   <text class="keep" x="52" y="254">old links keep working</text>
 
-  <rect class="script" x="344" y="96" width="220" height="132" rx="8"/>
+  <rect class="script" x="344" y="96" width="220" height="152" rx="8"/>
   <text class="h" x="360" y="124">Migration script</text>
-  <text class="p" x="360" y="148">Reads the original only,</text>
-  <text class="p" x="360" y="168">hands it to the upload</text>
-  <text class="p" x="360" y="188">pipeline as</text>
-  <text class="p" x="360" y="208">photo_ab12.webp</text>
+  <text class="p" x="360" y="148">Reads the original only</text>
+  <text class="p" x="360" y="168">(webp, jpg, jpeg or png),</text>
+  <text class="p" x="360" y="188">hands it to the upload</text>
+  <text class="p" x="360" y="208">pipeline under its own</text>
+  <text class="p" x="360" y="228">file name</text>
 
   <rect class="write" x="608" y="66" width="272" height="236" rx="6"/>
   <text class="h" x="620" y="90" font-size="13">New set folder  photo_ab12/</text>
@@ -73,7 +74,7 @@
   <text class="lw" x="566" y="186">write</text>
 
   <text class="p" x="40" y="330" font-weight="600">Mapping file (local)</text>
-  <text class="p" x="40" y="354">One entry per flat set: the old original key, the new set's folder, and the key</text>
-  <text class="p" x="40" y="376">site content should link to. It drives the content find-and-replace; the flat files</text>
+  <text class="p" x="40" y="354">One entry per flat set: the old original key, the new set's folder, and, once migrated, the key</text>
+  <text class="p" x="40" y="376">content should link to. It drives the content find-and-replace; the flat files</text>
   <text class="p" x="40" y="398">are pruned by a person afterwards, not by this script.</text>
 </svg>

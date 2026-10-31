@@ -119,7 +119,7 @@ Each of these exits with code `1` before any request is made.
 
 | Situation | It says | Exit code |
 |---|---|---|
-| The bucket or folder has no keys | `No keys found in ...; nothing was written` | `1` |
+| The bucket or folder has no keys | `No keys found in ...` | `1` |
 | Keys exist but none form an image set | `No image sets in ...` | `1` |
 | Credentials missing from the environment | The server's missing-keys error | `1` |
 
