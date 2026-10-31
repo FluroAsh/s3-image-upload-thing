@@ -22,14 +22,14 @@ const FLAT_KEYS = [
 
 describe("buildBackfillReport", () => {
 	it("counts the keys it was given and the image sets by layout", () => {
-		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS]), { pathPrefix: "" });
+		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS]));
 
 		expect(report.keyCount).toBe(8);
 		expect(report.setsByLayout).toEqual({ nested: 1, flat: 1 });
 	});
 
 	it("returns the sets it counted, with their members", () => {
-		const report = buildBackfillReport(objects([...NESTED_KEYS, "notes.txt"]), { pathPrefix: "" });
+		const report = buildBackfillReport(objects([...NESTED_KEYS, "notes.txt"]));
 
 		expect(report.sets).toEqual([
 			{
@@ -48,7 +48,7 @@ describe("buildBackfillReport", () => {
 			"japan-2025/kyoto/ginsui-sukiyaki-2/medium_ginsui-sukiyaki-2.webp",
 		];
 
-		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS, ...secondNested]), { pathPrefix: "" });
+		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS, ...secondNested]));
 
 		expect(report.variantCombinations).toEqual([
 			{ layout: "nested", variants: ["large", "medium", "thumbnail"], count: 2 },
@@ -58,22 +58,30 @@ describe("buildBackfillReport", () => {
 
 	it("lists every skipped key with the classifier's reason", () => {
 		const report = buildBackfillReport(
-			objects([...NESTED_KEYS, "japan-2025/", "japan-2025/raw-video/clip-1.mp4", "manifests/japan-2025/a.json"]),
-			{ pathPrefix: "" },
+			objects([
+				...NESTED_KEYS,
+				"japan-2025/",
+				"japan-2025/raw-video/clip-1.mp4",
+				"japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
+				"src/japan-2025/a.jpg",
+			]),
 		);
 
 		expect(report.skipped).toEqual([
 			{ key: "japan-2025/", reason: "folder-marker" },
 			{ key: "japan-2025/raw-video/clip-1.mp4", reason: "not-webp" },
-			{ key: "manifests/japan-2025/a.json", reason: "reserved-prefix" },
+			{ key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json", reason: "set-manifest" },
+			{ key: "src/japan-2025/a.jpg", reason: "reserved-prefix" },
 		]);
+		expect(report.sets).toHaveLength(1);
+		expect(report.sets[0].members.map(({ key }) => key)).toEqual(NESTED_KEYS);
 	});
 
 	it("lists the sets that lack a medium or a large variant, with the names they lack", () => {
 		const noLarge = FLAT_KEYS.filter((key) => !key.startsWith("large_"));
 		const loneFile = "DSC_2007_10e10829a9.webp";
 
-		const report = buildBackfillReport(objects([...NESTED_KEYS, ...noLarge, loneFile]), { pathPrefix: "" });
+		const report = buildBackfillReport(objects([...NESTED_KEYS, ...noLarge, loneFile]));
 
 		expect(report.missingRequired).toEqual([
 			{ layout: "flat", folder: "", name: "DSC_1963_f6f8bf29c4", missing: ["large"] },
@@ -90,7 +98,6 @@ describe("buildBackfillReport", () => {
 				[large]: '"same-file"',
 				[thumbnail]: '"other"',
 			}),
-			{ pathPrefix: "" },
 		);
 
 		expect(report.sharedEtags).toEqual([
@@ -107,9 +114,7 @@ describe("buildBackfillReport", () => {
 	it("does not treat missing ETags as a shared ETag", () => {
 		const [thumbnail, medium, large] = NESTED_KEYS;
 
-		const report = buildBackfillReport(objects(NESTED_KEYS, { [thumbnail]: "", [medium]: "", [large]: '"own"' }), {
-			pathPrefix: "",
-		});
+		const report = buildBackfillReport(objects(NESTED_KEYS, { [thumbnail]: "", [medium]: "", [large]: '"own"' }));
 
 		expect(report.sharedEtags).toEqual([]);
 	});
@@ -117,32 +122,9 @@ describe("buildBackfillReport", () => {
 	it("does not report an ETag shared by two different sets", () => {
 		const report = buildBackfillReport(
 			objects([...NESTED_KEYS, ...FLAT_KEYS], { [NESTED_KEYS[0]]: '"same-file"', [FLAT_KEYS[0]]: '"same-file"' }),
-			{ pathPrefix: "" },
 		);
 
 		expect(report.sharedEtags).toEqual([]);
-	});
-
-	it("lists sets whose manifests would be written to the same key", () => {
-		const report = buildBackfillReport(
-			objects([
-				"trips/harbour.webp",
-				"trips/harbour/medium_harbour.webp",
-				"trips/harbour/large_harbour.webp",
-				...NESTED_KEYS,
-			]),
-			{ pathPrefix: "legacy/" },
-		);
-
-		expect(report.collisions).toEqual([
-			{
-				manifestKey: "manifests/legacy/trips/harbour.json",
-				sets: [
-					{ layout: "flat", folder: "trips", name: "harbour" },
-					{ layout: "nested", folder: "trips", name: "harbour" },
-				],
-			},
-		]);
 	});
 
 	it("lists sets with jpg, jpeg or png members apart, with how the classifier placed any webp beside them", () => {
@@ -154,7 +136,6 @@ describe("buildBackfillReport", () => {
 				"large_DSC_2361_91d38a3053.webp",
 				"backups/db.tar.gz",
 			]),
-			{ pathPrefix: "legacy/" },
 		);
 
 		expect(report.nonWebpSets).toEqual([
@@ -192,33 +173,35 @@ describe("formatBackfillReport", () => {
 					"DSC_2361_91d38a3053.jpg",
 					"thumbnail_DSC_2361_91d38a3053.jpg",
 					"large_DSC_2361_91d38a3053.webp",
+					"trips/harbour/manifest.json",
 				],
 				{ [thumbnail]: '"t"', [medium]: '"same-file"', [large]: '"same-file"' },
 			),
-			{ pathPrefix: "" },
 		);
 
 		expect(formatBackfillReport(report)).toBe(
 			[
-				"Keys listed: 10",
+				"Keys listed: 11",
 				"",
 				"Sets by layout",
 				"  nested: 2",
-				"  flat: 2",
+				"  flat: 2 (each needs migrating into a set folder before it can have a manifest)",
 				"",
 				"Sets by variant names",
 				"  nested large+medium+thumbnail: 1",
 				"  flat original: 2",
 				"  nested large+medium: 1",
 				"",
-				"Skipped keys: 3",
+				"Skipped keys: 4",
 				"  reserved-prefix: 0",
 				"  folder-marker: 1",
+				"  set-manifest: 1",
 				"  not-webp: 2",
 				"  empty-name: 0",
 				"  [folder-marker] japan-2025/",
 				"  [not-webp] DSC_2361_91d38a3053.jpg",
 				"  [not-webp] thumbnail_DSC_2361_91d38a3053.jpg",
+				"  [set-manifest] trips/harbour/manifest.json",
 				"",
 				"Sets where two variant names share an ETag: 1",
 				'  nested japan-2025/kyoto/ginsui-sukiyaki-1: medium = large ("same-file")',
@@ -226,9 +209,6 @@ describe("formatBackfillReport", () => {
 				"Sets missing medium or large: 2",
 				"  flat trips/harbour: medium, large",
 				"  flat large_DSC_2361_91d38a3053: medium, large",
-				"",
-				"Manifest key collisions: 1",
-				"  manifests/trips/harbour.json: flat trips/harbour, nested trips/harbour",
 				"",
 				"Sets with jpg/jpeg/png members: 1 (webp keys beside them: 1)",
 				"  flat DSC_2361_91d38a3053: original, thumbnail",
@@ -240,13 +220,11 @@ describe("formatBackfillReport", () => {
 
 describe("assertImageSets", () => {
 	it("passes when the keys form at least one set", () => {
-		expect(() =>
-			assertImageSets(buildBackfillReport(objects(NESTED_KEYS), { pathPrefix: "" }), "example-bucket"),
-		).not.toThrow();
+		expect(() => assertImageSets(buildBackfillReport(objects(NESTED_KEYS)), "example-bucket")).not.toThrow();
 	});
 
 	it("fails, naming the scope and the key count, when keys exist but none form a set", () => {
-		const report = buildBackfillReport(objects(["notes.txt", "photos/", "DSC_1.jpg"]), { pathPrefix: "" });
+		const report = buildBackfillReport(objects(["notes.txt", "photos/", "DSC_1.jpg"]));
 
 		expect(() => assertImageSets(report, "example-bucket (folder docs)")).toThrow(
 			"No image sets in example-bucket (folder docs): its 3 keys belong to none",

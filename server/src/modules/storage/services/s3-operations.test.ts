@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { s3 } from "../fake-s3";
-import { buildManifest } from "./manifest";
+import { buildManifest, NotAManifestError } from "./manifest";
 import { readManifest, readObject, storeManifest } from "./s3-operations";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
@@ -9,11 +9,8 @@ vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 const LOCATION = { bucketName: "example-bucket", bucketRegion: "us-east-1" };
 
 const MANIFEST = buildManifest({
-	bucket: "example-bucket",
-	pathPrefix: "",
 	createdAt: "2026-10-11T00:00:00.000Z",
 	placeholder: null,
-	source: null,
 	objects: [
 		{
 			key: "japan-2025/kyoto/ginsui-sukiyaki-1/medium_ginsui-sukiyaki-1.webp",
@@ -55,11 +52,21 @@ describe("storeManifest", () => {
 		expect(s3.sent).toHaveLength(1);
 		expect(s3.sent[0].input).toMatchObject({
 			Bucket: "example-bucket",
-			Key: "manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json",
+			Key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
 			ContentType: "application/json",
 			CacheControl: "public, max-age=300",
 		});
 		expect(s3.sent[0].input.IfNoneMatch).toBeUndefined();
+	});
+});
+
+describe("storeManifest guard", () => {
+	it("sends nothing for a manifest whose key would not be manifest.json inside a set folder", async () => {
+		await expect(storeManifest({ ...MANIFEST, name: "" }, LOCATION, { force: true })).rejects.toThrow(
+			'Refusing to write "japan-2025/kyoto//manifest.json"',
+		);
+
+		expect(s3.sent).toEqual([]);
 	});
 });
 
@@ -72,7 +79,7 @@ describe("readManifest", () => {
 		expect(s3.sent).toEqual([
 			{
 				command: "GetObject",
-				input: { Bucket: "example-bucket", Key: "manifests/japan-2025/kyoto/ginsui-sukiyaki-1.json" },
+				input: { Bucket: "example-bucket", Key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json" },
 			},
 		]);
 	});
@@ -83,6 +90,16 @@ describe("readManifest", () => {
 		};
 
 		await expect(readManifest(MANIFEST, LOCATION)).resolves.toBeNull();
+	});
+
+	it.each([
+		["text that is not JSON", "<html>"],
+		["JSON of another app", '{"name":"web app"}'],
+		["JSON with variants that are not an object", '{"schema":1,"variants":[]}'],
+	])("refuses %s at the manifest key as not a manifest", async (_label, content) => {
+		s3.respond = async () => bodyOf(content);
+
+		await expect(readManifest(MANIFEST, LOCATION)).rejects.toThrow(NotAManifestError);
 	});
 
 	it("passes on any other failure, so a refused read is never taken for a missing manifest", async () => {

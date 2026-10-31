@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 590" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 610" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">How a write run decides the outcome for one image set</title>
-  <desc id="d">For each image set the script first checks whether another set in the same run maps to the same manifest key; if so the outcome is collision, a failure. Otherwise it reads the existing manifest at that key. If there is none, it measures every object and writes the manifest: written. If one exists for a different layout or bucket, the outcome is exists-other-set, a failure, even with force. If one exists for the same set with the same keys, the outcome is exists, a skip, unless force is given, which rewrites it. If one exists for the same set but its keys differ, the outcome is exists-stale, a skip, unless force is given, which rewrites it. If an object cannot be read or measured the outcome is unreadable-object, and any other error is failed; both are failures.</desc>
+  <desc id="d">For each image set the script first checks whether the set has a folder of its own. A flat set has none, so there is nowhere to store its manifest: the outcome is flat-set, a skip, and its line says it needs migrating into a set folder. Otherwise the script reads what is at the set's manifest.json key. If there is nothing, it downloads and measures every object and writes the manifest: written. If something is there that is not a manifest this service wrote (not JSON, no schema 1, or variants that are not an object), the outcome is not-a-manifest, a failure, and the file is never replaced, even with force. If one of ours exists and lists exactly the keys the set has now, the outcome is exists, a skip. If one exists but its keys differ, the outcome is exists-stale, a skip. With force a manifest of ours is replaced: the set is measured and written. If an object cannot be read or measured the outcome is unreadable-object, and any other error is failed; these are failures too.</desc>
   <style>
     .bg { fill: #ffffff; }
     .q { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -27,24 +27,25 @@
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#71717a"/></marker>
   </defs>
 
-  <rect class="bg" width="860" height="590"/>
+  <rect class="bg" width="860" height="610"/>
 
   <rect class="q" x="24" y="24" width="300" height="58" rx="8"/>
-  <text class="h" x="40" y="48">Does another set in this run map</text>
-  <text class="h" x="40" y="68">to the same manifest key?</text>
+  <text class="h" x="40" y="48">Does the set have a folder</text>
+  <text class="h" x="40" y="68">of its own?</text>
 
-  <rect class="fail" x="560" y="24" width="276" height="58" rx="8"/>
-  <text class="h" x="576" y="48">collision</text>
-  <text class="p" x="576" y="68">Failed. Neither set is written.</text>
+  <rect class="skip" x="560" y="16" width="276" height="76" rx="8"/>
+  <text class="h" x="576" y="40">flat-set</text>
+  <text class="p" x="576" y="60">Skipped. It needs migrating into</text>
+  <text class="p" x="576" y="78">a set folder; nothing is written.</text>
   <path class="e" d="M324 53 H560" marker-end="url(#a)"/>
-  <text class="l" x="430" y="45">yes</text>
+  <text class="l" x="430" y="45">no</text>
 
   <path class="e" d="M174 82 V128" marker-end="url(#a)"/>
-  <text class="l" x="184" y="110">no</text>
+  <text class="l" x="184" y="110">yes</text>
 
   <rect class="q" x="24" y="128" width="300" height="58" rx="8"/>
-  <text class="h" x="40" y="152">Is there already a manifest</text>
-  <text class="h" x="40" y="172">at that key?</text>
+  <text class="h" x="40" y="152">Is a manifest.json already</text>
+  <text class="h" x="40" y="172">in the set's folder?</text>
 
   <rect class="q" x="560" y="128" width="276" height="58" rx="8"/>
   <text class="h" x="576" y="152">Download and measure every</text>
@@ -54,7 +55,7 @@
 
   <rect class="ok" x="560" y="232" width="276" height="58" rx="8"/>
   <text class="h" x="576" y="256">written</text>
-  <text class="p" x="576" y="276">Manifest stored under manifests/.</text>
+  <text class="p" x="576" y="276">Manifest stored in the set's folder.</text>
   <path class="e" d="M698 186 V232" marker-end="url(#a)"/>
   <text class="l" x="708" y="214">all readable</text>
 
@@ -68,34 +69,36 @@
   <path class="e" d="M174 186 V232" marker-end="url(#a)"/>
   <text class="l" x="184" y="214">yes</text>
 
-  <rect class="q" x="24" y="232" width="300" height="58" rx="8"/>
-  <text class="h" x="40" y="256">Is it for the same layout</text>
-  <text class="h" x="40" y="276">and the same bucket?</text>
+  <rect class="q" x="24" y="232" width="290" height="58" rx="8"/>
+  <text class="h" x="40" y="256">Is it one of our manifests?</text>
+  <text class="p" x="40" y="276">(schema 1, variants an object)</text>
 
-  <rect class="fail" x="24" y="476" width="300" height="60" rx="8"/>
-  <text class="h" x="40" y="500">exists-other-set</text>
-  <text class="p" x="40" y="520">Failed. Never replaced, even with --force.</text>
-  <path class="e" d="M60 290 V476" marker-end="url(#a)"/>
-  <text class="l" x="70" y="388">no</text>
+  <rect class="fail" x="352" y="222" width="190" height="78" rx="8"/>
+  <text class="h" x="366" y="246">not-a-manifest</text>
+  <text class="p" x="366" y="266">Failed. Another file holds</text>
+  <text class="p" x="366" y="284">the key; never replaced.</text>
+  <path class="e" d="M314 261 H352" marker-end="url(#a)"/>
+  <text class="l" x="322" y="253">no</text>
 
-  <path class="e" d="M250 290 V336" marker-end="url(#a)"/>
-  <text class="l" x="260" y="318">yes</text>
+  <path class="e" d="M174 290 V336" marker-end="url(#a)"/>
+  <text class="l" x="184" y="318">yes</text>
 
-  <rect class="q" x="110" y="336" width="320" height="58" rx="8"/>
-  <text class="h" x="126" y="360">Does it list exactly the keys</text>
-  <text class="h" x="126" y="380">the set has now?</text>
+  <rect class="q" x="24" y="336" width="300" height="58" rx="8"/>
+  <text class="h" x="40" y="360">Does it list exactly the keys</text>
+  <text class="h" x="40" y="380">the set has now?</text>
 
-  <rect class="skip" x="360" y="476" width="200" height="60" rx="8"/>
-  <text class="h" x="376" y="500">exists</text>
-  <text class="p" x="376" y="520">Skipped. Left alone.</text>
-  <path class="e" d="M400 394 V476" marker-end="url(#a)"/>
-  <text class="l" x="410" y="440">yes</text>
+  <rect class="skip" x="24" y="456" width="220" height="60" rx="8"/>
+  <text class="h" x="40" y="480">exists</text>
+  <text class="p" x="40" y="500">Skipped. Left alone.</text>
+  <path class="e" d="M100 394 V456" marker-end="url(#a)"/>
+  <text class="l" x="110" y="430">yes</text>
 
-  <rect class="skip" x="584" y="476" width="252" height="60" rx="8"/>
-  <text class="h" x="600" y="500">exists-stale</text>
-  <text class="p" x="600" y="520">Skipped. Its sizes have changed.</text>
-  <path class="e" d="M430 365 H500 V452 H700 V476" marker-end="url(#a)"/>
-  <text class="l" x="508" y="444">no</text>
+  <rect class="skip" x="268" y="456" width="252" height="60" rx="8"/>
+  <text class="h" x="284" y="480">exists-stale</text>
+  <text class="p" x="284" y="500">Skipped. Its sizes have changed.</text>
+  <path class="e" d="M296 394 V456" marker-end="url(#a)"/>
+  <text class="l" x="306" y="430">no</text>
 
-  <text class="l" x="24" y="570">With --force, a set that would be exists or exists-stale is rewritten instead and reported as written.</text>
+  <text class="l" x="24" y="560">With --force, a set that would be exists or exists-stale is measured, rewritten and reported as written.</text>
+  <text class="l" x="24" y="580">A flat set is still skipped, and a file that is not a manifest is still never replaced.</text>
 </svg>

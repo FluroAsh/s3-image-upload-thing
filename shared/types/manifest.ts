@@ -1,7 +1,7 @@
 export type ManifestSource = {
   /** Bucket key of the image the variants were made from. */
   key: string;
-  /** True when the source is itself a published URL (a flat set's `original`). */
+  /** True when the source is itself reachable at a published URL; false when it is kept private. */
   public: boolean;
   /** Hex SHA-256 of the source file's bytes. */
   sha256: string;
@@ -14,7 +14,11 @@ export type ManifestSource = {
 };
 
 export type ManifestVariant = {
-  /** Bucket key, never the public path: a URL is CDN host + `pathPrefix` + `key`. */
+  /**
+   * Bucket key of the variant, in the same folder as the manifest. A consumer finds the manifest as `manifest.json`
+   * beside an image URL, and it applies only if the image's file name is the last path segment of one of the
+   * manifest's variant keys; otherwise there is no manifest for that image.
+   */
   key: string;
   /** Image format as a file extension without the dot, e.g. `"webp"`. */
   format: string;
@@ -35,11 +39,7 @@ export type Manifest = {
   name: string;
   /** Bucket folder the set lives in, without a trailing slash; `""` for the bucket root. */
   folder: string;
-  /** Bucket that holds the variants. */
-  bucket: string;
-  /** How that bucket's keys appear under the CDN host: `""` or `"legacy/"`. */
-  pathPrefix: string;
-  /** `nested`: `{folder}/{name}/{variant}_{name}.webp`. `flat`: `{folder}/{variant}_{name}.webp` beside an un-prefixed original. */
+  /** Always `nested` in a stored manifest: the variants are `{folder}/{name}/{variant}_{name}.webp`. `flat` sets are only ever found by the classifier. */
   layout: "nested" | "flat";
   /** Always `"ready"`: a manifest is written only after every variant is stored. */
   status: "ready";

@@ -1,54 +1,36 @@
 import { parseArgs } from "node:util";
 
-import { assertPathPrefix, MANIFEST_PREFIX } from "@/modules/storage/services/manifest";
-
-import type { WriteOptions } from "./write";
+import { MANIFEST_FILE_NAME } from "@/modules/storage/services/manifest";
+import type { StoreManifestOptions } from "@/modules/storage/services/s3-operations";
 
 const USAGE = `Usage: bun --env-file=.env scripts/backfill-manifests.ts --bucket <name> [options]
 Runbook: server/docs/runbooks/backfill-manifests.md
 
 Dry run by default: lists the bucket and prints what a backfill would find. Writes nothing without --write.
 
-  --bucket <name>           Bucket to read (required)
-  --prefix <folder>         Limit the run to one folder of the read bucket
-  --region <region>         Region of both buckets (default: the server default region)
-  --manifest-bucket <name>  Bucket manifests are stored in, under ${MANIFEST_PREFIX} only; required with --write
-  --path-prefix <prefix>    How the read bucket's keys appear under the CDN host: "" or segments each ending
-                            in "/", e.g. "legacy/"; must be given with --write, even when empty. A non-empty
-                            prefix marks a second bucket, so its manifests must go to a different --manifest-bucket
-  --write                   Measure every set and store its manifest; existing manifests are left alone
-  --force                   With --write, replace the manifest of a set that already has one; a manifest that
-                            belongs to another set is never replaced`;
+  --bucket <name>    Bucket whose image sets are read and, with --write, given manifests (required)
+  --prefix <folder>  Limit the run to one folder of the bucket
+  --region <region>  Region of the bucket (default: the server default region)
+  --write            Measure every set and store its manifest as ${MANIFEST_FILE_NAME} inside the set's own folder;
+                     existing manifests are left alone, and flat sets (no folder of their own) get none
+  --force            With --write, replace the manifest of a set that already has one`;
 
-type ReadScope = Omit<WriteOptions, "force"> & {
-	/** Folder of the read bucket the run is limited to, without a slash at either end; unset for the whole bucket. */
+type BackfillArgs = StoreManifestOptions & {
+	/** Bucket whose image sets are read and, with `write`, given manifests. */
+	bucket: string;
+	/** Folder of the bucket the run is limited to, without a slash at either end; unset for the whole bucket. */
 	folder: string | undefined;
-	/** Region of both buckets; unset means the server default. */
+	/** Region of the bucket; unset means the server default. */
 	region: string | undefined;
+	/** Store manifests; `false` is a dry run, which stores nothing. */
+	write: boolean;
 };
-
-type BackfillArgs =
-	| (ReadScope & {
-			/** A dry run: nothing is stored. */
-			write: false;
-			/** Bucket the manifests would go to, shown in the report; unset when not given. */
-			manifestBucket: string | undefined;
-	  })
-	| (ReadScope &
-			WriteOptions & {
-				/** Store manifests. */
-				write: true;
-				/** Bucket manifests are stored in. */
-				manifestBucket: string;
-			});
 
 export const parseBackfillArgs = (argv: string[]): BackfillArgs => {
 	const { values } = parseArgs({
 		args: argv,
 		options: {
 			bucket: { type: "string" },
-			"manifest-bucket": { type: "string" },
-			"path-prefix": { type: "string" },
 			prefix: { type: "string" },
 			region: { type: "string" },
 			write: { type: "boolean", default: false },
@@ -57,8 +39,6 @@ export const parseBackfillArgs = (argv: string[]): BackfillArgs => {
 	});
 
 	const { bucket, region, write, force } = values;
-	const manifestBucket = values["manifest-bucket"];
-	const pathPrefix = values["path-prefix"];
 	const folder = values.prefix?.replace(/\/+$/, "");
 	const fail = (problem: string): never => {
 		throw new Error(`${problem}\n\n${USAGE}`);
@@ -69,23 +49,7 @@ export const parseBackfillArgs = (argv: string[]): BackfillArgs => {
 	if (folder === "" || folder?.startsWith("/")) {
 		fail('--prefix must name a folder without a leading "/", e.g. japan-2025; omit it to run the whole bucket');
 	}
-	assertPathPrefix(pathPrefix ?? "");
+	if (force && !write) fail("--force only applies with --write");
 
-	const scope = { bucket, pathPrefix: pathPrefix ?? "", folder, region };
-	if (!write) {
-		if (force) fail("--force only applies with --write");
-		return { ...scope, manifestBucket, write };
-	}
-
-	if (!manifestBucket) return fail("--write needs --manifest-bucket");
-	// A forgotten prefix on the second bucket would store its manifests under the primary bucket's paths.
-	if (pathPrefix === undefined) fail('--write needs --path-prefix, even when it is empty: --path-prefix ""');
-	// The CDN serves manifests/ only from the primary bucket, so the second bucket's manifests cannot be stored beside its own images.
-	if (scope.pathPrefix && manifestBucket === bucket) {
-		fail(
-			`--path-prefix "${pathPrefix}" marks a second bucket, whose manifests belong in the primary bucket: --manifest-bucket must be a different bucket than --bucket`,
-		);
-	}
-
-	return { ...scope, manifestBucket, write, force };
+	return { bucket, folder, region, write, force };
 };
