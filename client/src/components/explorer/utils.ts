@@ -15,7 +15,7 @@ export const getVariantType = (fileName: string) => {
 };
 
 /** Largest inline size first, as `full` is a far bigger download; the blurred placeholder is only a last resort. */
-const PREVIEW_ORDER: ImageVariant[] = [...INLINE_VARIANTS.toReversed(), "full", "placeholder"];
+const PREVIEW_ORDER: ImageVariant[] = [...[...INLINE_VARIANTS].reverse(), "full", "placeholder"];
 
 /** Picks the variant to preview; a set may lack any size its source was too small for. */
 export const pickPreviewVariant = (variants: TreeNode[]): TreeNode | undefined => {

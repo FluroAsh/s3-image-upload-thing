@@ -17,7 +17,6 @@ import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
 
 import { findNonWebpSets, type NON_WEBP_EXTENSIONS } from "../shared/non-webp-sets";
 
-/** Content links an inline size, largest first. */
 const LINK_PREFERENCE = [...INLINE_VARIANTS].reverse();
 
 /** What a flat original's extension says it holds, since the pipeline reads the type from the file it is handed. */
