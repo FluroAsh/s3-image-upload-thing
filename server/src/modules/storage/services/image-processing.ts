@@ -1,4 +1,4 @@
-import type { ProcessedImage } from "@/shared/types/image";
+import type { ProcessedImage, UploadedFile } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
 
 /**
@@ -19,6 +19,7 @@ export const prepareImages = async (files: [string, string | File][]): Promise<P
 				fileName: file.name,
 				fileType: file.type,
 				size: readableSize(file.size),
+				copyOriginalFrom: (file as UploadedFile).copyOriginalFrom,
 			};
 		}),
 	);

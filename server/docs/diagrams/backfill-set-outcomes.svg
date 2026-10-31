@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 610" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 630" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">How a write run decides the outcome for one image set</title>
-  <desc id="d">For each image set the script first checks whether the set has a folder of its own. A flat set has none, so there is nowhere to store its manifest: the outcome is flat-set, a skip, and its line says it needs migrating into a set folder. Otherwise the script reads what is at the set's manifest.json key. If there is nothing, it downloads and measures every object and writes the manifest: written. If something is there that is not a manifest this service wrote (not JSON, no schema 1, or variants that are not an object), the outcome is not-a-manifest, a failure, and the file is never replaced, even with force. If one of ours exists and lists exactly the keys the set has now, the outcome is exists, a skip. If one exists but its keys differ, the outcome is exists-stale, a skip. With force a manifest of ours is replaced: the set is measured and written. If an object cannot be read or measured the outcome is unreadable-object, and any other error is failed; these are failures too.</desc>
+  <desc id="d">For each image set the script first checks whether the set has a folder of its own. A flat set has none, so there is nowhere to store its manifest: the outcome is flat-set, a skip, and its line says it needs migrating into a set folder. Otherwise the script reads what is at the set's manifest.json key. If there is nothing, it downloads and measures every object and writes the manifest: written. If something is there that is not a manifest this service wrote (not JSON, no schema 1, or variants that are not an object), the outcome is not-a-manifest, a failure, and the file is never replaced, even with force. If one of ours exists and lists exactly the sizes the set has now, and records the original.{ext} the set folder holds as its source, the outcome is exists, a skip. If its sizes or its source differ, the outcome is exists-stale, a skip. With force a manifest of ours is replaced: the set is measured and written, keeping the recorded source while it is still the set's original. If an object cannot be read or measured the outcome is unreadable-object, and any other error is failed; these are failures too.</desc>
   <style>
     .bg { fill: #ffffff; }
     .q { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -27,7 +27,7 @@
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#71717a"/></marker>
   </defs>
 
-  <rect class="bg" width="860" height="610"/>
+  <rect class="bg" width="860" height="630"/>
 
   <rect class="q" x="24" y="24" width="300" height="58" rx="8"/>
   <text class="h" x="40" y="48">Does the set have a folder</text>
@@ -84,8 +84,8 @@
   <text class="l" x="184" y="318">yes</text>
 
   <rect class="q" x="24" y="336" width="300" height="58" rx="8"/>
-  <text class="h" x="40" y="360">Does it list exactly the keys</text>
-  <text class="h" x="40" y="380">the set has now?</text>
+  <text class="h" x="40" y="360">Does it list exactly the sizes</text>
+  <text class="h" x="40" y="380">and original the set has now?</text>
 
   <rect class="skip" x="24" y="456" width="220" height="60" rx="8"/>
   <text class="h" x="40" y="480">exists</text>
@@ -95,10 +95,11 @@
 
   <rect class="skip" x="268" y="456" width="252" height="60" rx="8"/>
   <text class="h" x="284" y="480">exists-stale</text>
-  <text class="p" x="284" y="500">Skipped. Its sizes have changed.</text>
+  <text class="p" x="284" y="500">Skipped. Sizes or original changed.</text>
   <path class="e" d="M296 394 V456" marker-end="url(#a)"/>
   <text class="l" x="306" y="430">no</text>
 
   <text class="l" x="24" y="560">With --force, a set that would be exists or exists-stale is measured, rewritten and reported as written.</text>
-  <text class="l" x="24" y="580">A flat set is still skipped, and a file that is not a manifest is still never replaced.</text>
+  <text class="l" x="24" y="580">A recorded source is kept while its original.{ext} is still in the set folder, so it is not read again.</text>
+  <text class="l" x="24" y="600">A flat set is still skipped, and a file that is not a manifest is still never replaced.</text>
 </svg>

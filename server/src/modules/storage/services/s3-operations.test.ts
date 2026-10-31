@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { s3 } from "../fake-s3";
 import { buildManifest, NotAManifestError } from "./manifest";
-import { readManifest, readObject, storeManifest } from "./s3-operations";
+import { readManifest, readObject, storeManifest, storeOriginal } from "./s3-operations";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
@@ -11,6 +11,7 @@ const LOCATION = { bucketName: "example-bucket", bucketRegion: "us-east-1" };
 const MANIFEST = buildManifest({
 	createdAt: "2026-10-11T00:00:00.000Z",
 	placeholder: null,
+	source: null,
 	objects: [
 		{
 			key: "japan-2025/kyoto/ginsui-sukiyaki-1/medium_ginsui-sukiyaki-1.webp",
@@ -57,6 +58,51 @@ describe("storeManifest", () => {
 			CacheControl: "public, max-age=300",
 		});
 		expect(s3.sent[0].input.IfNoneMatch).toBeUndefined();
+	});
+});
+
+describe("storeOriginal", () => {
+	it("copies from another key server side, create-only, with the source key URL-encoded per segment", async () => {
+		const stored = storeOriginal(
+			{ key: "trip/a b/original.jpg", copyFrom: "trip/a b+c.jpg", ifMatch: '"v1"' },
+			LOCATION,
+		);
+
+		await expect(stored).resolves.toBe(true);
+		expect(s3.sent).toEqual([
+			{
+				command: "CopyObject",
+				input: {
+					Bucket: "example-bucket",
+					Key: "trip/a b/original.jpg",
+					CopySource: "example-bucket/trip/a%20b%2Bc.jpg",
+					CopySourceIfMatch: '"v1"',
+					IfNoneMatch: "*",
+				},
+			},
+		]);
+	});
+});
+
+describe("storeOriginal copy preconditions", () => {
+	const copy = { key: "trip/photo/original.jpg", copyFrom: "trip/photo.jpg", ifMatch: '"v1"' };
+	const refuse = (listed: string[]) => {
+		s3.respond = async (sent) => {
+			if (sent.command === "ListObjectsV2") return { Contents: listed.map((Key) => ({ Key })) };
+			throw Object.assign(new Error("precondition"), { name: "PreconditionFailed" });
+		};
+	};
+
+	it("resolves false when the copy is refused because the destination is taken", async () => {
+		refuse([copy.key]);
+
+		await expect(storeOriginal(copy, LOCATION)).resolves.toBe(false);
+	});
+
+	it("fails when the copy is refused because the source no longer matches the ETag that was read", async () => {
+		refuse([]);
+
+		await expect(storeOriginal(copy, LOCATION)).rejects.toThrow('"trip/photo.jpg" changed after it was read');
 	});
 });
 

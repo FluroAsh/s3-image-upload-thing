@@ -158,6 +158,34 @@ describe("classifyKey", () => {
 		]);
 	});
 
+	it("classifies original.{ext} beside a set's images as that set's source, whatever its extension", () => {
+		const keys = [
+			"trip/photo/full_photo.webp",
+			"trip/photo/original.webp",
+			"buff-rick/original.jpg",
+			"buff-rick/buff-rick.webp",
+		];
+		const trip = { layout: "nested", folder: "trip", name: "photo" };
+
+		expect(classifyAll(keys)).toEqual([
+			{ member: { ...trip, variant: "full" } },
+			{ source: trip },
+			{ source: { layout: "nested", folder: "", name: "buff-rick" } },
+			{ member: { layout: "nested", folder: "", name: "buff-rick", variant: "original" } },
+		]);
+	});
+
+	it("treats original.{ext} as any other file when no image of its folder's set sits beside it", () => {
+		const keys = ["trip/original.webp", "data/original.jpg", "data/large_other.webp", "original.webp"];
+
+		expect(classifyAll(keys)).toEqual([
+			{ member: { layout: "flat", folder: "trip", name: "original", variant: "original" } },
+			{ skip: "not-webp" },
+			{ member: { layout: "flat", folder: "data", name: "large_other", variant: "original" } },
+			{ member: { layout: "flat", folder: "", name: "original", variant: "original" } },
+		]);
+	});
+
 	it("treats manifest.json at the bucket root, which no set folder holds, as any other non-image", () => {
 		expect(classifyAll(["manifest.json"])).toEqual([{ skip: "not-webp" }]);
 	});
@@ -206,6 +234,7 @@ describe("isManifest", () => {
 				buildManifest({
 					createdAt: "t",
 					placeholder: null,
+					source: null,
 					objects: [{ key: NESTED_KEYS[0], width: 1, height: 1, bytes: 1, etag: '"e"' }],
 				}),
 			),
@@ -225,11 +254,18 @@ describe("isManifest", () => {
 });
 
 describe("hasRefusedUploadPrefix", () => {
-	it.each(["src/a", "legacy/a"])("refuses %s", (key) => {
+	it.each(["src/a", "legacy/a", "trip/original.v2/", "original.v2/", "a/original.jpg/b/"])("refuses %s", (key) => {
 		expect(hasRefusedUploadPrefix(key)).toBe(true);
 	});
 
-	it.each(["manifests/a", "trip/src/a", "legacy.png"])("accepts %s", (key) => {
+	it.each([
+		"manifests/a",
+		"trip/src/a",
+		"legacy.png",
+		"trip/original/",
+		"trip/originals/",
+		"trip/my-original.v2/",
+	])("accepts %s", (key) => {
 		expect(hasRefusedUploadPrefix(key)).toBe(false);
 	});
 });
@@ -286,6 +322,21 @@ describe("groupImageSets", () => {
 		]);
 	});
 
+	it("records a set's original.{ext} as its source, not as a member or a set of its own", () => {
+		const { sets, skipped } = groupImageSets(["trip/photo/full_photo.webp", "trip/photo/original.webp"]);
+
+		expect(sets).toEqual([
+			{
+				layout: "nested",
+				folder: "trip",
+				name: "photo",
+				source: "trip/photo/original.webp",
+				members: [{ key: "trip/photo/full_photo.webp", variant: "full" }],
+			},
+		]);
+		expect(skipped).toEqual([]);
+	});
+
 	it("keeps an unprefixed nested original in the nested set rather than a flat one (made-up key)", () => {
 		const original = "a/pier/pier.webp";
 
@@ -329,6 +380,7 @@ describe("buildManifest", () => {
 		buildManifest({
 			createdAt: "2026-10-10T03:12:45Z",
 			placeholder: null,
+			source: null,
 			objects: measured(keys, 120),
 			...overrides,
 		});
@@ -356,6 +408,29 @@ describe("buildManifest", () => {
 				large: { key: NESTED_KEYS[2], format: "webp", width: 122, height: 102, bytes: 1002, etag: '"etag-2"' },
 			},
 		});
+	});
+
+	it("records the set's own original.{ext} as its source", () => {
+		const source = {
+			key: "japan-2025/kyoto/ginsui-sukiyaki-1/original.jpg",
+			public: false,
+			sha256: "ab".repeat(32),
+			bytes: 5000,
+			width: 4000,
+			height: 3000,
+		};
+
+		expect(build(NESTED_KEYS, { source }).source).toEqual(source);
+	});
+
+	it.each([
+		["another set's original", "japan-2025/kyoto/ginsui-sukiyaki-2/original.jpg"],
+		["a size of the set", NESTED_KEYS[0]],
+		["a file not named original", "japan-2025/kyoto/ginsui-sukiyaki-1/photo.jpg"],
+	])("refuses %s as the source", (_label, key) => {
+		const source = { key, public: false, sha256: "", bytes: 1, width: 1, height: 1 };
+
+		expect(() => build(NESTED_KEYS, { source })).toThrow(`"${key}" is not the source file of`);
 	});
 
 	it("refuses a flat set, which has no folder to hold a manifest", () => {

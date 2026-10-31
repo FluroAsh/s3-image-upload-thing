@@ -15,6 +15,15 @@ describe("constructFileTree", () => {
 		expect(nodes.find(({ id }) => id === "trip/photo/")).toMatchObject({ isFolder: true, childCount: 2 });
 	});
 
+	it("leaves a set's original out of the set folder's children, as it is private", () => {
+		const nodes = tree(["trip/photo/large_photo.webp", "trip/photo/original.jpg"]);
+
+		expect(nodes.filter(({ parentId }) => parentId === "trip/photo/").map(({ name }) => name)).toEqual([
+			"large_photo.webp",
+		]);
+		expect(nodes.find(({ id }) => id === "trip/photo/")).toMatchObject({ childCount: 1 });
+	});
+
 	it("keeps a manifest.json that only sits beside a loose image whose name is not the folder's", () => {
 		const keys = ["trip/beach.webp", "trip/manifest.json"];
 
@@ -30,6 +39,7 @@ describe("constructFileTree", () => {
 		const keys = [
 			"manifest.json",
 			"data/manifest.json",
+			"data/original.jpg",
 			"data/notes.txt",
 			"trip/photo/large_photo.webp",
 			"trip/photo/exif.json",

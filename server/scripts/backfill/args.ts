@@ -15,7 +15,8 @@ Dry run by default: lists the bucket and prints what a backfill would find. Writ
   --region <region>  Region of the bucket (default: the server default region)
   --write            Measure every set and store its manifest as ${MANIFEST_FILE_NAME} inside the set's own folder;
                      existing manifests are left alone, and flat sets (no folder of their own) get none
-  --force            With --write, replace the manifest of a set that already has one`;
+  --force            With --write, replace the manifest of a set that already has one, keeping its recorded
+                     source while that original.{ext} is still in the set folder`;
 
 type BackfillArgs = StoreManifestOptions & BucketArgs;
 

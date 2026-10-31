@@ -1,4 +1,11 @@
-import { GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+	CopyObjectCommand,
+	DeleteObjectCommand,
+	GetObjectCommand,
+	ListObjectsV2Command,
+	PutObjectCommand,
+	S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
@@ -130,8 +137,8 @@ export const uploadImages = async (
 	image: ImageVariants,
 	set: NestedSetIdentity,
 	{ bucketName, bucketRegion }: BucketLocation,
-): Promise<FileVariant[]> =>
-	Promise.all(
+): Promise<FileVariant[]> => {
+	const settled = await Promise.allSettled(
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
 				const key = variantKey(set, variant);
@@ -164,6 +171,27 @@ export const uploadImages = async (
 			},
 		),
 	);
+
+	// Waits for every put, so a caller cleaning up after a failure never races one still in flight.
+	const failure = settled.find((result) => result.status === "rejected");
+	if (failure) throw failure.reason;
+	return settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+};
+
+/** Deletes each key, none skipped because another failed; resolves the keys that could not be deleted. A key that is already gone counts as deleted. */
+export const deleteObjects = async (
+	keys: readonly string[],
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<string[]> => {
+	const settled = await Promise.allSettled(
+		keys.map((key) =>
+			withDeadline((options) =>
+				getRegionalClient(bucketRegion).send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }), options),
+			),
+		),
+	);
+	return keys.filter((_, index) => settled[index].status === "rejected");
+};
 
 const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
 
@@ -204,7 +232,18 @@ export const withDeadline = async <Result>(
 	}
 };
 
-/** Resolves `false`, storing nothing, when a manifest exists and `force` is off, so "already there" is not mistaken for a failure. */
+/** Resolves `false` when a create-only write found the key taken, so "already there" is not mistaken for a failure. */
+const unlessTaken = async (write: Promise<unknown>): Promise<boolean> => {
+	try {
+		await write;
+		return true;
+	} catch (error) {
+		if (isS3Error(error, "PreconditionFailed")) return false;
+		throw error;
+	}
+};
+
+/** Resolves `false`, storing nothing, when a manifest exists and `force` is off. */
 export const storeManifest = async (
 	manifest: Manifest,
 	{ bucketName, bucketRegion }: BucketLocation,
@@ -213,8 +252,8 @@ export const storeManifest = async (
 	const key = manifestKey(manifest);
 	assertManifestKey(key);
 
-	try {
-		await withDeadline((options) =>
+	return unlessTaken(
+		withDeadline((options) =>
 			getRegionalClient(bucketRegion).send(
 				new PutObjectCommand({
 					Body: JSON.stringify(manifest),
@@ -226,24 +265,88 @@ export const storeManifest = async (
 				}),
 				options,
 			),
+		),
+	);
+};
+
+export type StoreOriginalParams = {
+	/** Key the original is stored under, from `sourceKey`. */
+	key: string;
+} & (
+	| {
+			/** The uploaded file's bytes, stored as they are. */
+			body: Buffer;
+			/** MIME type the client sent for the upload. */
+			contentType: string;
+	  }
+	| {
+			/** Key of an object in the same bucket that already holds the original, copied server side instead of uploading it again. */
+			copyFrom: string;
+			/** ETag of the exact object that was read, so the copy fails rather than keep bytes that differ from the ones measured. */
+			ifMatch: string;
+	  }
+);
+
+/** Create-only, like a manifest, so an upload racing for the same name can never replace it; resolves `false` when one exists. */
+export const storeOriginal = async (
+	params: StoreOriginalParams,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> => {
+	const { key } = params;
+	const client = getRegionalClient(bucketRegion);
+	const send = (command: PutObjectCommand | CopyObjectCommand) =>
+		withDeadline((options) => client.send(command as PutObjectCommand, options));
+
+	if (!("copyFrom" in params)) {
+		const { body, contentType } = params;
+		return unlessTaken(
+			send(
+				new PutObjectCommand({ Body: body, Bucket: bucketName, Key: key, ContentType: contentType, IfNoneMatch: "*" }),
+			),
+		);
+	}
+
+	const CopySource = `${bucketName}/${params.copyFrom.split("/").map(encodeURIComponent).join("/")}`;
+	try {
+		await send(
+			new CopyObjectCommand({
+				Bucket: bucketName,
+				Key: key,
+				CopySource,
+				CopySourceIfMatch: params.ifMatch,
+				IfNoneMatch: "*",
+			}),
 		);
 		return true;
 	} catch (error) {
-		if (isS3Error(error, "PreconditionFailed")) return false;
-		throw error;
+		if (!isS3Error(error, "PreconditionFailed")) throw error;
+		// S3 answers a changed source and a taken destination the same way, so only the destination tells them apart.
+		const { Contents } = await client.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }));
+		if (Contents?.some((object) => object.Key === key)) return false;
+		throw new Error(`"${params.copyFrom}" changed after it was read, so it was not copied`);
 	}
 };
 
-export const readObject = (key: string, { bucketName, bucketRegion }: BucketLocation): Promise<Buffer> =>
+const fetchObject = (key: string, { bucketName, bucketRegion }: BucketLocation) =>
 	withDeadline(async (options) => {
-		const { Body } = await getRegionalClient(bucketRegion).send(
+		const { Body, ETag } = await getRegionalClient(bucketRegion).send(
 			new GetObjectCommand({ Bucket: bucketName, Key: key }),
 			options,
 		);
 		if (!Body) throw new Error(`S3 returned no content for "${key}"`);
 
-		return Buffer.from(await Body.transformToByteArray());
+		return { body: Buffer.from(await Body.transformToByteArray()), etag: ETag };
 	});
+
+export const readObject = async (key: string, location: BucketLocation): Promise<Buffer> =>
+	(await fetchObject(key, location)).body;
+
+/** Like `readObject`, with the ETag of the exact version that was read. */
+export const getObject = async (key: string, location: BucketLocation): Promise<{ body: Buffer; etag: string }> => {
+	const { body, etag } = await fetchObject(key, location);
+	if (!etag) throw new Error(`S3 returned no ETag for "${key}"`);
+	return { body, etag };
+};
 
 /** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. Throws `NotAManifestError` for any other file at the key. */
 export const readManifest = async (set: NestedSetIdentity, location: BucketLocation): Promise<Manifest | null> => {

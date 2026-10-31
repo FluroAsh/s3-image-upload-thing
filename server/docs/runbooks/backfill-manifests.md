@@ -13,6 +13,8 @@ Writes a manifest for every image set that was stored before uploads started wri
 
 A set's manifest is `<folder>/<name>/manifest.json`, or `<name>/manifest.json` for a set at the bucket root: always beside the images it describes. A `manifest.json` counts as a set's manifest only when an image of that set (`{variant}_{name}.webp` or `{name}.webp`) sits in the same folder; any other `manifest.json`, such as a web app's `data/manifest.json`, is an ordinary file the script ignores. The script never writes to an image key; the one function that stores a manifest refuses any key that is not `manifest.json` directly inside a non-empty folder, outside `src/`.
 
+A set's **original** is `<folder>/<name>/original.<ext>` (`<name>/original.<ext>` at the bucket root): the file its sizes were made from, stored unchanged by an upload or copied in by the migration. It counts only when an image of that set sits beside it, like a manifest, and it is never a size or a set of its own. The script reads it and records it as the manifest's `source`: its key, SHA-256, byte count, width and height after EXIF rotation, and `public: false`. Uploads and the migration already write `source`; the backfill fills it in for a set whose manifest lacks it. The CDN must not serve originals, which keep camera metadata such as GPS location; see [Keeping originals private](#keeping-originals-private).
+
 **Flat sets** (an un-prefixed file with prefixed copies beside it, in the bucket root or any folder, and no folder of their own) have nowhere to hold a manifest. The dry run counts and describes them so a bucket can be assessed; a write run reports each one as `flat-set` and writes nothing for it. They are moved into set folders by a separate one-off migration.
 
 ### How a consumer uses a manifest
@@ -42,7 +44,7 @@ All commands run from `server/`.
 | `--prefix <folder>` | Limit the run to one folder of the bucket |
 | `--region <region>` | Region of the bucket. Defaults to the server's default region |
 | `--write` | Measure every set and store its manifest. Without it the run is a dry run |
-| `--force` | With `--write`, replace the manifest of a set that already has one |
+| `--force` | With `--write`, replace the manifest of a set that already has one. A recorded `source` is kept, without reading the original again, while that `original.<ext>` is still in the set folder |
 
 ## Procedure
 
@@ -58,7 +60,7 @@ bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> [--prefix <f
 |---|---|---|
 | `Keys listed` | Matches `aws s3 ls s3://<bucket>/<folder>/ --recursive \| wc -l` | The listing is incomplete; check credentials and region |
 | `Sets by layout` | Nested sets only. A `flat` count above zero is followed by a note that each needs migrating | Flat sets get no manifest. Migrate them into set folders first, or accept that a write run skips them |
-| `Skipped keys` | Files that are not images, folder markers, anything under `src/`, and one `set-manifest` line per set that already has a manifest. A `manifest.json` with no image of its set beside it is listed as `not-webp`, like any other file | An image you expected to see is listed here with the reason it was skipped |
+| `Skipped keys` | Files that are not images, folder markers, anything under `src/`, and one `set-manifest` line per set that already has a manifest. A set's `original.<ext>` is not listed here: it belongs to its set as the source. A `manifest.json` with no image of its set beside it is listed as `not-webp`, like any other file | An image you expected to see is listed here with the reason it was skipped |
 | `Sets where two variant names share an ETag` | Informational. Older uploads stored one file under several names | Nothing to do; the manifest records what is there |
 | `Sets missing medium or large` | Zero, or sets you know are small | Those sets get a manifest without those sizes |
 | `Sets with jpg/jpeg/png members` | Informational. They are not WebP, so they get no manifest | Nothing to do |
@@ -94,6 +96,7 @@ Failed: 0
 | Headers | `aws s3api head-object --bucket <bucket> --key <folder>/<name>/manifest.json` | `ContentType` `application/json`, `CacheControl` `public, max-age=300` |
 | Through the CDN | `curl -sI https://<cdn-host>/<folder>/<name>/manifest.json` | `200`, `content-type: application/json` |
 | Contents | `curl -s https://<cdn-host>/<folder>/<name>/manifest.json` | Every `variants.*.key` is in the set's folder with the same size; `width` and `height` match a file you open |
+| Source | For a set with an `original.<ext>`: `aws s3 cp s3://<bucket>/<folder>/<name>/original.<ext> - \| shasum -a 256` | Equals the manifest's `source.sha256`; `source.public` is `false`. A set without one has `source: null` |
 | Nothing else changed | `aws s3 ls s3://<bucket>/<folder>/ --recursive \| grep -v '/manifest.json$'` before and after | Identical |
 
 ### 4. Write everything
@@ -131,7 +134,7 @@ Each of these exits with code `1` before any request is made.
 |---|---|---|---|
 | `written` | Written | The manifest was stored in the set's folder. A detail such as `full holds jpeg, not webp` means a file's bytes do not match its name; the manifest records the real format | Nothing |
 | `exists` | Skipped | The set already has a manifest listing exactly its current files | Nothing |
-| `exists-stale` | Skipped | The set has a manifest, but a size has been added or removed since. The line lists which keys | Re-run with `--force` to refresh it |
+| `exists-stale` | Skipped | The set has a manifest, but a size has been added or removed since, or its folder's `original.<ext>` is not the `source` it records (`its source is <key>, recorded as none` for a manifest written before originals were kept). The line says which | Re-run with `--force` to refresh it |
 | `flat-set` | Skipped | The set has no folder of its own, so there is nowhere to store a manifest. The line says it needs migrating into a set folder | Migrate it, then run the backfill again; until then it has no manifest |
 | `not-a-manifest` | Failed | The manifest key holds a file this service did not write: not JSON, no `schema: 1`, or `variants` that is not an object. It is read first even with `--force`, and never replaced | Look at the file. Move or delete it yourself if it is not wanted, then re-run |
 | `unreadable-object` | Failed | An object could not be downloaded or is not an image, or its size differs from the listing | Check the key named in the line; re-run once it is fixed or removed |
@@ -139,7 +142,37 @@ Each of these exits with code `1` before any request is made.
 
 Any `Failed` count above zero makes the exit code `1`. Skips do not, so a bucket of only flat sets exits `0` having written nothing.
 
-With `--force`, every nested set whose manifest is ours is measured and its manifest replaced. A file that is not a manifest is still left alone.
+With `--force`, every nested set whose manifest is ours is measured and its manifest replaced. Its recorded `source` is kept while that key is still the set's `original.<ext>`; otherwise the original is read and measured, or `source` becomes `null` when the folder holds none. A file that is not a manifest is still left alone.
+
+## Keeping originals private
+
+An original is stored as `original.<ext>`, never under a size's name, so one bucket-policy statement can deny the CDN every original without catching a size. Uploads also refuse any folder named `original.<anything>`, so no size key can ever match. The service reads originals with its own credentials, which the statement does not touch.
+
+Add this statement to the `Statement` array of the policy of **each bucket the CDN reads**. An explicit `Deny` wins over the `Allow` that lets the CDN read the bucket. In an S3 ARN `*` also matches `/`, so the one pattern covers an original at any depth.
+
+```json
+{
+	"Sid": "DenyCdnOriginals",
+	"Effect": "Deny",
+	"Principal": { "Service": "cloudfront.amazonaws.com" },
+	"Action": "s3:GetObject",
+	"Resource": "arn:aws:s3:::<bucket>/*/original.*",
+	"Condition": { "StringEquals": { "AWS:SourceArn": "<distribution-arn>" } }
+}
+```
+
+This is for a distribution that reads the bucket through origin access control, whose `Allow` names the same principal and `AWS:SourceArn`. If the bucket's existing statement for the CDN uses a different principal (an origin access identity), use that principal here instead and drop the condition.
+
+| Step | Command | Expect |
+|---|---|---|
+| 1. Nothing else matches | `aws s3 ls s3://<bucket>/ --recursive \| grep '/original\.'` | Only `<folder>/<name>/original.<ext>` keys of sets. Any other key listed would be hidden from the CDN too; move it first |
+| 2. Save the current policy | `aws s3api get-bucket-policy --bucket <bucket> --query Policy --output text > policy.json` | A JSON policy with the CDN's `Allow` statement |
+| 3. Apply | Add the statement to `Statement` in `policy.json`, then `aws s3api put-bucket-policy --bucket <bucket> --policy file://policy.json` | No output |
+| 4. Original is denied | `curl -sI https://<cdn-host>/<folder>/<name>/original.<ext>` | `403`. A `200` means the statement is missing or names the wrong principal or distribution; a custom error page configured for `403` can show another status |
+| 5. Sizes still served | `curl -sI https://<cdn-host>/<folder>/<name>/large_<name>.webp` | `200` |
+| 6. Manifest still served | `curl -sI https://<cdn-host>/<folder>/<name>/manifest.json` | `200` |
+
+To undo, put back the saved `policy.json` with the same `put-bucket-policy` command. The CDN may serve an original it cached before the statement was applied until that cache entry expires; invalidate `/*/original.*` if one was ever requested.
 
 ## When something goes wrong
 

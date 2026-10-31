@@ -2,12 +2,32 @@ import type { ImageVariant } from "~/shared/types";
 
 export type { ImageVariant };
 
+export type CopyOriginalFrom = {
+	/** Key of an object in the upload's bucket holding the same bytes as the file. */
+	key: string;
+	/** ETag of the exact object the file's bytes were read from; the copy fails if the object has changed since. */
+	etag: string;
+};
+
+/** A file whose original may be copied server side from `copyOriginalFrom` instead of uploaded; a multipart request can never set it. */
+export type UploadedFile = File & {
+	/** Where the file's original already is, so the pipeline copies it instead of uploading it again. */
+	copyOriginalFrom?: CopyOriginalFrom;
+};
+
 export type ProcessedImage = {
+	/** Multipart field the file arrived under. */
 	fieldName: string;
+	/** The file's bytes as received. */
 	buffer: ArrayBuffer | Buffer;
+	/** File name as uploaded, with its extension. */
 	fileName: string;
+	/** MIME type the client sent for the file. */
 	fileType: string;
+	/** Human-readable size of the file, e.g. `"1.5 MB"`. */
 	size: string;
+	/** Carried from the uploaded file; see `UploadedFile`. */
+	copyOriginalFrom?: CopyOriginalFrom;
 };
 
 export type VariantOutput = {

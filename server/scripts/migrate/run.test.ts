@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { setKeyPrefix } from "@/modules/storage/services/manifest";
 import type { UploadOutcome } from "@/modules/storage/services/upload-pipeline";
+import type { UploadedFile } from "@/shared/types/image";
 import type { FileVariant } from "~/shared/types";
 
 import {
@@ -26,16 +27,23 @@ const bucket = (
 	respond: (file: File, destination: string) => UploadOutcome = () => ({ files: [] }),
 ) => {
 	const read: string[] = [];
-	const uploads: { name: string; type: string; destination: string; text: string }[] = [];
+	const uploads: {
+		name: string;
+		type: string;
+		destination: string;
+		copyOriginalFrom?: UploadedFile["copyOriginalFrom"];
+		text: string;
+	}[] = [];
 
 	const io: MigrateIo = {
 		setExists: async (identity) => keys.some((key) => key.startsWith(setKeyPrefix(identity))),
 		readObject: async (key) => {
 			read.push(key);
-			return Buffer.from(`bytes of ${key}`);
+			return { body: Buffer.from(`bytes of ${key}`), etag: `"etag-of-${key}"` };
 		},
 		upload: async (file, destination) => {
-			uploads.push({ name: file.name, type: file.type, destination, text: await file.text() });
+			const { copyOriginalFrom } = file;
+			uploads.push({ name: file.name, type: file.type, destination, copyOriginalFrom, text: await file.text() });
 			return respond(file, destination);
 		},
 	};
@@ -70,8 +78,20 @@ describe("migrateFlatSets", () => {
 
 		expect(read.sort()).toEqual(["blog/dog_cd34.webp", "cat_ab12.webp"]);
 		expect(uploads.sort((a, b) => a.name.localeCompare(b.name))).toEqual([
-			{ name: "cat_ab12.webp", type: "image/webp", destination: "", text: "bytes of cat_ab12.webp" },
-			{ name: "dog_cd34.webp", type: "image/webp", destination: "blog", text: "bytes of blog/dog_cd34.webp" },
+			{
+				name: "cat_ab12.webp",
+				type: "image/webp",
+				destination: "",
+				copyOriginalFrom: { key: "cat_ab12.webp", etag: '"etag-of-cat_ab12.webp"' },
+				text: "bytes of cat_ab12.webp",
+			},
+			{
+				name: "dog_cd34.webp",
+				type: "image/webp",
+				destination: "blog",
+				copyOriginalFrom: { key: "blog/dog_cd34.webp", etag: '"etag-of-blog/dog_cd34.webp"' },
+				text: "bytes of blog/dog_cd34.webp",
+			},
 		]);
 		expect(summary(results)).toEqual([
 			{ name: "cat_ab12", outcome: "migrated", linkTo: "cat_ab12/large.webp" },
@@ -89,7 +109,13 @@ describe("migrateFlatSets", () => {
 
 		expect(read).toEqual([original]);
 		expect(uploads).toEqual([
-			{ name: "spiderman_x.jpg", type: "image/jpeg", destination: "images", text: `bytes of ${original}` },
+			{
+				name: "spiderman_x.jpg",
+				type: "image/jpeg",
+				destination: "images",
+				copyOriginalFrom: { key: original, etag: `"etag-of-${original}"` },
+				text: `bytes of ${original}`,
+			},
 		]);
 		expect(buildMapping(results)).toEqual([
 			{

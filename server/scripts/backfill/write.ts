@@ -4,6 +4,7 @@ import { DEFAULT_FILE_TYPE } from "@/modules/storage/processors/variants/config"
 import { encodeVariant } from "@/modules/storage/processors/variants/processor";
 import {
 	buildManifest,
+	describeSource,
 	groupImageSets,
 	holdsManifest,
 	type ImageSet,
@@ -61,12 +62,37 @@ const judgeExisting = (existing: Manifest, set: ImageSet): OutcomeWithDetail => 
 	const setKeys = set.members.map(({ key }) => key);
 	const added = setKeys.filter((key) => !existingKeys.includes(key));
 	const removed = existingKeys.filter((key) => !setKeys.includes(key));
-	if (!added.length && !removed.length) return { outcome: "exists" };
+	const recordedSource = existing.source?.key ?? "none";
+	const foundSource = set.source ?? "none";
 
-	return {
-		outcome: "exists-stale",
-		detail: `its keys changed since the manifest was written (added: ${joinSortedKeys(added) || "none"}; removed: ${joinSortedKeys(removed) || "none"}); --force will refresh it`,
-	};
+	const changes = [
+		...(added.length || removed.length
+			? [
+					`its keys changed since the manifest was written (added: ${joinSortedKeys(added) || "none"}; removed: ${joinSortedKeys(removed) || "none"})`,
+				]
+			: []),
+		...(recordedSource !== foundSource ? [`its source is ${foundSource}, recorded as ${recordedSource}`] : []),
+	];
+	if (!changes.length) return { outcome: "exists" };
+
+	return { outcome: "exists-stale", detail: `${changes.join("; ")}; --force will refresh it` };
+};
+
+/** Names the key in any failure of `work`, so the run's report says which object it was. */
+const aboutKey = <Result>(key: string, work: Promise<Result>): Promise<Result> =>
+	work.catch((error: unknown) => {
+		throw new Error(`"${key}": ${errorMessage(error)}`);
+	});
+
+/** Reads one listed object whole, naming its key in any failure and refusing bytes that no longer match the listing. */
+const readListed = async (key: string, listed: ReadonlyMap<string, ListedObject>, io: BackfillIo) => {
+	const object = listed.get(key);
+	if (!object) throw new Error(`"${key}": missing from the listing`);
+
+	const body = await aboutKey(key, io.readObject(key));
+	if (body.length !== object.bytes) throw new Error(`"${key}": read ${body.length} bytes, listed as ${object.bytes}`);
+
+	return { ...object, body };
 };
 
 // ponytail: every object is downloaded whole to be measured, though only the blur's source needs all its bytes. Fine for
@@ -76,20 +102,25 @@ const measureObject = async (
 	listed: ReadonlyMap<string, ListedObject>,
 	io: BackfillIo,
 ) => {
-	try {
-		const object = listed.get(key);
-		if (!object) throw new Error("missing from the listing");
-		const { bytes, etag } = object;
+	const { body, bytes, etag } = await readListed(key, listed, io);
+	// `autoOrient` matches how an upload measures: the size as displayed, after any EXIF rotation.
+	const { format, autoOrient } = await aboutKey(key, sharp(body).metadata());
 
-		const body = await io.readObject(key);
-		if (body.length !== bytes) throw new Error(`read ${body.length} bytes, listed as ${bytes}`);
-		// `autoOrient` matches how an upload measures: the size as displayed, after any EXIF rotation.
-		const { format, autoOrient } = await sharp(body).metadata();
+	return { key, variant, body, bytes, etag, format, ...autoOrient };
+};
 
-		return { key, variant, body, bytes, etag, format, ...autoOrient };
-	} catch (error) {
-		throw new Error(`"${key}": ${errorMessage(error)}`);
-	}
+/** A forced run keeps the recorded source while it is still the set's original, so its hash is never recomputed from a re-read. */
+const sourceOf = async (
+	set: ImageSet,
+	existing: Manifest | null,
+	listed: ReadonlyMap<string, ListedObject>,
+	io: BackfillIo,
+): Promise<Manifest["source"]> => {
+	if (!set.source) return null;
+	if (existing?.source?.key === set.source) return existing.source;
+
+	const { body } = await readListed(set.source, listed, io);
+	return aboutKey(set.source, describeSource(set.source, body));
 };
 
 const backfillSet = async (
@@ -111,7 +142,9 @@ const backfillSet = async (
 
 	let objects: Awaited<ReturnType<typeof measureObject>>[];
 	let placeholder: Buffer;
+	let source: Manifest["source"];
 	try {
+		source = await sourceOf(set, existing, listed, io);
 		objects = await Promise.all(set.members.map((member) => measureObject(member, listed, io)));
 		const stored = objects.find(({ variant }) => variant === "placeholder");
 		const narrowest = objects.reduce((smallest, object) => (object.width < smallest.width ? object : smallest));
@@ -123,6 +156,7 @@ const backfillSet = async (
 	const manifest = buildManifest({
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderDataUri(placeholder),
+		source,
 		objects,
 	});
 	if (await io.storeManifest(manifest, { force })) {
