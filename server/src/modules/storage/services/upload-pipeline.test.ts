@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import sharp from "sharp";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,12 +16,50 @@ const puts = () => s3.sent.filter(({ command }) => command === "PutObject").map(
 
 const manifestPut = () => puts().find(({ Key }) => Key.endsWith(".json"));
 
+type FakeBucketOptions = {
+	/** Keys whose write throws `S3 is down`. */
+	failOn?: (key: string) => boolean;
+	/** Keys whose delete throws. */
+	failDelete?: (key: string) => boolean;
+};
+
+/** A bucket that remembers what was stored: create-only puts fail on a taken key, and deletes remove. Listings only find keys already present when the upload begins, like S3's own check. */
+const fakeBucket = (options: FakeBucketOptions) => {
+	const bucket = {
+		...options,
+		objects: new Set<string>(),
+		keys: () => Array.from(bucket.objects).sort(),
+	};
+	s3.respond = async (sent) => {
+		const { Key, Prefix, IfNoneMatch } = sent.input as { Key: string; Prefix?: string; IfNoneMatch?: string };
+		if (sent.command === "ListObjectsV2") {
+			return {
+				Contents: Array.from(bucket.objects)
+					.filter((key) => key.startsWith(Prefix ?? ""))
+					.map((key) => ({ Key: key })),
+			};
+		}
+		if (sent.command === "DeleteObject") {
+			if (bucket.failDelete?.(Key)) throw new Error("delete refused");
+			bucket.objects.delete(Key);
+			return {};
+		}
+		if (bucket.failOn?.(Key)) throw new Error("S3 is down");
+		if (IfNoneMatch && bucket.objects.has(Key)) {
+			throw Object.assign(new Error("precondition"), { name: "PreconditionFailed" });
+		}
+		bucket.objects.add(Key);
+		return s3.defaultRespond(sent);
+	};
+	return bucket;
+};
+
 const upload = async (
 	fileName = "photo.jpg",
 	destination = "trip",
-	{ width, height } = { width: 300, height: 150 },
+	jpegOptions: Parameters<typeof makeJpeg>[0] = { width: 300, height: 150 },
 ) => {
-	const jpeg = await makeJpeg({ width, height });
+	const jpeg = await makeJpeg(jpegOptions);
 
 	return runUploadPipeline({
 		fileEntries: [["0", new File([jpeg], fileName, { type: "image/jpeg" })]],
@@ -55,11 +95,62 @@ describe("runUploadPipeline", () => {
 		]);
 	});
 
+	it("stores the uploaded file unchanged as original.{ext} first, create-only, with its extension lower-cased", async () => {
+		const jpeg = await makeJpeg({ width: 300, height: 150 });
+
+		await runUploadPipeline({
+			fileEntries: [["0", new File([jpeg], "Photo.JPG", { type: "image/jpeg" })]],
+			bucketName: "example-bucket",
+			bucketRegion: "us-east-1",
+			destination: "trip",
+		});
+
+		expect(puts()[0]).toMatchObject({ Key: "trip/Photo/original.jpg", ContentType: "image/jpeg", IfNoneMatch: "*" });
+		expect(Buffer.compare(puts()[0].Body as Buffer, jpeg)).toBe(0);
+	});
+
+	it("names an original uploaded without an extension after its format, so it still matches original.*", async () => {
+		await upload("photo");
+
+		expect(puts()[0].Key).toBe("trip/photo/original.jpeg");
+	});
+
+	it("records the original as the manifest's private source, measured after EXIF rotation", async () => {
+		await upload("photo.jpg", "trip", { width: 300, height: 150, orientation: 6 });
+
+		const original = puts()[0].Body as Buffer;
+		const { source }: Manifest = JSON.parse(manifestPut()?.Body as string);
+
+		expect(source).toEqual({
+			key: "trip/photo/original.jpg",
+			public: false,
+			sha256: createHash("sha256").update(original).digest("hex"),
+			bytes: original.length,
+			width: 150,
+			height: 300,
+		});
+	});
+
+	it("answers 409 and stores nothing more when another upload stored the original first", async () => {
+		s3.respond = async (sent) => {
+			if (sent.command === "PutObject" && sent.input.Key.endsWith("/original.jpg")) {
+				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
+					name: "PreconditionFailed",
+				});
+			}
+			return s3.defaultRespond(sent);
+		};
+
+		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+
+		expect(puts().map(({ Key }) => Key)).toEqual(["trip/photo/original.jpg"]);
+	});
+
 	it("stores a manifest last that describes the objects stored before it", async () => {
 		await uploadStored();
 
-		expect(puts()).toHaveLength(3);
-		const [placeholder, full, last] = puts();
+		expect(puts()).toHaveLength(4);
+		const [, placeholder, full, last] = puts();
 		expect(last.Key).toBe("trip/photo/manifest.json");
 
 		const manifest: Manifest = JSON.parse(last.Body as string);
@@ -68,7 +159,6 @@ describe("runUploadPipeline", () => {
 			name: "photo",
 			folder: "trip",
 			layout: "nested",
-			source: null,
 		});
 		expect(manifest.variants).toEqual({
 			placeholder: {
@@ -125,7 +215,7 @@ describe("runUploadPipeline", () => {
 	it("stores every variant with a Cache-Control header", async () => {
 		await uploadStored();
 
-		expect(puts().slice(0, 2)).toEqual([
+		expect(puts().slice(1, 3)).toEqual([
 			expect.objectContaining({ Key: "trip/photo/placeholder_photo.webp", CacheControl: "public, max-age=86400" }),
 			expect.objectContaining({ Key: "trip/photo/full_photo.webp", CacheControl: "public, max-age=86400" }),
 		]);
@@ -142,15 +232,41 @@ describe("runUploadPipeline", () => {
 		expect({ format, width }).toEqual({ format: "webp", width: 20 });
 	});
 
-	it("writes no manifest when a variant fails to store", async () => {
-		s3.respond = async (sent) => {
-			if (sent.command === "PutObject" && sent.input.Key.includes("full_")) throw new Error("S3 is down");
-			return s3.defaultRespond(sent);
-		};
+	it("deletes the original and the sizes it stored when a size fails, so a retry succeeds", async () => {
+		const bucket = fakeBucket({ failOn: (key) => key.includes("full_") });
 
 		await expect(upload()).rejects.toThrow("S3 is down");
 
-		expect(puts().map(({ Key }) => Key)).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/full_photo.webp"]);
+		expect(puts().some(({ Key }) => Key.endsWith(".json"))).toBe(false);
+		expect(bucket.keys()).toEqual([]);
+
+		bucket.failOn = () => false;
+		await expect(upload()).resolves.toHaveProperty("files");
+		expect(bucket.keys()).toContain("trip/photo/manifest.json");
+	});
+
+	it("deletes the original and every size when the manifest fails to store", async () => {
+		const bucket = fakeBucket({ failOn: (key) => key.endsWith("/manifest.json") });
+
+		await expect(upload()).rejects.toThrow("S3 is down");
+
+		expect(bucket.keys()).toEqual([]);
+	});
+
+	it("names the keys left behind when the clean-up fails too", async () => {
+		fakeBucket({ failOn: (key) => key.endsWith("/manifest.json"), failDelete: (key) => key.endsWith("/original.jpg") });
+
+		await expect(upload()).rejects.toThrow(/S3 is down.*trip\/photo\/original\.jpg/);
+	});
+
+	it("deletes nothing when the original already belongs to someone else", async () => {
+		const bucket = fakeBucket({});
+		bucket.objects.add("trip/photo/original.jpg");
+
+		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+
+		expect(s3.sent.some(({ command }) => command === "DeleteObject")).toBe(false);
+		expect(bucket.keys()).toEqual(["trip/photo/original.jpg"]);
 	});
 
 	it.each([
@@ -173,6 +289,8 @@ describe("runUploadPipeline", () => {
 		["src.png", ""],
 		["photo.png", "legacy"],
 		["photo.png", "src/trip"],
+		["original.v2.png", "trip"],
+		["photo.png", "trip/original.v2"],
 	])("refuses %s into destination '%s' as reserved before touching S3", async (fileName, destination) => {
 		await expect(upload(fileName, destination)).resolves.toMatchObject({ refused: "reserved" });
 
@@ -183,13 +301,14 @@ describe("runUploadPipeline", () => {
 		["src.jpg", "trip"],
 		["manifests.jpg", ""],
 		["photo.jpg", "manifests/trip"],
+		["original.jpg", "trip"],
 	])("accepts %s into destination '%s': only the start of a key is reserved", async (fileName, destination) => {
 		await expect(upload(fileName, destination)).resolves.toHaveProperty("files");
 	});
 
 	it("answers 409 when another upload stores the manifest first, never replacing it", async () => {
 		s3.respond = async (sent) => {
-			if (sent.command === "PutObject" && sent.input.IfNoneMatch === "*") {
+			if (sent.command === "PutObject" && sent.input.Key.endsWith("/manifest.json")) {
 				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
 					name: "PreconditionFailed",
 				});

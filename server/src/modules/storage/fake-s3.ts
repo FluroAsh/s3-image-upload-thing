@@ -55,6 +55,8 @@ const fakeS3 = () => {
 
 	return Object.assign(state, {
 		sdk: {
+			CopyObjectCommand: commandClass("CopyObject"),
+			DeleteObjectCommand: commandClass("DeleteObject"),
 			GetObjectCommand: commandClass("GetObject"),
 			ListObjectsV2Command: commandClass("ListObjectsV2"),
 			PutObjectCommand: commandClass("PutObject"),

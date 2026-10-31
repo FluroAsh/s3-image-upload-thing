@@ -123,6 +123,7 @@ const backfillSet = async (
 	const manifest = buildManifest({
 		createdAt: new Date().toISOString(),
 		placeholder: placeholderDataUri(placeholder),
+		source: null,
 		objects,
 	});
 	if (await io.storeManifest(manifest, { force })) {

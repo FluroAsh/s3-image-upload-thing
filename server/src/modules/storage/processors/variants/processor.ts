@@ -8,7 +8,8 @@ import type { ImageVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, VARIANT_EFFORT, VARIANT_LONGEST_EDGE, VARIANT_QUALITY } from "./config";
 
-const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer => (Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer));
+export const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer =>
+	Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 
 const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
 	quality: VARIANT_QUALITY[variant],

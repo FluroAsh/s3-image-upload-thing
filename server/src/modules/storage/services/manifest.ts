@@ -1,6 +1,9 @@
+import { createHash } from "node:crypto";
 import * as path from "node:path";
 
-import type { ImageVariant, Manifest, ManifestVariant } from "~/shared/types";
+import sharp from "sharp";
+
+import type { ImageVariant, Manifest, ManifestSource, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
 
@@ -23,11 +26,17 @@ type ClassifyResult =
 			member: ClassifiedKey;
 	  }
 	| {
+			/** The image set whose source file the key holds; never one of its sizes. */
+			source: SetIdentity;
+	  }
+	| {
 			/** Why the key belongs to no image set. */
 			skip: SkipReason;
 	  };
 
 export type ImageSet = SetIdentity & {
+	/** Key of the set's `original.{ext}`, the file its sizes are made from; absent when the set keeps none. */
+	source?: string;
 	/** Every key in the set, each with the variant name it holds. */
 	members: {
 		/** Bucket key of the object. */
@@ -49,7 +58,7 @@ type ManifestObject = Omit<ManifestVariant, "format"> & {
 	format?: ManifestVariant["format"];
 };
 
-type BuildManifestParams = Pick<Manifest, "createdAt" | "placeholder"> & {
+type BuildManifestParams = Pick<Manifest, "createdAt" | "placeholder" | "source"> & {
 	/** Every object of exactly one image set. */
 	objects: ManifestObject[];
 };
@@ -60,13 +69,17 @@ export const MANIFEST_FILE_NAME = "manifest.json";
 const SERVICE_PREFIX = "src/";
 /** The service prefix plus `legacy/`, which the CDN routes elsewhere, so an upload there would not be reachable at its own URL. */
 const REFUSED_UPLOAD_PREFIXES = [SERVICE_PREFIX, "legacy/"] as const;
+/** Start of a set's source file name, `original.{ext}`, which the bucket policy keeps from the CDN. */
+const SOURCE_FILE_STEM = "original.";
 /** File extension of every key the classifier accepts, dot included. */
 export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
 export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
 
+/** Also any folder named `original.…`, since the bucket policy hides every key with `/original.` in it from the CDN, and a set's sizes must stay public. */
 export const hasRefusedUploadPrefix = (key: string): boolean =>
-	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix));
+	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+	key.split("/").some((segment) => segment.startsWith(SOURCE_FILE_STEM));
 
 /** A set in its own folder, which is the only kind that holds a manifest. */
 export type NestedSetIdentity = Omit<SetIdentity, "layout">;
@@ -84,6 +97,13 @@ export const uploadSetIdentity = (destination: string, fileName: string): Nested
 export const setKeyPrefix = ({ folder, name }: NestedSetIdentity): string =>
 	folder ? `${folder}/${name}/` : `${name}/`;
 
+/** The nested set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
+const nestedSetOf = (key: string): NestedSetIdentity | undefined => {
+	const segments = key.split("/");
+	const name = segments[segments.length - 2];
+	return name ? { folder: segments.slice(0, -2).join("/"), name } : undefined;
+};
+
 /** The variant a file stem holds within the set named `name`, or `undefined` when the stem is not that set's. */
 const nestedVariant = (stem: string, name: string): string | undefined => {
 	if (stem === name) return "original";
@@ -91,16 +111,13 @@ const nestedVariant = (stem: string, name: string): string | undefined => {
 };
 
 /**
- * The one rule for "this manifest.json is a set's manifest": it sits in `{folder}/{name}/` beside one of that set's images.
- * Any other manifest.json (a web app's, say) is an ordinary file.
+ * The one rule for "this file belongs to the set folder it sits in": it is directly in `{folder}/{name}/` beside one of that set's images.
+ * The same file name anywhere else (a web app's manifest.json, say) is an ordinary file.
  */
-// ponytail: scans every sibling per manifest, quadratic in the listing; index siblings by folder before a bucket reaches the hundreds of thousands.
-export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boolean => {
-	if (!key.endsWith(`/${MANIFEST_FILE_NAME}`)) return false;
-
-	const folderKey = key.slice(0, -MANIFEST_FILE_NAME.length);
-	const folderSegments = folderKey.split("/");
-	const name = folderSegments[folderSegments.length - 2];
+// ponytail: scans every sibling per key, quadratic in the listing; index siblings by folder before a bucket reaches the hundreds of thousands.
+const isInSetFolder = (key: string, siblings: ReadonlySet<string>): boolean => {
+	const folderKey = key.slice(0, key.lastIndexOf("/") + 1);
+	const name = nestedSetOf(key)?.name;
 	if (!name) return false;
 
 	return Array.from(siblings).some((sibling) => {
@@ -112,6 +129,27 @@ export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boole
 			nestedVariant(fileName.slice(0, -EXTENSION.length), name) !== undefined
 		);
 	});
+};
+
+export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boolean =>
+	key.endsWith(`/${MANIFEST_FILE_NAME}`) && isInSetFolder(key, siblings);
+
+/** The key an upload stores a set's original under; `extension` is lower-cased so one policy pattern matches every original. */
+export const sourceKey = (set: NestedSetIdentity, extension: string): string =>
+	`${setKeyPrefix(set)}${SOURCE_FILE_STEM}${extension.toLowerCase()}`;
+
+/** Shared by the upload path and the backfill, so both measure an original the same way: after EXIF rotation, as displayed. */
+export const describeSource = async (key: string, body: Buffer): Promise<ManifestSource> => {
+	const { autoOrient } = await sharp(body).metadata();
+	const sha256 = createHash("sha256").update(body).digest("hex");
+
+	return { key, public: false, sha256, bytes: body.length, ...autoOrient };
+};
+
+/** Whether a key is `original.{ext}`, any extension, in the folder of a set; the bucket policy keeps every such key from the CDN. */
+export const isSetSource = (key: string, siblings: ReadonlySet<string>): boolean => {
+	const fileName = key.slice(key.lastIndexOf("/") + 1);
+	return fileName.startsWith(SOURCE_FILE_STEM) && fileName !== SOURCE_FILE_STEM && isInSetFolder(key, siblings);
 };
 
 /** The key an upload stores one variant of a set under; the one place that shape is written. */
@@ -126,17 +164,16 @@ export const classifyKey = (key: string, siblings: ReadonlySet<string>): Classif
 	if (key.startsWith(SERVICE_PREFIX)) return { skip: "reserved-prefix" };
 	if (key.endsWith("/")) return { skip: "folder-marker" };
 	if (isSetManifest(key, siblings)) return { skip: "set-manifest" };
+	const nestedSet = nestedSetOf(key);
+	if (nestedSet && isSetSource(key, siblings)) return { source: { layout: "nested", ...nestedSet } };
 	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
 
 	const segments = key.split("/");
 	const stem = segments[segments.length - 1].slice(0, -EXTENSION.length);
 	if (!stem) return { skip: "empty-name" };
 
-	const parent: string | undefined = segments[segments.length - 2];
-	const nested = parent ? nestedVariant(stem, parent) : undefined;
-	if (parent && nested) {
-		return { member: { layout: "nested", folder: segments.slice(0, -2).join("/"), name: parent, variant: nested } };
-	}
+	const nested = nestedSet && nestedVariant(stem, nestedSet.name);
+	if (nestedSet && nested) return { member: { layout: "nested", ...nestedSet, variant: nested } };
 
 	const folder = segments.slice(0, -1).join("/");
 	const separator = stem.indexOf("_");
@@ -156,6 +193,11 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 	const siblings = new Set(keys);
 	const sets = new Map<string, ImageSet>();
 	const skipped: SkippedKey[] = [];
+	const groupFor = (identity: SetIdentity): ImageSet => {
+		const group = sets.get(setId(identity)) ?? { ...identity, members: [] };
+		sets.set(setId(identity), group);
+		return group;
+	};
 
 	for (const key of keys) {
 		const result = classifyKey(key, siblings);
@@ -164,10 +206,13 @@ export const groupImageSets = (keys: readonly string[]): { sets: ImageSet[]; ski
 			continue;
 		}
 
+		if ("source" in result) {
+			groupFor(result.source).source ??= key;
+			continue;
+		}
+
 		const { variant, ...identity } = result.member;
-		const group = sets.get(setId(identity)) ?? { ...identity, members: [] };
-		group.members.push({ key, variant });
-		sets.set(setId(identity), group);
+		groupFor(identity).members.push({ key, variant });
 	}
 
 	return { sets: Array.from(sets.values()), skipped };
@@ -216,7 +261,7 @@ export class NotAManifestError extends Error {
 
 /** Shared by the upload path and the backfill, so the two cannot describe the same objects differently. */
 export const buildManifest = (params: BuildManifestParams): Manifest => {
-	const { createdAt, placeholder, objects } = params;
+	const { createdAt, placeholder, source, objects } = params;
 
 	const siblings = new Set(objects.map(({ key }) => key));
 	const variants: Manifest["variants"] = {};
@@ -224,7 +269,11 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 
 	for (const object of objects) {
 		const result = classifyKey(object.key, siblings);
-		if ("skip" in result) throw new Error(`"${object.key}" is not part of an image set (${result.skip})`);
+		if (!("member" in result)) {
+			throw new Error(
+				`"${object.key}" is not one of an image set's sizes (${"skip" in result ? result.skip : "source"})`,
+			);
+		}
 
 		const { variant, ...memberIdentity } = result.member;
 		identity ??= memberIdentity;
@@ -240,6 +289,14 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 	if (!holdsManifest(identity))
 		throw new Error(`Cannot build a manifest for flat set "${identity.name}": it has no folder of its own`);
 
+	// Only `original.{ext}` inside the set's folder is denied to the CDN, so any other key would make `public: false` untrue.
+	if (source) {
+		const classified = classifyKey(source.key, siblings);
+		if (!("source" in classified) || setId(classified.source) !== setId(identity)) {
+			throw new Error(`"${source.key}" is not the source file of set "${identity.name}"`);
+		}
+	}
+
 	return {
 		schema: 1,
 		name: identity.name,
@@ -248,7 +305,7 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 		status: "ready",
 		createdAt,
 		placeholder,
-		source: null,
+		source,
 		variants,
 	};
 };
