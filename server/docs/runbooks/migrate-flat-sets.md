@@ -6,8 +6,8 @@ Turns every flat image set in a bucket into an ordinary set with a folder of its
 
 - **Script:** `server/scripts/migrate-flat-sets.ts`, with its modules in `server/scripts/migrate/`
 - **Reads:** one bucket per run: a listing, an existence check per flat set, and each migrated set's original
-- **Writes:** only with `--write`, and only the upload pipeline's own puts into a new set folder (`<folder>/<name>/`): the current sizes, then `manifest.json`. Always writes the mapping file locally, never to the bucket
-- **Never:** modifies, moves or deletes an existing object. A set whose new folder would hold a flat file is refused before anything is read
+- **Writes:** only with `--write`, and only the upload pipeline's own writes into a new set folder (`<folder>/<name>/`): first `original.<ext>`, a server-side copy of the flat original, then the current sizes, then `manifest.json`. Always writes the mapping file locally, never to the bucket
+- **Never:** modifies, moves or deletes an existing object. The flat original is only ever the source of a copy. A set whose new folder would hold a flat file is refused before anything is read
 - **Safe to re-run:** yes. A set that already has its folder is reported as `already-migrated` and not touched
 
 ## What it touches
@@ -15,6 +15,8 @@ Turns every flat image set in a bucket into an ordinary set with a folder of its
 ![A flat set at the bucket root keeps its original and prefixed copies untouched; the script reads only the original and the upload pipeline writes a new photo_ab12/ folder beside them holding the current sizes and manifest.json](../diagrams/migrate-flat-sets.svg)
 
 A **flat set** is what the old CMS left: an un-prefixed original such as `DSC_1963_f6f8bf29c4.webp` with prefixed copies (`thumbnail_`, `small_`, `medium_`, `large_`) beside it. For a flat original `<folder>/<name>.<ext>` the migration creates `<folder>/<name>/` (`<name>/` at the bucket root) exactly as an upload of `<name>.<ext>` to `<folder>` would. For example `images/spiderman_x.jpg` with `images/small_spiderman_x.jpg` beside it becomes `images/spiderman_x/`.
+
+The pipeline copies the flat original into the new folder as `original.<ext>`, with its own extension lower-cased, using S3's `CopyObject`: the bytes never leave the bucket and are not re-encoded. The copy is create-only, like the manifest, and only of the exact version that was read (its ETag), so a flat file replaced mid-run fails its set instead of being copied. The manifest records it as the set's `source` (key, SHA-256, byte count, width and height after EXIF rotation, `public: false`), measured from the same bytes the sizes are made from. A failure after the copy deletes what the pipeline wrote for the set (the original and any sizes), so it leaves no manifest and no folder; see [What can happen to one set](#what-can-happen-to-one-set). Originals must not be served by the CDN: apply the bucket-policy statement in [Keeping originals private](backfill-manifests.md#keeping-originals-private) to the bucket before or after the run, and check it the same way (`403` for an `original.<ext>` through the CDN).
 
 The original may be `.webp`, `.jpg`, `.jpeg` or `.png`. Non-WebP sets are found with the same grouping the backfill dry run uses for `Sets with jpg/jpeg/png members`, and the original is handed to the pipeline under its real file name and type. The pipeline still writes WebP variants, so `linkTo` is always a `.webp` key, while `original` keeps its real extension.
 
@@ -107,7 +109,9 @@ Work through these in order. Stop at the first step whose result is not the expe
 | 1. Dry run, `already-migrated` | `0` on a bucket never migrated | Something already uses those folder names; inspect them before writing |
 | 2. Trial | One `[migrated]` line, the rest `[to-migrate]`; `Migrated: 1`; exit code `0` | Read the `[failed]` line; nothing else was attempted |
 | 2. Trial, between result lines | The pipeline's own `||== ... ==||` progress lines for that set | Nothing to do |
-| 3. Folder | `aws s3 ls s3://<bucket>/<setPrefix>` lists the sizes and `manifest.json` | See the outcomes table |
+| 3. Folder | `aws s3 ls s3://<bucket>/<setPrefix>` lists `original.<ext>`, the sizes and `manifest.json` | See the outcomes table |
+| 3. Original | `aws s3 cp s3://<bucket>/<setPrefix>original.<ext> - \| shasum -a 256` and the same for the flat original print the same hash, equal to the manifest's `source.sha256`; `source.key` is `<setPrefix>original.<ext>` | Undo the set and report it |
+| 3. Original is private | Once the bucket policy is applied, `curl -sI https://<cdn-host>/<setPrefix>original.<ext>` answers `403` | Apply or fix the statement in [Keeping originals private](backfill-manifests.md#keeping-originals-private) |
 | 3. Sizes | Download the new `large_` (or largest) and `full_` files and measure them: `full_` has the original's width and height, or 3840 px on its longest edge when the original is larger; a portrait is still portrait | Undo the set and report it |
 | 3. Flat files | `aws s3api list-objects-v2 --bucket <bucket> --prefix <name>` before and after: the flat keys have the same `Size`, `ETag` and `LastModified` | Stop: this must never happen |
 | 3. Mapping | The trial entry is `migrated`, and its `linkTo` exists in the bucket | Do not use the file for content |
@@ -119,13 +123,13 @@ Work through these in order. Stop at the first step whose result is not the expe
 
 | Outcome | Counts as | What it means | What to do |
 |---|---|---|---|
-| `migrated` | Migrated | The pipeline stored the sizes and the manifest in the new folder | Nothing |
+| `migrated` | Migrated | The pipeline copied the original in, stored the sizes and wrote the manifest in the new folder | Nothing |
 | `to-migrate` | Left to migrate | A dry run, or a write run that reached `--limit`. Nothing was read or written for it | Run without `--limit` |
 | `already-migrated` | Skipped | Something is already stored under the new folder, by an earlier run or because the pipeline found it taken | Nothing; check the folder if this was not expected |
 | `no-original` | Skipped | The set has no un-prefixed file to make the sizes from. The current classifier always finds one, so this should not appear | Look at the keys by hand |
-| `reserved` | Skipped | The new folder would be under a path uploads are refused for (`src/`, `legacy/`) | Decide by hand where the set should go |
+| `reserved` | Skipped | The new folder would be under a path uploads are refused for (`src/`, `legacy/`, or any folder named `original.<anything>`, which the CDN's deny rule would hide) | Decide by hand where the set should go |
 | `unsafe-target` | Failed | The new folder already holds a flat file, so the pipeline could replace it, or an earlier original of this run already claims the same folder. Refused before anything was read | Look at the keys named in the line; migrate by hand |
-| `failed` | Failed | Any other error for that set: the original could not be read or decoded, or a request timed out | Read the message; re-run |
+| `failed` | Failed | Any other error for that set: the original could not be read, decoded or copied, or a request timed out. The original changing after it was read also lands here. A failure after the copy deletes what was written, so a re-run starts clean. If that delete fails too, the line ends `could not delete <keys>, which were left behind`, and a re-run reports the set `already-migrated` | Re-run. If keys were left behind, delete exactly those keys (`aws s3 rm s3://<bucket>/<key>`), then re-run |
 
 Any `Failed` count above zero makes the exit code `1`. One failed set does not stop the others.
 
@@ -160,10 +164,11 @@ while IFS= read -r prefix; do aws s3 rm "s3://<bucket>/$prefix" --recursive; don
 
 - Repeat for each write run's mapping file (`trial.json`, then `full.json`). An `already-migrated` entry in a later file was created by an earlier run, or was there before; undo it from the file of the run that reported it `migrated`.
 - Keep the trailing `/` of each prefix; without it `photo` also matches `photo_2.webp`.
-- The flat files are untouched by the migration, so undoing it changes nothing a site links to today.
+- The flat files are untouched by the migration, so undoing it changes nothing a site links to today. Deleting a set folder also deletes its `original.<ext>`, which is only a copy of the flat original.
+- Sets migrated before originals were kept have no `original.<ext>`, and a re-run reports them `already-migrated` without adding one. Undo and re-migrate such a set to give it one.
 
 ## Limits
 
-- Each migrated original is downloaded whole and re-encoded, four sets at a time.
+- Each migrated original is downloaded whole to make the sizes, four sets at a time; its copy into the set folder is made inside S3.
 - Anything sharp can decode would be accepted by the pipeline, but only `.webp`, `.jpg`, `.jpeg` and `.png` originals are looked for.
 - With `--limit`, which sets are attempted depends on the order their existence checks return, so a trial picks roughly the first sets of the listing, not exactly.

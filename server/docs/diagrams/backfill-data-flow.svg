@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 450" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 470" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">What the backfill script reads and writes</title>
-  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set that has a folder of its own, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A flat set, whose files sit directly in a folder (the bucket root or any other) with no folder of their own, is listed and reported but never given a manifest. The CDN serves a set's images and its manifest from the same folder to the site that displays them.</desc>
+  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set that has a folder of its own, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A set's original.{ext}, the file its sizes were made from, is read and recorded in the manifest as its private source, never as a size. The CDN serves a set's images and its manifest but is denied every original.{ext} by the bucket policy. A flat set, whose files sit directly in a folder (the bucket root or any other) with no folder of their own, is listed and reported but never given a manifest. The CDN serves them from the same folder to the site that displays them.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -38,25 +38,26 @@
     <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#dc2626"/></marker>
   </defs>
 
-  <rect class="bg" width="920" height="450"/>
+  <rect class="bg" width="920" height="470"/>
 
-  <rect class="box" x="24" y="32" width="310" height="386" rx="8"/>
+  <rect class="box" x="24" y="32" width="310" height="406" rx="8"/>
   <text class="h" x="40" y="58">Bucket</text>
 
-  <rect class="set" x="40" y="74" width="278" height="166" rx="6"/>
+  <rect class="set" x="40" y="74" width="278" height="186" rx="6"/>
   <text class="h" x="52" y="98" font-size="13">Set folder  trip/photo/</text>
   <text class="p" x="52" y="122">large_photo.webp</text>
   <text class="p" x="52" y="142">medium_photo.webp</text>
-  <rect class="write" x="52" y="158" width="254" height="66" rx="6"/>
-  <text class="h" x="64" y="182" font-size="13">manifest.json</text>
-  <text class="p" x="64" y="204">one per set, beside its images</text>
+  <text class="p" x="52" y="162">original.jpg  (private: its source)</text>
+  <rect class="write" x="52" y="178" width="254" height="66" rx="6"/>
+  <text class="h" x="64" y="202" font-size="13">manifest.json</text>
+  <text class="p" x="64" y="224">one per set, beside its images</text>
 
-  <rect class="flat" x="40" y="262" width="278" height="140" rx="6"/>
-  <text class="h" x="52" y="286" font-size="13">Flat set, in any folder</text>
-  <text class="p" x="52" y="310">photo_ab12.webp</text>
-  <text class="p" x="52" y="330">large_photo_ab12.webp</text>
-  <text class="p" x="52" y="362">No folder of its own, so</text>
-  <text class="p" x="52" y="382">nowhere to hold a manifest</text>
+  <rect class="flat" x="40" y="282" width="278" height="140" rx="6"/>
+  <text class="h" x="52" y="306" font-size="13">Flat set, in any folder</text>
+  <text class="p" x="52" y="330">photo_ab12.webp</text>
+  <text class="p" x="52" y="350">large_photo_ab12.webp</text>
+  <text class="p" x="52" y="382">No folder of its own, so</text>
+  <text class="p" x="52" y="402">nowhere to hold a manifest</text>
 
   <rect class="script" x="440" y="150" width="200" height="120" rx="8"/>
   <text class="h" x="456" y="178">Backfill script</text>
@@ -64,20 +65,22 @@
   <text class="p" x="456" y="222">into sets, measures each</text>
   <text class="p" x="456" y="242">object, builds a manifest</text>
 
-  <rect class="box" x="708" y="150" width="192" height="120" rx="8"/>
+  <rect class="box" x="708" y="150" width="192" height="146" rx="8"/>
   <text class="h" x="724" y="178">CDN</text>
   <text class="p" x="724" y="202">Serves a set's images</text>
   <text class="p" x="724" y="222">and its manifest from</text>
-  <text class="p" x="724" y="242">the same folder</text>
+  <text class="p" x="724" y="242">the same folder; denied</text>
+  <text class="p" x="724" y="262">every original.{ext}</text>
+  <text class="p" x="724" y="282">by the bucket policy</text>
 
   <path class="read" d="M334 120 C390 120 390 176 440 176" marker-end="url(#a)"/>
   <text class="lr" x="356" y="108">list, read</text>
 
-  <path class="wr" d="M440 212 C380 212 380 191 306 191" marker-end="url(#g)"/>
-  <text class="lw" x="366" y="232">write</text>
+  <path class="wr" d="M440 228 C380 228 380 211 306 211" marker-end="url(#g)"/>
+  <text class="lw" x="366" y="250">write</text>
 
-  <path class="no" d="M540 270 C540 340 420 340 318 340" marker-end="url(#r)"/>
-  <text class="ln" x="356" y="366">reported, never written</text>
+  <path class="no" d="M540 270 C540 360 420 360 318 360" marker-end="url(#r)"/>
+  <text class="ln" x="356" y="386">reported, never written</text>
 
   <path class="read" d="M334 56 C560 30 760 70 804 150" marker-end="url(#a)"/>
   <text class="lr" x="560" y="42">served as /trip/photo/…</text>
