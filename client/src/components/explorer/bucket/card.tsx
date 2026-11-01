@@ -1,6 +1,6 @@
 import { HardDrive, LucideDatabase, LucideFileText, LucideTimer } from "lucide-react";
 
-import { lowerBound } from "../utils";
+import { formatCount, formatSize } from "../utils";
 
 type BucketCardProps = {
 	/** Name of the bucket. */
@@ -13,6 +13,8 @@ type BucketCardProps = {
 	totalSizeHuman: string;
 	/** Number of objects counted in the bucket. */
 	objectCount: number;
+	/** `false` when the bucket was never counted, so its size and count read as unknown. */
+	counted: boolean;
 	/** `true` when the count stopped early, so the size and count are lower bounds. */
 	partial: boolean;
 	/** Whether this bucket is the one being explored. */
@@ -27,6 +29,7 @@ export const BucketCard = ({
 	formattedCreationDate,
 	totalSizeHuman,
 	objectCount,
+	counted,
 	partial,
 	isActive,
 	handleClick,
@@ -65,12 +68,12 @@ export const BucketCard = ({
 				<div className="flex flex-col gap-2 mt-2 ml-5">
 					<span className="text-xs transition-colors flex items-center">
 						<HardDrive className="size-4 inline mr-1" />
-						{lowerBound(totalSizeHuman, partial)}
+						{formatSize(counted ? totalSizeHuman : undefined, partial)}
 					</span>
 
 					<span className="text-xs transition-colors flex items-center">
 						<LucideFileText className="size-4 inline mr-1" />
-						{lowerBound(`${objectCount} files`, partial)}
+						{formatCount(counted ? objectCount : undefined, "file", partial)}
 					</span>
 
 					<span className={`text-xs transition-colors flex items-center`}>

@@ -1,4 +1,4 @@
-import { ofetch } from "ofetch";
+import { type FetchError, ofetch } from "ofetch";
 
 /*
  * Get the appropriate API URL based on execution context.
@@ -11,6 +11,9 @@ import { ofetch } from "ofetch";
  */
 const isServer = typeof window === "undefined";
 const baseURL = isServer ? process.env.API_URL || "http://localhost:3002" : "/proxy";
+
+/** A failed request; `data.error` is the message the server sent, when it sent one. */
+export type ApiError = FetchError<{ error?: string }>;
 
 const ofetchInstance = ofetch.create({ baseURL });
 

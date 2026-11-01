@@ -2,21 +2,24 @@ import { useMemo } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
 import { postUploadImages } from "@/services/images";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type { BucketsResponse, TreeNode } from "~/shared/types";
 
 export const useBuckets = () =>
-	useQuery<BucketsResponse, Error>({
+	useQuery<BucketsResponse, ApiError>({
 		queryKey: ["buckets"],
 		queryFn: getBuckets,
+		retry: false,
 	});
 
 export const useFileTree = (bucketName: string, bucketRegion: string) => {
-	const query = useQuery<TreeNode[]>({
+	const query = useQuery<TreeNode[], ApiError>({
 		queryKey: ["fileTree", bucketName],
 		queryFn: () => getFileTree(bucketName, bucketRegion),
+		retry: false,
 	});
 
 	// NOTE: This is temporary until we add lazy/progressive loading for the file tree

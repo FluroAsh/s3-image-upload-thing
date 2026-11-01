@@ -5,6 +5,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "~/shared/types";
 
 import { ScrollArea } from "../ui/scroll-area";
+import { StateMessage } from "../ui/state-message";
 import { getVariantType } from "./utils";
 
 type ActiveVariantProps = {
@@ -33,16 +34,6 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
 	);
 };
 
-const EmptyState = () => (
-	<div className="flex flex-col items-center justify-center size-full p-8 text-center text-balance">
-		<div className="size-16 rounded-full bg-slate-700/50 flex items-center justify-center mb-4">
-			<LucideFile className="size-8 text-sky-400" />
-		</div>
-		<h3 className="text-lg font-medium text-neutral-100 mb-2">No file selected</h3>
-		<p className="text-slate-300 text-xs">Select a file or image from the explorer to view its details and preview</p>
-	</div>
-);
-
 const PREVIEW_CONTAINER_SIZE = 600;
 
 export const DetailsPanel = () => {
@@ -56,7 +47,13 @@ export const DetailsPanel = () => {
 	if (!remoteURL) {
 		return (
 			<div id="explorer-details-panel" className="bg-slate-800 border-l border-slate-700 flex-1">
-				<EmptyState />
+				<StateMessage
+					tone="info"
+					className="size-full"
+					icon={LucideFile}
+					title="No file selected"
+					message="Select a file or image from the explorer to view its details and preview"
+				/>
 			</div>
 		);
 	}
