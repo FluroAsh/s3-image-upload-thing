@@ -1,26 +1,17 @@
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
-import { LucideCircleAlert } from "lucide-react";
+import { LucideAlertTriangle, LucideDatabase } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { ExplorerLayout } from "@/components/explorer";
+import { serverErrorMessage } from "@/components/explorer/utils";
+import { StateMessage } from "@/components/ui/state-message";
 import { getInitialQueryState } from "@/lib/initial-query-state";
+import type { ApiError } from "@/lib/ofetch";
 import { loadDashboardParams } from "@/lib/search-params";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type { BucketsResponse } from "~/shared/types";
 
 export const dynamic = "force-dynamic";
-
-const NoBucketsFound = () => {
-	return (
-		<div className="flex flex-col items-center justify-center h-full">
-			<div className="size-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-3 ">
-				<LucideCircleAlert className="size-5 stroke-amber-500" />
-			</div>
-			<p className="text-neutral-300 font-medium mb-1">Unable to retrieve buckets</p>
-			<p className="text-sm text-neutral-500">To get started, you need to create S3 buckets in your AWS account.</p>
-		</div>
-	);
-};
 
 export default async function Page({
 	searchParams,
@@ -39,7 +30,27 @@ export default async function Page({
 	const data = queryClient.getQueryData<BucketsResponse>(["buckets"]);
 
 	if (!data) {
-		return <NoBucketsFound />;
+		const error = queryClient.getQueryState<BucketsResponse, ApiError>(["buckets"])?.error;
+		return (
+			<StateMessage
+				className="h-screen"
+				tone="error"
+				icon={LucideAlertTriangle}
+				title="Unable to retrieve buckets"
+				message={error ? serverErrorMessage(error, "The server could not be reached. Try again shortly.") : undefined}
+			/>
+		);
+	}
+
+	if (!data.buckets.length) {
+		return (
+			<StateMessage
+				className="h-screen"
+				icon={LucideDatabase}
+				title="No buckets found"
+				message="To get started, create an S3 bucket in your AWS account."
+			/>
+		);
 	}
 
 	const { activeBucket, activeRegion } = getInitialQueryState(data, bucket, region);
