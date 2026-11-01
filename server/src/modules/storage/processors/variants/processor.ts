@@ -6,23 +6,23 @@ import { readableSize } from "@/shared/utils/helpers";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE, VARIANT_EFFORT, VARIANT_LONGEST_EDGE, VARIANT_QUALITY } from "./config";
+import { DEFAULT_FILE_TYPE, VARIANT_SPEC } from "./config";
 
 export const ensureBuffer = (buffer: ArrayBuffer | Buffer): Buffer =>
 	Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
 
 const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
-	quality: VARIANT_QUALITY[variant],
-	effort: VARIANT_EFFORT[variant],
+	quality: VARIANT_SPEC[variant].quality,
+	effort: VARIANT_SPEC[variant].effort,
 });
 
 /** `full` is the one size every set has, stored at the source's own size when that is below its bound; any other size is skipped rather than upscaled. */
 export const planVariants = (sourceLongestEdge: number): ImageVariant[] =>
-	IMAGE_VARIANTS.filter((variant) => variant === "full" || VARIANT_LONGEST_EDGE[variant] <= sourceLongestEdge);
+	IMAGE_VARIANTS.filter((variant) => variant === "full" || VARIANT_SPEC[variant].longestEdge <= sourceLongestEdge);
 
 /** Shared with the backfill, so a blur it makes for an old set matches one an upload would have stored. */
 export const encodeVariant = (variant: ImageVariant, source: Buffer) => {
-	const bound = VARIANT_LONGEST_EDGE[variant];
+	const bound = VARIANT_SPEC[variant].longestEdge;
 	let pipeline = sharp(source)
 		.rotate()
 		.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true })

@@ -89,13 +89,13 @@ Work through these in order. Stop at the first step whose result is not the expe
    ```bash
    bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket>
    ```
-6. **Check the missing sizes.** A size is left out only when the original's longest edge, `max(width, height)`, is shorter than it (`large` is 1440 px, `medium` is 800 px), so a set missing one with a longer `full` file is wrong. Prints one line per such set; no output is the expected result:
+6. **Check the missing sizes.** A size is left out only when the original's longest edge, `max(width, height)`, is shorter than it (`large` is 1440 px, `medium` 800 px, `small` 400 px, `thumbnail` 120 px), so a set missing one with a longer `full` file is wrong. Prints one line per such set; no output is the expected result:
    ```bash
    jq -r '.[] | select(.outcome == "migrated") | .setPrefix' full.json | while IFS= read -r prefix; do
      aws s3 cp "s3://<bucket>/${prefix}manifest.json" - | jq -r --arg prefix "$prefix" '
        .variants as $v
        | ([$v.full.width, $v.full.height] | max) as $edge
-       | select((($v.large == null) and ($edge >= 1440)) or (($v.medium == null) and ($edge >= 800)))
+       | select([["large", 1440], ["medium", 800], ["small", 400], ["thumbnail", 120]] | any(($v[.[0]] == null) and ($edge >= .[1])))
        | "\($prefix): full longest edge is \($edge) px but a size is missing"'
    done
    ```
@@ -117,7 +117,7 @@ Work through these in order. Stop at the first step whose result is not the expe
 | 3. Mapping | The trial entry is `migrated`, and its `linkTo` exists in the bucket | Do not use the file for content |
 | 4. Full run | The trial set shows as `already-migrated`; `Failed: 0`; exit code `0` | Re-run; only sets without a folder are attempted again |
 | 5. Backfill dry run | One nested set per migrated flat set, `Sets missing medium or large` lists only sets you know are small, the flat sets still listed | Compare against `full.json` |
-| 6. Missing sizes | No output: every migrated set missing `large` has a `full` longest edge (`max(width, height)`) below 1440, and every one missing `medium` has one below 800 | Undo that set and report it |
+| 6. Missing sizes | No output: every size a migrated set is missing (`large` 1440, `medium` 800, `small` 400, `thumbnail` 120) is longer than its `full` longest edge (`max(width, height)`) | Undo that set and report it |
 
 ## What can happen to one set
 

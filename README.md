@@ -6,7 +6,7 @@ A self-hosted, single-tenant S3 file management and image processing application
 
 ## Features
 
-- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 400px, 800px, 1440px and 3840px on the longest edge)
+- 🖼️ **Automatic Image Processing**: Upload images and automatically generate multiple size variants (20px, 120px, 400px, 800px, 1440px and 3840px on the longest edge)
 - 📁 **File Browser**: Browse and manage S3 buckets with an intuitive file tree interface
 - 🔒 **BYO Keys**: Bring your own AWS credentials - no hardcoded keys, fully self-hosted
 - ⚡ **Modern Stack**: Built with Next.js 15, Hono, and Bun for optimal performance

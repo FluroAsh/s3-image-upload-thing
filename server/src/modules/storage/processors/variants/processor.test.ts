@@ -22,8 +22,11 @@ describe("planVariants", () => {
 		expect(planVariants(2000)).toEqual(["placeholder", "thumbnail", "small", "medium", "large", "full"]);
 	});
 
-	it("keeps a size whose bound equals the source's longest edge", () => {
-		expect(planVariants(120)).toEqual(["placeholder", "thumbnail", "full"]);
+	it.each([
+		[120, ["placeholder", "thumbnail", "full"]],
+		[400, ["placeholder", "thumbnail", "small", "full"]],
+	])("keeps a size whose bound equals the source's longest edge (%ipx)", (edge, planned) => {
+		expect(planVariants(edge)).toEqual(planned);
 	});
 
 	it("plans only the full-size variant for a source smaller than the placeholder", () => {
