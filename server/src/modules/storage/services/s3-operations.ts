@@ -82,11 +82,8 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 
 	try {
 		do {
-			const res = await client.send(
-				new ListObjectsV2Command({
-					Bucket: bucketName,
-					ContinuationToken: continuationToken,
-				}),
+			const res = await withDeadline((options) =>
+				client.send(new ListObjectsV2Command({ Bucket: bucketName, ContinuationToken: continuationToken }), options),
 			);
 
 			if (res.Contents) {
@@ -143,14 +140,17 @@ export const uploadImages = async (
 			async ([variant, { buffer, size, width, height }]) => {
 				const key = variantKey(set, variant);
 
-				const putResponse = await getRegionalClient(bucketRegion).send(
-					new PutObjectCommand({
-						Body: buffer,
-						Bucket: bucketName,
-						Key: key,
-						ContentType: DEFAULT_MIME_TYPE,
-						CacheControl: VARIANT_CACHE_CONTROL,
-					}),
+				const putResponse = await withDeadline((options) =>
+					getRegionalClient(bucketRegion).send(
+						new PutObjectCommand({
+							Body: buffer,
+							Bucket: bucketName,
+							Key: key,
+							ContentType: DEFAULT_MIME_TYPE,
+							CacheControl: VARIANT_CACHE_CONTROL,
+						}),
+						options,
+					),
 				);
 
 				if (!putResponse.ETag) throw new Error(`S3 returned no ETag for "${key}"`);
@@ -197,8 +197,11 @@ const isS3Error = (error: unknown, name: string): boolean => error instanceof Er
 
 /** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
 export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {
-	const { Contents } = await getRegionalClient(location.bucketRegion).send(
-		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
+	const { Contents } = await withDeadline((options) =>
+		getRegionalClient(location.bucketRegion).send(
+			new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
+			options,
+		),
 	);
 	return (Contents?.length ?? 0) > 0;
 };
@@ -324,7 +327,9 @@ export const storeOriginal = async (
 	} catch (error) {
 		if (!isS3Error(error, "PreconditionFailed")) throw error;
 		// S3 answers a changed source and a taken destination the same way, so only the destination tells them apart.
-		const { Contents } = await client.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }));
+		const { Contents } = await withDeadline((options) =>
+			client.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }), options),
+		);
 		if (Contents?.some((object) => object.Key === key)) return false;
 		throw new Error(`"${params.copyFrom}" changed after it was read, so it was not copied`);
 	}
