@@ -10,20 +10,20 @@ const sourceImage = async (width: number, height: number, orientation?: number, 
 };
 
 describe("planVariants", () => {
-	it("plans only the placeholder and the full-size variant for a source below the size table", () => {
-		expect(planVariants(300)).toEqual(["placeholder", "full"]);
+	it("plans only the placeholder and the full-size variant for a source under the thumbnail", () => {
+		expect(planVariants(100)).toEqual(["placeholder", "full"]);
 	});
 
 	it("adds only the sizes that fit for a source between two entries of the size table", () => {
-		expect(planVariants(600)).toEqual(["placeholder", "small", "full"]);
+		expect(planVariants(600)).toEqual(["placeholder", "thumbnail", "small", "full"]);
 	});
 
 	it("plans every variant for a source above the size table", () => {
-		expect(planVariants(2000)).toEqual(["placeholder", "small", "medium", "large", "full"]);
+		expect(planVariants(2000)).toEqual(["placeholder", "thumbnail", "small", "medium", "large", "full"]);
 	});
 
 	it("keeps a size whose bound equals the source's longest edge", () => {
-		expect(planVariants(400)).toEqual(["placeholder", "small", "full"]);
+		expect(planVariants(120)).toEqual(["placeholder", "thumbnail", "full"]);
 	});
 
 	it("plans only the full-size variant for a source smaller than the placeholder", () => {
@@ -36,8 +36,35 @@ describe("createImageVariants", () => {
 		const variations = await createImageVariants(await sourceImage(600, 400));
 		const contents = Object.values(variations).map(({ buffer }) => buffer.toString("base64"));
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "thumbnail", "small", "full"]);
 		expect(new Set(contents).size).toBe(contents.length);
+	});
+
+	it("stores no thumbnail for a source under 120px", async () => {
+		const variations = await createImageVariants(await sourceImage(100, 60));
+
+		expect(Object.keys(variations)).toEqual(["placeholder", "full"]);
+		expect(variations.full).toMatchObject({ width: 100, height: 60 });
+	});
+
+	it("blurs the placeholder but keeps the thumbnail sharp", async () => {
+		// Half black, half white: a hard edge survives downscaling, so only the blur can flatten it.
+		const pixels = Buffer.alloc(600 * 400 * 3);
+		for (let i = 0; i < pixels.length; i += 3) if ((i / 3) % 600 >= 300) pixels.fill(255, i, i + 3);
+		const buffer = await sharp(pixels, { raw: { width: 600, height: 400, channels: 3 } })
+			.jpeg()
+			.toBuffer();
+		const { placeholder, thumbnail } = await createImageVariants({
+			fieldName: "images",
+			fileName: "edge.jpg",
+			fileType: "image/jpeg",
+			size: "1 kB",
+			buffer,
+		});
+		if (!placeholder || !thumbnail) throw new Error("placeholder or thumbnail not produced");
+		const spread = async (image: Buffer) => (await sharp(image).stats()).channels[0].stdev;
+
+		expect(await spread(placeholder.buffer)).toBeLessThan((await spread(thumbnail.buffer)) / 2);
 	});
 
 	it("fits every size of a landscape to its width, reporting each one's measured dimensions", async () => {
@@ -45,6 +72,7 @@ describe("createImageVariants", () => {
 
 		expect(dimensionsOf(variations)).toEqual({
 			placeholder: { width: 20, height: 13 },
+			thumbnail: { width: 120, height: 80 },
 			small: { width: 400, height: 267 },
 			medium: { width: 800, height: 533 },
 			large: { width: 1440, height: 960 },
@@ -57,6 +85,7 @@ describe("createImageVariants", () => {
 
 		expect(dimensionsOf(variations)).toEqual({
 			placeholder: { width: 13, height: 20 },
+			thumbnail: { width: 80, height: 120 },
 			small: { width: 267, height: 400 },
 			medium: { width: 533, height: 800 },
 			large: { width: 960, height: 1440 },
@@ -80,7 +109,7 @@ describe("createImageVariants", () => {
 	])("never upscales a %s source to a size above its longest edge", async (_shape, width, height) => {
 		const variations = await createImageVariants(await sourceImage(width, height));
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "thumbnail", "small", "full"]);
 		expect(Math.max(variations.small?.width ?? 0, variations.small?.height ?? 0)).toBe(400);
 	});
 
@@ -89,7 +118,7 @@ describe("createImageVariants", () => {
 
 		const variations = await createImageVariants(storedSideways);
 
-		expect(Object.keys(variations)).toEqual(["placeholder", "small", "full"]);
+		expect(Object.keys(variations)).toEqual(["placeholder", "thumbnail", "small", "full"]);
 		expect(variations.small).toMatchObject({ width: 200, height: 400 });
 		expect(variations.full).toMatchObject({ width: 300, height: 600 });
 	});

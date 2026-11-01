@@ -92,16 +92,17 @@ beforeEach(() => {
 });
 
 describe("runUploadPipeline", () => {
-	it("stores a 300px-wide image as placeholder and full size only, returning each one's width and height", async () => {
+	it("stores a 300px-wide image as placeholder, thumbnail and full size only, returning each one's width and height", async () => {
 		const files = await uploadStored();
 
 		expect(
 			puts()
 				.map(({ Key }) => Key)
 				.filter((key) => key.endsWith(".webp")),
-		).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/full_photo.webp"]);
+		).toEqual(["trip/photo/placeholder_photo.webp", "trip/photo/thumbnail_photo.webp", "trip/photo/full_photo.webp"]);
 		expect(files.map(({ variant, width, height }) => ({ variant, width, height }))).toEqual([
 			{ variant: "placeholder", width: 20, height: 10 },
+			{ variant: "thumbnail", width: 120, height: 60 },
 			{ variant: "full", width: 300, height: 150 },
 		]);
 	});
@@ -160,8 +161,8 @@ describe("runUploadPipeline", () => {
 	it("stores a manifest last that describes the objects stored before it", async () => {
 		await uploadStored();
 
-		expect(puts()).toHaveLength(4);
-		const [, placeholder, full, last] = puts();
+		expect(puts()).toHaveLength(5);
+		const [, placeholder, thumbnail, full, last] = puts();
 		expect(last.Key).toBe("trip/photo/manifest.json");
 
 		const manifest: Manifest = JSON.parse(last.Body as string);
@@ -179,6 +180,14 @@ describe("runUploadPipeline", () => {
 				height: 10,
 				bytes: (placeholder.Body as Buffer).length,
 				etag: '"etag-of-trip/photo/placeholder_photo.webp"',
+			},
+			thumbnail: {
+				key: "trip/photo/thumbnail_photo.webp",
+				format: "webp",
+				width: 120,
+				height: 60,
+				bytes: (thumbnail.Body as Buffer).length,
+				etag: '"etag-of-trip/photo/thumbnail_photo.webp"',
 			},
 			full: {
 				key: "trip/photo/full_photo.webp",
@@ -198,6 +207,7 @@ describe("runUploadPipeline", () => {
 
 		expect(dimensionsOf(variants)).toEqual({
 			placeholder: { width: 13, height: 20 },
+			thumbnail: { width: 80, height: 120 },
 			small: { width: 267, height: 400 },
 			medium: { width: 533, height: 800 },
 			large: { width: 960, height: 1440 },
@@ -226,8 +236,9 @@ describe("runUploadPipeline", () => {
 	it("stores every variant with a Cache-Control header", async () => {
 		await uploadStored();
 
-		expect(puts().slice(1, 3)).toEqual([
+		expect(puts().slice(1, 4)).toEqual([
 			expect.objectContaining({ Key: "trip/photo/placeholder_photo.webp", CacheControl: "public, max-age=86400" }),
+			expect.objectContaining({ Key: "trip/photo/thumbnail_photo.webp", CacheControl: "public, max-age=86400" }),
 			expect.objectContaining({ Key: "trip/photo/full_photo.webp", CacheControl: "public, max-age=86400" }),
 		]);
 	});

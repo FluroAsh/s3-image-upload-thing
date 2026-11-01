@@ -27,6 +27,7 @@ const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
 
 const variantSizeLabel: Record<ImageVariant, string> = {
 	placeholder: "plch",
+	thumbnail: "thumb",
 	small: "sm",
 	medium: "md",
 	large: "lg",
