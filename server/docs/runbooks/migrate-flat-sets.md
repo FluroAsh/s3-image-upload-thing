@@ -41,7 +41,7 @@ Always written, dry run included; by default `./flat-set-mapping.json` in the di
 |---|---|
 | `original` | The flat original's key: what site content links to today |
 | `setPrefix` | The new set's folder, ending in `/` |
-| `linkTo` | The key content should link to: `large`, otherwise `medium`, otherwise `small`; never the placeholder or the `full` file. `null` unless the set is `migrated` or `already-migrated` |
+| `linkTo` | The key content should link to: `large`, otherwise `medium`, otherwise `small`; never the placeholder, the thumbnail or the `full` file. `null` unless the set is `migrated` or `already-migrated` |
 | `outcome` | Where `linkTo` came from. `migrated`: what the pipeline stored in this run. `already-migrated`: what the listing shows in the existing folder. Anything else (`to-migrate` included): `linkTo` is `null` |
 
 Only drive the content find-and-replace from entries whose `outcome` is `migrated` or `already-migrated`. A dry run therefore has no links: its entries are `to-migrate` with `linkTo: null`, since which sizes exist depends on the original's longest edge and a dry run does not download originals.

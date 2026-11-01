@@ -2,7 +2,7 @@
 
 ![Dashboard screenshot](README-screenshot.png)
 
-A self-hosted, single-tenant S3 file management and image processing application designed for homelab and personal use. Upload images, automatically generate optimized variants (thumbnail, medium, large), and manage your S3 buckets without touching the AWS console.
+A self-hosted, single-tenant S3 file management and image processing application designed for homelab and personal use. Upload images, automatically generate optimized variants (placeholder, thumbnail, small, medium, large, full), and manage your S3 buckets without touching the AWS console.
 
 ## Features
 
@@ -59,7 +59,7 @@ This is a monorepo containing two main applications:
 
 **Key Features:**
 
-- Automatic image variant generation (placeholder, small, medium, large, full)
+- Automatic image variant generation (placeholder, thumbnail, small, medium, large, full)
 - WebP conversion for optimal file sizes
 
 ## Getting Started
@@ -218,8 +218,9 @@ Create or use an existing IAM user with the following permissions:
 When you upload an image, the server automatically:
 
 1. **Validates** the image format and size
-2. **Generates up to five variants**, fitting each size to the longest edge (width for landscape, height for portrait) and skipping any size larger than the source:
-   - `placeholder_image.webp` (20px longest edge, 60% quality) - Blur placeholder
+2. **Generates up to six variants**, fitting each size to the longest edge (width for landscape, height for portrait) and skipping any size larger than the source:
+   - `placeholder_image.webp` (20px longest edge, 60% quality) - Blur placeholder, shown only while the image loads
+   - `thumbnail_image.webp` (120px longest edge, 80% quality) - Sharp icon size for lists and previews, never inline content
    - `small_image.webp` (400px longest edge, 80% quality) - Mobile optimized
    - `medium_image.webp` (800px longest edge, 85% quality) - Tablet/desktop
    - `large_image.webp` (1440px longest edge, 90% quality) - High-res desktop
@@ -234,6 +235,7 @@ your-bucket/
 └── destination-folder/
     └── image-name/
         ├── placeholder_image-name.webp
+        ├── thumbnail_image-name.webp
         ├── small_image-name.webp
         ├── medium_image-name.webp
         ├── large_image-name.webp

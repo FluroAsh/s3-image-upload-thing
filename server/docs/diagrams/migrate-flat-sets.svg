@@ -61,15 +61,16 @@
   <text class="h" x="620" y="90" font-size="13">New set folder  photo_ab12/</text>
   <text class="p" x="620" y="116" font-weight="600">original.webp (copied first)</text>
   <text class="p" x="620" y="138">placeholder_photo_ab12.webp</text>
-  <text class="p" x="620" y="160">small_photo_ab12.webp</text>
-  <text class="p" x="620" y="182">medium_photo_ab12.webp</text>
-  <text class="p" x="620" y="204">large_photo_ab12.webp</text>
-  <text class="p" x="620" y="226">full_photo_ab12.webp</text>
-  <text class="p" x="620" y="248" font-weight="600">manifest.json (written last)</text>
-  <text class="keep" x="620" y="278">original.webp is private: the CDN</text>
-  <text class="keep" x="620" y="298">is denied it by the bucket policy.</text>
-  <text class="keep" x="620" y="318">Only sizes that fit the original's</text>
-  <text class="keep" x="620" y="338">longest edge are made</text>
+  <text class="p" x="620" y="160">thumbnail_photo_ab12.webp</text>
+  <text class="p" x="620" y="182">small_photo_ab12.webp</text>
+  <text class="p" x="620" y="204">medium_photo_ab12.webp</text>
+  <text class="p" x="620" y="226">large_photo_ab12.webp</text>
+  <text class="p" x="620" y="248">full_photo_ab12.webp</text>
+  <text class="p" x="620" y="270" font-weight="600">manifest.json (written last)</text>
+  <text class="keep" x="620" y="296">original.webp is private: the CDN</text>
+  <text class="keep" x="620" y="314">is denied it by the bucket policy.</text>
+  <text class="keep" x="620" y="332">Only sizes that fit the original's</text>
+  <text class="keep" x="620" y="350">longest edge are made</text>
 
   <path class="read" d="M300 116 C322 116 322 140 344 140" marker-end="url(#a)"/>
   <text class="lr" x="306" y="102">read</text>
