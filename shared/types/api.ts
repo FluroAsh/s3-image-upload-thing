@@ -18,23 +18,44 @@ export type TreeNode = {
 };
 
 export type Bucket = {
+  /** Name of the bucket; empty when S3 returned none. */
   Name: string;
+  /** When the bucket was created, as an ISO 8601 string; empty when S3 returned none. */
   CreationDate: string;
+  /** `CreationDate` for display, e.g. `"1st March, 2025"`. */
   formattedCreationDate: string;
+  /** AWS region the bucket lives in; bucket requests must be sent there. */
   BucketRegion: string;
+  /** Number of objects counted in the bucket. */
   objectCount: number;
+  /** Sum of the counted objects' sizes in bytes. */
   totalSizeBytes: number;
+  /** `totalSizeBytes` for display, e.g. `"1.5 MB"`. */
   totalSizeHuman: string;
+  /** `false` when the bucket was never counted, so `objectCount` and the sizes are placeholders, not figures. */
+  counted: boolean;
+  /** `true` when the count stopped early or never ran, so `objectCount` and the sizes are lower bounds. */
+  partial: boolean;
 };
 
 export type BucketsResponse = {
+  /** The buckets on the requested page, each with its stats. */
   buckets: Bucket[];
+  /** Sum of `objectCount` over this page's buckets. */
   totalObjectCount: number;
+  /** Sum of `totalSizeBytes` over this page's buckets. */
   totalSizeBytes: number;
+  /** `totalSizeBytes` for display, e.g. `"1.5 MB"`. */
   totalSizeHuman: string;
+  /** `true` when any bucket on this page is `partial`, so the totals are lower bounds. */
+  partial: boolean;
+  /** The page returned, from 1. */
   page: number;
+  /** Most buckets a page holds. */
   limit: number;
+  /** Number of buckets in the account. */
   totalCount: number;
+  /** Number of pages at this `limit`. */
   totalPages: number;
 };
 

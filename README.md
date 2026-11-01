@@ -320,6 +320,12 @@ This is a personal project, but contributions are welcome! Feel free to:
 - Ensure the IAM user has the required S3 permissions
 - Check that the credentials are active (not deleted or expired)
 
+### A bucket shows "at least" before its size or file count
+
+- Counting that bucket's objects stopped early: an S3 request failed or took longer than 60 seconds, so the figures are lower bounds
+- The server log names the bucket and the error; reload the page to count again
+- A bucket list or folder listing that S3 does not answer within 60 seconds fails with an error rather than hanging
+
 ### Docker container won't start
 
 - Check Docker logs: `docker logs s3-upload-(client|server)`

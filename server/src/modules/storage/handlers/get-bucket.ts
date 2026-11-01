@@ -1,8 +1,9 @@
-import { ListObjectsCommand } from "@aws-sdk/client-s3";
 import type { Context } from "hono";
 
+import { errorMessage } from "@/shared/utils/helpers";
+
 import { constructFileTree } from "../services/file-tree";
-import { getRegionalClient } from "../services/s3-operations";
+import { listObjects } from "../services/s3-operations";
 
 export const getBucketHandler = async (ctx: Context) => {
 	const bucketName = ctx.req.param("bucketName");
@@ -13,19 +14,11 @@ export const getBucketHandler = async (ctx: Context) => {
 	}
 
 	try {
-		const listResponse = await getRegionalClient(bucketRegion).send(new ListObjectsCommand({ Bucket: bucketName }));
+		const listResponse = await listObjects({ bucketName, bucketRegion });
 
-		const fileTree = constructFileTree({
-			objects: listResponse.Contents ?? [],
-		});
-
-		if (!fileTree.length) {
-			return ctx.json({ message: "No objects found" }, 404);
-		}
-
-		return ctx.json({ tree: fileTree });
+		return ctx.json({ tree: constructFileTree({ objects: listResponse.Contents ?? [] }) });
 	} catch (e) {
 		console.error(e);
-		return ctx.json({ error: e instanceof Error ? e.message : "Failed to get bucket" }, 500);
+		return ctx.json({ error: errorMessage(e, "Failed to get bucket") }, 500);
 	}
 };

@@ -1,14 +1,27 @@
 import { HardDrive, LucideDatabase, LucideFileText, LucideTimer } from "lucide-react";
 
-interface BucketCardProps {
+import { formatCount, formatSize } from "../utils";
+
+type BucketCardProps = {
+	/** Name of the bucket. */
 	name: string;
+	/** AWS region the bucket lives in. */
 	region: string;
+	/** Creation date for display. */
 	formattedCreationDate: string;
+	/** Total size of the bucket's objects for display, e.g. `"1.5 MB"`. */
 	totalSizeHuman: string;
+	/** Number of objects counted in the bucket. */
 	objectCount: number;
+	/** `false` when the bucket was never counted, so its size and count read as unknown. */
+	counted: boolean;
+	/** `true` when the count stopped early, so the size and count are lower bounds. */
+	partial: boolean;
+	/** Whether this bucket is the one being explored. */
 	isActive: boolean;
+	/** Selects this bucket. */
 	handleClick: () => void;
-}
+};
 
 export const BucketCard = ({
 	name,
@@ -16,6 +29,8 @@ export const BucketCard = ({
 	formattedCreationDate,
 	totalSizeHuman,
 	objectCount,
+	counted,
+	partial,
 	isActive,
 	handleClick,
 }: BucketCardProps) => (
@@ -53,12 +68,12 @@ export const BucketCard = ({
 				<div className="flex flex-col gap-2 mt-2 ml-5">
 					<span className="text-xs transition-colors flex items-center">
 						<HardDrive className="size-4 inline mr-1" />
-						{totalSizeHuman}
+						{formatSize(counted ? totalSizeHuman : undefined, partial)}
 					</span>
 
 					<span className="text-xs transition-colors flex items-center">
 						<LucideFileText className="size-4 inline mr-1" />
-						{objectCount} files
+						{formatCount(counted ? objectCount : undefined, "file", partial)}
 					</span>
 
 					<span className={`text-xs transition-colors flex items-center`}>

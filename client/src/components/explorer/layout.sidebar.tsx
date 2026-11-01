@@ -9,6 +9,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import { BucketList } from "./bucket/list";
 import { BucketSearch } from "./bucket/search";
+import { formatCount } from "./utils";
 
 export const Sidebar = () => {
 	const { data: bucketData, isLoading, isError, error } = useBuckets();
@@ -16,7 +17,7 @@ export const Sidebar = () => {
 	const { bucketSearchTerm, bucketName: activeBucketName } = useExplorer().state;
 
 	const totalCount = bucketData?.totalCount ?? 0;
-	const totalObjectCount = bucketData?.totalObjectCount ?? 0;
+	const totalObjectCount = formatCount(bucketData?.totalObjectCount ?? 0, undefined, bucketData?.partial ?? false);
 	const buckets = bucketData?.buckets ?? [];
 
 	// Filter buckets based on search term
