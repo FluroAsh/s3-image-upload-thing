@@ -1,3 +1,6 @@
+import { spawn } from "node:child_process";
+import path from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { s3 } from "../fake-s3";
@@ -30,14 +33,14 @@ const bodyOf = (content: string | Buffer) => ({
 	},
 });
 
-/** Makes the next request's deadline already passed, and S3 fail the way a request aborted by it does. */
-const expireNextRequest = () => {
-	const expired = AbortSignal.abort();
-	vi.spyOn(AbortSignal, "timeout").mockReturnValue(expired);
-	s3.respond = async (_sent, options) => {
-		if (options?.abortSignal === expired) throw Object.assign(new Error("Request aborted"), { name: "AbortError" });
-		return {};
-	};
+/** Answers requests the way the SDK does once aborted, with no response before then. */
+const respondOnlyToAbort = () => {
+	s3.respond = (_sent, options) =>
+		new Promise((_, reject) =>
+			options?.abortSignal?.addEventListener("abort", () =>
+				reject(Object.assign(new Error("Request aborted"), { name: "AbortError" })),
+			),
+		);
 };
 
 beforeEach(() => {
@@ -170,7 +173,7 @@ describe("readObject", () => {
 });
 
 describe("request deadline", () => {
-	afterEach(() => vi.restoreAllMocks());
+	afterEach(() => vi.useRealTimers());
 
 	it("sends every read and write with a deadline", async () => {
 		s3.respond = async () => bodyOf(JSON.stringify(MANIFEST));
@@ -188,22 +191,64 @@ describe("request deadline", () => {
 		["readManifest", () => readManifest(MANIFEST, LOCATION)],
 		["storeManifest", () => storeManifest(MANIFEST, LOCATION)],
 	])("fails %s with a reason that names the deadline when the request is aborted", async (_name, run) => {
-		expireNextRequest();
+		vi.useFakeTimers();
+		respondOnlyToAbort();
 
-		await expect(run()).rejects.toThrow("S3 request timed out after 60s");
+		const request = run();
+		const outcome = expect(request).rejects.toThrow("S3 request timed out after 60s");
+		await vi.advanceTimersByTimeAsync(60_000);
+		await outcome;
 	});
 
 	it("fails readObject when the body stalls after the headers arrived", async () => {
-		const controller = new AbortController();
-		vi.spyOn(AbortSignal, "timeout").mockReturnValue(controller.signal);
+		vi.useFakeTimers();
 		s3.respond = async () => ({
 			Body: {
 				transformToString: () => new Promise<string>(() => {}),
 				transformToByteArray: () => new Promise<Uint8Array>(() => {}),
 			},
 		});
-		setTimeout(() => controller.abort(), 5);
 
-		await expect(readObject("trip/photo/small_photo.webp", LOCATION)).rejects.toThrow("S3 request timed out after 60s");
+		const outcome = expect(readObject("trip/photo/small_photo.webp", LOCATION)).rejects.toThrow(
+			"S3 request timed out after 60s",
+		);
+		await vi.advanceTimersByTimeAsync(60_000);
+		await outcome;
+	});
+
+	it("clears its deadline once the request settles", async () => {
+		vi.useFakeTimers();
+		s3.respond = async () => bodyOf("bytes");
+
+		await readObject("trip/photo/small_photo.webp", LOCATION);
+
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
+	it("keeps a Bun process alive while a request that never settles waits for its deadline", async () => {
+		const child = spawn(
+			"bun",
+			[
+				"-e",
+				`import { withDeadline } from "@/modules/storage/services/s3-operations";
+				withDeadline(() => new Promise(() => {})).then(() => process.exit(2), () => process.exit(3));`,
+			],
+			{
+				cwd: path.resolve(__dirname, "../../../.."),
+				env: { ...process.env, ACCESS_KEY_ID: "test-key-id", SECRET_ACCESS_KEY: "test-secret" },
+			},
+		);
+		const exited = new Promise<number | null>((resolve) => child.once("exit", resolve));
+
+		let aliveTimer: ReturnType<typeof setTimeout> | undefined;
+		const alive = new Promise((resolve) => {
+			aliveTimer = setTimeout(() => resolve("alive"), 1500);
+		});
+		const early = await Promise.race([exited, alive]);
+		clearTimeout(aliveTimer);
+		child.kill();
+		await exited;
+
+		expect(early).toBe("alive");
 	});
 });

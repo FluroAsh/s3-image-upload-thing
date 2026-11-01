@@ -1,6 +1,9 @@
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { setKeyPrefix } from "@/modules/storage/services/manifest";
+import { manifestKey, setKeyPrefix } from "@/modules/storage/services/manifest";
 import type { UploadOutcome } from "@/modules/storage/services/upload-pipeline";
 import type { UploadedFile } from "@/shared/types/image";
 import type { FileVariant } from "~/shared/types";
@@ -17,7 +20,11 @@ import {
 
 const CAT = ["cat_ab12.webp", "small_cat_ab12.webp"];
 const DOG = ["blog/dog_cd34.webp", "blog/large_dog_cd34.webp"];
-const DOG_MIGRATED = ["blog/dog_cd34/medium_dog_cd34.webp", "blog/dog_cd34/full_dog_cd34.webp"];
+const DOG_MIGRATED = [
+	"blog/dog_cd34/medium_dog_cd34.webp",
+	"blog/dog_cd34/full_dog_cd34.webp",
+	"blog/dog_cd34/manifest.json",
+];
 
 const stored = (key: string, variant: FileVariant["variant"]) => ({ key, variant }) as FileVariant;
 
@@ -37,6 +44,7 @@ const bucket = (
 
 	const io: MigrateIo = {
 		setExists: async (identity) => keys.some((key) => key.startsWith(setKeyPrefix(identity))),
+		hasManifest: async (identity) => keys.includes(manifestKey(identity)),
 		readObject: async (key) => {
 			read.push(key);
 			return { body: Buffer.from(`bytes of ${key}`), etag: `"etag-of-${key}"` };
@@ -183,6 +191,17 @@ describe("migrateFlatSets", () => {
 		expect(results.map(({ outcome }) => outcome).sort()).toEqual(["migrated", "to-migrate"]);
 	});
 
+	it("reports a set whose folder has no manifest as incomplete, naming the folder to undo, and leaves it alone", async () => {
+		const { keys, io, read, uploads } = bucket([...DOG, "blog/dog_cd34/medium_dog_cd34.webp"]);
+
+		const results = await migrateFlatSets(keys, io, { write: true });
+
+		expect(results).toMatchObject([{ outcome: "incomplete", linkTo: null }]);
+		expect(results[0].detail).toContain("blog/dog_cd34/");
+		expect(countFailedMigrations(results)).toBe(1);
+		expect([read, uploads]).toEqual([[], []]);
+	});
+
 	it("tells the caller about each set as it finishes", async () => {
 		const { keys, io } = bucket([...CAT, ...DOG]);
 		const heard: string[] = [];
@@ -202,6 +221,37 @@ const result = (overrides: Partial<MigrateResult>): MigrateResult => ({
 	outcome: "migrated",
 	linkTo: "cat_ab12/large_cat_ab12.webp",
 	...overrides,
+});
+
+describe("migrateAndMap", () => {
+	// Only a Bun process exits when the run stops, which is what the mapping must survive.
+	it("writes the mapping of the sets that finished when the run stops early, and exits 1", () => {
+		const run = spawnSync(
+			"bun",
+			[
+				"-e",
+				`import { migrateAndMap } from "./scripts/migrate/run";
+				const io = {
+					setExists: async () => false,
+					hasManifest: async () => false,
+					readObject: async (key) => (key.startsWith("blog/") ? new Promise(() => {}) : { body: Buffer.from("x"), etag: "e" }),
+					upload: async () => ({ files: [] }),
+				};
+				migrateAndMap(
+					["cat_ab12.webp", "small_cat_ab12.webp", "blog/dog_cd34.webp", "blog/large_dog_cd34.webp"],
+					io,
+					{ write: true },
+					(mapping) => console.log("MAPPING " + JSON.stringify(mapping.map((entry) => [entry.original, entry.outcome]))),
+				).then(() => console.log("totals"));`,
+			],
+			{ cwd: path.resolve(__dirname, "../.."), encoding: "utf8", timeout: 30_000 },
+		);
+
+		expect(run.stdout).toContain('MAPPING [["cat_ab12.webp","migrated"]]');
+		expect(run.stdout).not.toContain("totals");
+		expect(run.stderr).toContain("1 of 2 unfinished");
+		expect(run.status).toBe(1);
+	});
 });
 
 describe("buildMapping", () => {
@@ -265,6 +315,7 @@ describe("formatMigrateTotals", () => {
 				"  reserved: 0",
 				"Failed: 1",
 				"  unsafe-target: 1",
+				"  incomplete: 0",
 				"  failed: 0",
 			].join("\n"),
 		);

@@ -6,6 +6,7 @@ import { parseBackfillArgs } from "./backfill/args";
 import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill/report";
 import { countFailed, formatSetResult, formatWriteTotals, writeManifests } from "./backfill/write";
 import { listObjects, scopeLabel } from "./shared/list-objects";
+import { guardStall } from "./shared/stall-guard";
 
 const main = async (): Promise<void> => {
 	const { location, folder, write, force } = parseBackfillArgs(process.argv.slice(2));
@@ -41,15 +42,18 @@ const main = async (): Promise<void> => {
 	);
 
 	// `storeManifest` is the only put this script can reach, and it refuses any key but a set folder's manifest.
-	const results = await writeManifests(
-		objects,
-		{
-			readObject: (key) => readObject(key, location),
-			readManifest: (set) => readManifest(set, location),
-			storeManifest: (manifest, options) => storeManifest(manifest, location, options),
-		},
-		{ force },
-		(result) => console.log(formatSetResult(result)),
+	const results = await guardStall((unfinished) =>
+		writeManifests(
+			objects,
+			{
+				readObject: (key) => readObject(key, location),
+				readManifest: (set) => readManifest(set, location),
+				storeManifest: (manifest, options) => storeManifest(manifest, location, options),
+			},
+			{ force },
+			(result) => console.log(formatSetResult(result)),
+			unfinished,
+		),
 	);
 
 	console.log(`\n${formatWriteTotals(results)}`);

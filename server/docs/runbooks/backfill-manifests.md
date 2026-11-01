@@ -71,7 +71,7 @@ bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> [--prefix <f
 bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> --prefix <folder> --write 2>&1 | tee write-folder.log
 ```
 
-Keep the log: its `[written]` lines are what the undo deletes. `tee` hides the script's exit code, so read `Failed` in the totals. Expect one line per set as it finishes, then totals:
+Keep the log: its `[written]` lines are what the undo deletes. `tee` hides the script's exit code, so read `Failed` in the totals; a log that ends without totals is a run that did not finish. Expect one line per set as it finishes, then totals:
 
 ```
 [written] nested trip/photo -> trip/photo/manifest.json
@@ -120,11 +120,12 @@ Each of these exits with code `1` before any request is made.
 
 ## Runs that stop early
 
-| Situation | It says | Exit code |
-|---|---|---|
-| The bucket or folder has no keys | `No keys found in ...` | `1` |
-| Keys exist but none form an image set | `No image sets in ...` | `1` |
-| Credentials missing from the environment | The server's missing-keys error | `1` |
+| Situation | It says | Exit code | Action |
+|---|---|---|---|
+| The bucket or folder has no keys | `No keys found in ...` | `1` | Check the bucket and `--prefix` |
+| Keys exist but none form an image set | `No image sets in ...` | `1` | Check the bucket and `--prefix` |
+| Credentials missing from the environment | The server's missing-keys error | `1` | Set the credentials in `.env` |
+| A set's work stops with nothing left to wait for, so the run cannot finish | `The run stopped with <n> of <total> unfinished:`, then one line per unfinished set, and no totals | `1` | Re-run the same command; finished sets show as `exists`. The unfinished list can include sets that never started |
 
 ## What can happen to one set
 
