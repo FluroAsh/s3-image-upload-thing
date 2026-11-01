@@ -225,7 +225,7 @@ When you upload an image, the server automatically:
    - `large_image.webp` (1440px longest edge, 90% quality) - High-res desktop
    - `full_image.webp` (3840px longest edge, 95% quality) - Lightbox and gallery; always stored, at the source size when smaller
 3. **Keeps the original** unchanged as `original.<ext>` in the set's folder, stored first, so a size can always be remade from it. It is private: a bucket-policy statement denies the CDN every `original.*` key (see [Keeping originals private](server/docs/runbooks/backfill-manifests.md#keeping-originals-private)), as camera files carry metadata such as GPS location
-4. **Uploads to S3** in organized folder structure, writing `manifest.json` last; the manifest records the original as the set's `source`. If a size or the manifest fails to store, the upload deletes what it wrote (the original and any sizes) and returns the error; if that delete fails too, the error names the keys left behind, to delete by hand
+4. **Uploads to S3** in organized folder structure, writing `manifest.json` last; the manifest records the original as the set's `source`. Each S3 request an upload makes has 60 seconds to finish. If a size or the manifest fails to store, or times out, the upload deletes what it wrote (the original and any sizes) and returns the error; if that delete fails too, the error names the keys left behind, to delete by hand. If the original's own store times out, it is not deleted, because it may belong to a racing upload of the same name; a retry then gets 409 until that set's folder is deleted
 
 **Folder Structure:**
 

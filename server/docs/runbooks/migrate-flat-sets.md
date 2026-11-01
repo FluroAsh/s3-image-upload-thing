@@ -130,7 +130,7 @@ Work through these in order. Stop at the first step whose result is not the expe
 | `reserved` | Skipped | The new folder would be under a path uploads are refused for (`src/`, `legacy/`, or any folder named `original.<anything>`, which the CDN's deny rule would hide) | Decide by hand where the set should go |
 | `unsafe-target` | Failed | The new folder already holds a flat file, so the pipeline could replace it, or an earlier original of this run already claims the same folder. Refused before anything was read | Look at the keys named in the line; migrate by hand |
 | `incomplete` | Failed | The set's folder exists but has no `manifest.json`, which is written last, so an earlier run did not finish it | Delete exactly that folder (`aws s3 rm s3://<bucket>/<setPrefix> --recursive`), then re-run |
-| `failed` | Failed | Any other error for that set: the original could not be read, decoded or copied, or a request timed out. The original changing after it was read also lands here. A failure after the copy deletes what was written, so a re-run starts clean. If that delete fails too, the line ends `could not delete <keys>, which were left behind`, and a re-run reports the set `incomplete` | Re-run. If keys were left behind, delete exactly those keys (`aws s3 rm s3://<bucket>/<key>`), then re-run |
+| `failed` | Failed | Any other error for that set: the original could not be read, decoded or copied, or a request timed out after 60 seconds, including the check that the folder is free and each size write. The original changing after it was read also lands here. A failure after the copy deletes what was written, a size that timed out included, so a re-run starts clean. A copy that itself timed out is not deleted, as the run cannot tell it is its own; if it landed, a re-run reports the set `incomplete`. If a delete fails, the line ends `could not delete <keys>, which were left behind`, and a re-run reports the set `incomplete` | Re-run. If keys were left behind, delete exactly those keys (`aws s3 rm s3://<bucket>/<key>`), then re-run |
 
 Any `Failed` count above zero makes the exit code `1`. One failed set does not stop the others.
 
@@ -146,7 +146,7 @@ Any `Failed` count above zero makes the exit code `1`. One failed set does not s
 | Credentials missing from the environment | The server's missing-keys error | `1` | Set the credentials in `.env` |
 | A set's work stops with nothing left to wait for, so the run cannot finish | `The run stopped with <n> of <total> unfinished:`, then one line per unfinished set; no totals | `1` | Re-run the same command with its own `--map`; finished sets show as `already-migrated`. |
 
-When a run stops early, the mapping file lists only the sets that finished, so it still undoes what that run did. The unfinished list can include sets that never started: with every worker stalled, nothing else gets picked up. A set that stalled mid-write may have left a folder without a `manifest.json`; the re-run reports it `incomplete`.
+When a run stops early, the mapping file lists only the sets that finished, so it still undoes what that run did. The unfinished list can include sets that never started: with every worker stalled, nothing else gets picked up. A set that stopped mid-write may have left a folder without a `manifest.json`; the re-run reports it `incomplete`.
 
 ## Undo
 

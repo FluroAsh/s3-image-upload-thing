@@ -5,7 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { s3 } from "../fake-s3";
 import { buildManifest, NotAManifestError } from "./manifest";
-import { readManifest, readObject, storeManifest, storeOriginal } from "./s3-operations";
+import {
+	imageSetExists,
+	REQUEST_TIMEOUT_MS,
+	readManifest,
+	readObject,
+	storeManifest,
+	storeOriginal,
+} from "./s3-operations";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
@@ -173,6 +180,7 @@ describe("readObject", () => {
 });
 
 describe("request deadline", () => {
+	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
 
 	it("sends every read and write with a deadline", async () => {
@@ -190,18 +198,31 @@ describe("request deadline", () => {
 		["readObject", () => readObject("trip/photo/small_photo.webp", LOCATION)],
 		["readManifest", () => readManifest(MANIFEST, LOCATION)],
 		["storeManifest", () => storeManifest(MANIFEST, LOCATION)],
+		["imageSetExists", () => imageSetExists(MANIFEST, LOCATION)],
 	])("fails %s with a reason that names the deadline when the request is aborted", async (_name, run) => {
-		vi.useFakeTimers();
 		respondOnlyToAbort();
 
 		const request = run();
-		const outcome = expect(request).rejects.toThrow("S3 request timed out after 60s");
-		await vi.advanceTimersByTimeAsync(60_000);
+		const outcome = expect(request).rejects.toThrow(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+		await outcome;
+	});
+
+	it("fails storeOriginal when the listing after a refused copy never answers", async () => {
+		s3.respond = async (sent) => {
+			if (sent.command === "ListObjectsV2") return new Promise(() => {});
+			throw Object.assign(new Error("precondition"), { name: "PreconditionFailed" });
+		};
+
+		const copy = { key: "trip/photo/original.jpg", copyFrom: "trip/photo.jpg", ifMatch: '"v1"' };
+		const outcome = expect(storeOriginal(copy, LOCATION)).rejects.toThrow(
+			`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`,
+		);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
 		await outcome;
 	});
 
 	it("fails readObject when the body stalls after the headers arrived", async () => {
-		vi.useFakeTimers();
 		s3.respond = async () => ({
 			Body: {
 				transformToString: () => new Promise<string>(() => {}),
@@ -210,14 +231,13 @@ describe("request deadline", () => {
 		});
 
 		const outcome = expect(readObject("trip/photo/small_photo.webp", LOCATION)).rejects.toThrow(
-			"S3 request timed out after 60s",
+			`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`,
 		);
-		await vi.advanceTimersByTimeAsync(60_000);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
 		await outcome;
 	});
 
 	it("clears its deadline once the request settles", async () => {
-		vi.useFakeTimers();
 		s3.respond = async () => bodyOf("bytes");
 
 		await readObject("trip/photo/small_photo.webp", LOCATION);
@@ -226,6 +246,8 @@ describe("request deadline", () => {
 	});
 
 	it("keeps a Bun process alive while a request that never settles waits for its deadline", async () => {
+		// The child runs on real time, so the fake clock would stop the liveness timer below.
+		vi.useRealTimers();
 		const child = spawn(
 			"bun",
 			[

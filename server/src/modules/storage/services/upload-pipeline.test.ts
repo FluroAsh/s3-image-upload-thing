@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 
 import sharp from "sharp";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "~/shared/types";
 
 import { s3 } from "../fake-s3";
 import { dimensionsOf, makeJpeg } from "../test-helpers";
+import { REQUEST_TIMEOUT_MS } from "./s3-operations";
 import { runUploadPipeline } from "./upload-pipeline";
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: async () => "https://cdn.example.test/signed" }));
@@ -21,16 +22,21 @@ type FakeBucketOptions = {
 	failOn?: (key: string) => boolean;
 	/** Keys whose delete throws. */
 	failDelete?: (key: string) => boolean;
+	/** Keys whose write never answers, not even to an abort, yet lands the moment it is aborted. */
+	stallOn?: (key: string) => boolean;
 };
 
 /** A bucket that remembers what was stored: create-only puts fail on a taken key, and deletes remove. Listings only find keys already present when the upload begins, like S3's own check. */
 const fakeBucket = (options: FakeBucketOptions) => {
+	const { promise: stalled, resolve: markStalled } = Promise.withResolvers<void>();
 	const bucket = {
 		...options,
 		objects: new Set<string>(),
 		keys: () => Array.from(bucket.objects).sort(),
+		/** Resolves once a write matched by `stallOn` has been sent. */
+		stalled,
 	};
-	s3.respond = async (sent) => {
+	s3.respond = async (sent, sendOptions) => {
 		const { Key, Prefix, IfNoneMatch } = sent.input as { Key: string; Prefix?: string; IfNoneMatch?: string };
 		if (sent.command === "ListObjectsV2") {
 			return {
@@ -45,6 +51,11 @@ const fakeBucket = (options: FakeBucketOptions) => {
 			return {};
 		}
 		if (bucket.failOn?.(Key)) throw new Error("S3 is down");
+		if (bucket.stallOn?.(Key)) {
+			sendOptions?.abortSignal?.addEventListener("abort", () => bucket.objects.add(Key));
+			markStalled();
+			return new Promise(() => {});
+		}
 		if (IfNoneMatch && bucket.objects.has(Key)) {
 			throw Object.assign(new Error("precondition"), { name: "PreconditionFailed" });
 		}
@@ -243,6 +254,23 @@ describe("runUploadPipeline", () => {
 		bucket.failOn = () => false;
 		await expect(upload()).resolves.toHaveProperty("files");
 		expect(bucket.keys()).toContain("trip/photo/manifest.json");
+	});
+
+	describe("when a request never answers", () => {
+		afterEach(() => vi.useRealTimers());
+
+		it("fails the upload after the deadline when a size write stalls, and deletes everything it stored, the late write included", async () => {
+			const bucket = fakeBucket({ stallOn: (key) => key.includes("full_") });
+			vi.useFakeTimers();
+
+			const outcome = expect(upload()).rejects.toThrow(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+			await bucket.stalled;
+			await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+			await outcome;
+
+			expect(bucket.keys()).toEqual([]);
+			expect(manifestPut()).toBeUndefined();
+		});
 	});
 
 	it("deletes the original and every size when the manifest fails to store", async () => {
