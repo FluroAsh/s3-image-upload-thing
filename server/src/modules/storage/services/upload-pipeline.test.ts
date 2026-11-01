@@ -7,6 +7,7 @@ import type { Manifest } from "~/shared/types";
 
 import { s3 } from "../fake-s3";
 import { dimensionsOf, makeJpeg } from "../test-helpers";
+import { REQUEST_TIMEOUT_MS } from "./s3-operations";
 import { runUploadPipeline } from "./upload-pipeline";
 
 vi.mock("@aws-sdk/s3-request-presigner", () => ({ getSignedUrl: async () => "https://cdn.example.test/signed" }));
@@ -262,9 +263,9 @@ describe("runUploadPipeline", () => {
 			const bucket = fakeBucket({ stallOn: (key) => key.includes("full_") });
 			vi.useFakeTimers();
 
-			const outcome = expect(upload()).rejects.toThrow("S3 request timed out after 60s");
+			const outcome = expect(upload()).rejects.toThrow(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
 			await bucket.stalled;
-			await vi.advanceTimersByTimeAsync(60_000);
+			await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
 			await outcome;
 
 			expect(bucket.keys()).toEqual([]);
