@@ -33,8 +33,8 @@ type S3Response = {
 	Buckets?: {
 		/** Name of the bucket. */
 		Name: string;
-		/** AWS region the bucket lives in. */
-		BucketRegion: string;
+		/** AWS region the bucket lives in; S3 can omit it. */
+		BucketRegion?: string;
 	}[];
 	/** Content of a fetched object; only on a get. */
 	Body?: {
