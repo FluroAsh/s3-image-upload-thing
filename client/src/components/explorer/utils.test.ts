@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
-import { pickPreviewVariant } from "./utils";
+import { PREVIEW_ORDER, pickPreviewVariant } from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -16,8 +17,14 @@ const node = (name: string): TreeNode => ({
 const pick = (...names: string[]) => pickPreviewVariant(names.map(node))?.name;
 
 describe("pickPreviewVariant", () => {
+	it("considers every size exactly once", () => {
+		expect(PREVIEW_ORDER.toSorted()).toEqual(IMAGE_VARIANTS.toSorted());
+	});
+
 	it("prefers large over every other variant", () => {
-		expect(pick("placeholder_a.webp", "full_a.webp", "large_a.webp", "small_a.webp")).toBe("large_a.webp");
+		expect(pick("placeholder_a.webp", "thumbnail_a.webp", "full_a.webp", "large_a.webp", "small_a.webp")).toBe(
+			"large_a.webp",
+		);
 	});
 
 	it("falls from large to medium to small", () => {
@@ -26,7 +33,11 @@ describe("pickPreviewVariant", () => {
 	});
 
 	it("falls back to full when no inline size exists", () => {
-		expect(pick("placeholder_a.webp", "full_a.webp")).toBe("full_a.webp");
+		expect(pick("placeholder_a.webp", "thumbnail_a.webp", "full_a.webp")).toBe("full_a.webp");
+	});
+
+	it("prefers the sharp thumbnail over the blurred placeholder when no larger size exists", () => {
+		expect(pick("placeholder_a.webp", "thumbnail_a.webp")).toBe("thumbnail_a.webp");
 	});
 
 	it("uses the placeholder only when nothing else exists", () => {

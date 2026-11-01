@@ -6,9 +6,10 @@ const member = (variant: string) => ({ variant, key: `photo/${variant}_photo.web
 
 describe("linkToKey", () => {
 	it.each([
-		[["placeholder", "small", "medium", "large", "full"], "photo/large_photo.webp"],
-		[["placeholder", "small", "medium", "full"], "photo/medium_photo.webp"],
-		[["placeholder", "small", "full"], "photo/small_photo.webp"],
+		[["placeholder", "thumbnail", "small", "medium", "large", "full"], "photo/large_photo.webp"],
+		[["placeholder", "thumbnail", "small", "medium", "full"], "photo/medium_photo.webp"],
+		[["placeholder", "thumbnail", "small", "full"], "photo/small_photo.webp"],
+		[["placeholder", "thumbnail", "full"], null],
 		[["placeholder", "full"], null],
 		[["placeholder"], null],
 	])("of a set holding %j is %s", (variants, expected) => {
