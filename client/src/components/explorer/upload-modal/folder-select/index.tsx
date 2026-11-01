@@ -5,7 +5,7 @@ import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "l
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
-import type { TreeNode } from "~/shared/types";
+import type { FileTreeResponse, TreeNode } from "~/shared/types";
 
 import { Folder } from "./folder";
 
@@ -62,8 +62,8 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 		};
 
 		// Optimistically add to the query cache until next refetch
-		qc.setQueryData(["fileTree", activeBucketName], (oldData: TreeNode[] | undefined) =>
-			oldData ? [...oldData, newFolder] : [newFolder],
+		qc.setQueryData<FileTreeResponse>(["fileTree", activeBucketName], (oldData) =>
+			oldData ? { ...oldData, tree: [...oldData.tree, newFolder] } : { tree: [newFolder], partial: false },
 		);
 
 		setFolderStack((prev) => [...prev, newFolder]);

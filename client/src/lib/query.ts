@@ -6,7 +6,7 @@ import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
 import { postUploadImages } from "@/services/images";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type { BucketsResponse, TreeNode } from "~/shared/types";
+import type { BucketsResponse, FileTreeResponse, TreeNode } from "~/shared/types";
 
 export const useBuckets = () =>
 	useQuery<BucketsResponse, ApiError>({
@@ -16,7 +16,7 @@ export const useBuckets = () =>
 	});
 
 export const useFileTree = (bucketName: string, bucketRegion: string) => {
-	const query = useQuery<TreeNode[], ApiError>({
+	const query = useQuery<FileTreeResponse, ApiError>({
 		queryKey: ["fileTree", bucketName],
 		queryFn: () => getFileTree(bucketName, bucketRegion),
 		retry: false,
@@ -26,7 +26,7 @@ export const useFileTree = (bucketName: string, bucketRegion: string) => {
 	// based on expansion state
 	const childMap = useMemo(() => {
 		const map = new Map<string, TreeNode[]>();
-		query.data?.forEach((node) => {
+		query.data?.tree.forEach((node) => {
 			const siblings = map.get(node.parentId) || [];
 			siblings.push(node);
 			map.set(node.parentId, siblings);

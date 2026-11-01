@@ -326,6 +326,11 @@ This is a personal project, but contributions are welcome! Feel free to:
 - The server log names the bucket and the error; reload the page to count again
 - A bucket list or folder listing that S3 does not answer within 60 seconds fails with an error rather than hanging
 
+### The explorer says "Showing the first N items"
+
+- The folder listing took longer than 60 seconds in total, so the tree holds only the keys listed by then; later folders and files are missing
+- Each page of 1,000 keys answered in time, so the bucket is large or S3 is slow; reload the page to list again
+
 ### Docker container won't start
 
 - Check Docker logs: `docker logs s3-upload-(client|server)`

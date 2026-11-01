@@ -24,6 +24,8 @@ type S3Response = {
 		Key: string;
 		/** Size of the listed object in bytes. */
 		Size?: number;
+		/** ETag of the listed object, quotes included. */
+		ETag?: string;
 	}[];
 	/** Whether a listing has another page; only on a listing. */
 	IsTruncated?: boolean;
@@ -72,7 +74,6 @@ const fakeS3 = () => {
 			DeleteObjectCommand: commandClass("DeleteObject"),
 			GetObjectCommand: commandClass("GetObject"),
 			ListBucketsCommand: commandClass("ListBuckets"),
-			ListObjectsCommand: commandClass("ListObjects"),
 			ListObjectsV2Command: commandClass("ListObjectsV2"),
 			PutObjectCommand: commandClass("PutObject"),
 			S3Client: class {
