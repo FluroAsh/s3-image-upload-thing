@@ -231,6 +231,23 @@ describe("getBucketStats", () => {
 
 		expect(await stats).toEqual({ objectCount: 2, totalSize: 120, partial: true });
 	});
+
+	it("stops paging and reports partial once pages that each beat the deadline pass it in total", async () => {
+		vi.useFakeTimers();
+		const pageDelay = REQUEST_TIMEOUT_MS * 0.4;
+		s3.respond = () =>
+			new Promise((resolve) =>
+				setTimeout(
+					() => resolve({ Contents: [{ Key: "a.webp", Size: 10 }], IsTruncated: true, NextContinuationToken: "next" }),
+					pageDelay,
+				),
+			);
+
+		const stats = getBucketStats(LOCATION.bucketName, LOCATION.bucketRegion);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS * 2);
+
+		expect(await stats).toEqual({ objectCount: 3, totalSize: 30, partial: true });
+	});
 });
 
 describe("request deadline", () => {

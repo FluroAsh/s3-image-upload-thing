@@ -19,6 +19,25 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("listBucketsHandler", () => {
+	it("answers 200 with an empty list when the account has no buckets", async () => {
+		s3.respond = async () => ({ Buckets: [] });
+
+		const res = await get();
+
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({
+			buckets: [],
+			totalObjectCount: 0,
+			totalSizeBytes: 0,
+			totalSizeHuman: "0.00 Bytes",
+			partial: false,
+			page: 1,
+			limit: expect.any(Number),
+			totalCount: 0,
+			totalPages: 0,
+		});
+	});
+
 	it("answers with an error naming the deadline when the bucket list never answers", async () => {
 		vi.useFakeTimers();
 		s3.respond = () => new Promise(() => {});
@@ -52,5 +71,15 @@ describe("listBucketsHandler", () => {
 			{ Name: "refused", objectCount: 0, partial: true },
 		]);
 		expect(body).toMatchObject({ totalObjectCount: 1, partial: true });
+	});
+
+	it("marks a bucket S3 gave no region for as never counted", async () => {
+		s3.respond = async () => ({ Buckets: [{ Name: "no-region" }] });
+
+		const body = await (await get()).json();
+
+		expect(body.buckets.map(({ counted, partial }: Bucket) => ({ counted, partial }))).toEqual([
+			{ counted: false, partial: true },
+		]);
 	});
 });

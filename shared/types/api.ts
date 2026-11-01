@@ -32,6 +32,8 @@ export type Bucket = {
   totalSizeBytes: number;
   /** `totalSizeBytes` for display, e.g. `"1.5 MB"`. */
   totalSizeHuman: string;
+  /** `false` when the bucket was never counted, so `objectCount` and the sizes are placeholders, not figures. */
+  counted: boolean;
   /** `true` when the count stopped early or never ran, so `objectCount` and the sizes are lower bounds. */
   partial: boolean;
 };

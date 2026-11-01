@@ -89,6 +89,7 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 	const stats: BucketStats = { objectCount: 0, totalSize: 0, partial: false };
 	const client = getRegionalClient(bucketRegion);
 	let continuationToken: string | undefined;
+	const startedAt = Date.now();
 
 	try {
 		do {
@@ -103,6 +104,12 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 			}
 
 			continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+
+			// The per-page deadline alone leaves a many-page bucket unbounded, and the caller answers only once every bucket is done.
+			if (continuationToken && Date.now() - startedAt >= REQUEST_TIMEOUT_MS) {
+				stats.partial = true;
+				break;
+			}
 		} while (continuationToken);
 	} catch (error) {
 		console.error(`Bucket stats for "${bucketName}" stopped early: ${errorMessage(error)}`);

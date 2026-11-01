@@ -14,14 +14,11 @@ export const listBucketsHandler = async (ctx: Context) => {
 	try {
 		const res = await listBuckets();
 
-		if (!res.Buckets?.length) {
-			return ctx.json({ error: "No buckets found" }, 404);
-		}
-
-		const totalCount = res.Buckets.length;
+		const buckets = res.Buckets ?? [];
+		const totalCount = buckets.length;
 		const totalPages = Math.ceil(totalCount / limit);
 		const start = (page - 1) * limit;
-		const bucketsForPage = res.Buckets.slice(start, start + limit);
+		const bucketsForPage = buckets.slice(start, start + limit);
 
 		const bucketsWithStats = await Promise.all(
 			bucketsForPage.map(async (bucket) => {
