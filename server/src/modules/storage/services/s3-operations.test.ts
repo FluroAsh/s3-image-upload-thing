@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { s3 } from "../fake-s3";
 import { buildManifest, NotAManifestError } from "./manifest";
 import {
+	getBucketStats,
 	imageSetExists,
+	listBuckets,
+	listObjects,
 	REQUEST_TIMEOUT_MS,
 	readManifest,
 	readObject,
@@ -179,6 +182,57 @@ describe("readObject", () => {
 	});
 });
 
+/** Answers the first stats page with two objects and a token, and the second page with `second`. */
+const respondWithPages = (second: typeof s3.respond) => {
+	s3.respond = async (sent, options) =>
+		sent.input.ContinuationToken
+			? second(sent, options)
+			: {
+					Contents: [
+						{ Key: "a.webp", Size: 100 },
+						{ Key: "b.webp", Size: 20 },
+					],
+					IsTruncated: true,
+					NextContinuationToken: "page-2",
+				};
+};
+
+describe("getBucketStats", () => {
+	afterEach(() => vi.useRealTimers());
+
+	it("counts every page and reports the count as complete", async () => {
+		respondWithPages(async () => ({ Contents: [{ Key: "c.webp", Size: 3 }], IsTruncated: false }));
+
+		expect(await getBucketStats(LOCATION.bucketName, LOCATION.bucketRegion)).toEqual({
+			objectCount: 3,
+			totalSize: 123,
+			partial: false,
+		});
+	});
+
+	it("reports the count as partial when a later page fails", async () => {
+		respondWithPages(async () => {
+			throw new Error("Access Denied");
+		});
+
+		expect(await getBucketStats(LOCATION.bucketName, LOCATION.bucketRegion)).toEqual({
+			objectCount: 2,
+			totalSize: 120,
+			partial: true,
+		});
+	});
+
+	it("reports the count as partial when a later page never answers", async () => {
+		vi.useFakeTimers();
+		respondWithPages(() => new Promise(() => {}));
+
+		const stats = getBucketStats(LOCATION.bucketName, LOCATION.bucketRegion);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+
+		expect(await stats).toEqual({ objectCount: 2, totalSize: 120, partial: true });
+	});
+});
+
 describe("request deadline", () => {
 	beforeEach(() => vi.useFakeTimers());
 	afterEach(() => vi.useRealTimers());
@@ -199,6 +253,8 @@ describe("request deadline", () => {
 		["readManifest", () => readManifest(MANIFEST, LOCATION)],
 		["storeManifest", () => storeManifest(MANIFEST, LOCATION)],
 		["imageSetExists", () => imageSetExists(MANIFEST, LOCATION)],
+		["listBuckets", () => listBuckets()],
+		["listObjects", () => listObjects(LOCATION)],
 	])("fails %s with a reason that names the deadline when the request is aborted", async (_name, run) => {
 		respondOnlyToAbort();
 

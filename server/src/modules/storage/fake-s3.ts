@@ -22,6 +22,19 @@ type S3Response = {
 	Contents?: {
 		/** Bucket key of the listed object. */
 		Key: string;
+		/** Size of the listed object in bytes. */
+		Size?: number;
+	}[];
+	/** Whether a listing has another page; only on a listing. */
+	IsTruncated?: boolean;
+	/** Token that fetches a listing's next page; only on a truncated listing. */
+	NextContinuationToken?: string;
+	/** Buckets in the account; only on a bucket list. */
+	Buckets?: {
+		/** Name of the bucket. */
+		Name: string;
+		/** AWS region the bucket lives in. */
+		BucketRegion: string;
 	}[];
 	/** Content of a fetched object; only on a get. */
 	Body?: {
@@ -58,6 +71,8 @@ const fakeS3 = () => {
 			CopyObjectCommand: commandClass("CopyObject"),
 			DeleteObjectCommand: commandClass("DeleteObject"),
 			GetObjectCommand: commandClass("GetObject"),
+			ListBucketsCommand: commandClass("ListBuckets"),
+			ListObjectsCommand: commandClass("ListObjects"),
 			ListObjectsV2Command: commandClass("ListObjectsV2"),
 			PutObjectCommand: commandClass("PutObject"),
 			S3Client: class {

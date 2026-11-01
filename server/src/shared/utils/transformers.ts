@@ -18,5 +18,6 @@ export const transformBucket = (bucket: AwsBucket, stats?: BucketStats): Bucket 
 		objectCount: stats?.objectCount ?? 0,
 		totalSizeBytes: stats?.totalSize ?? 0,
 		totalSizeHuman: readableSize(stats?.totalSize ?? 0),
+		partial: stats?.partial ?? true,
 	};
 };

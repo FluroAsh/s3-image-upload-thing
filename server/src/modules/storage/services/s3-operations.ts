@@ -2,6 +2,8 @@ import {
 	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
+	ListBucketsCommand,
+	ListObjectsCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
@@ -12,8 +14,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { SmithyResolvedConfiguration } from "@smithy/smithy-client";
 import type { Command, HttpHandlerOptions } from "@smithy/types";
 
+import { BUCKETS_LIST_MAX } from "@/shared/constants/s3";
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
+import { errorMessage } from "@/shared/utils/helpers";
 import { TIME } from "~/shared/constants/time";
 import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
@@ -63,7 +67,7 @@ const createS3Client = (region: string) =>
 export const defaultRegion = process.env.AWS_REGION ?? "us-east-1";
 
 /** Fixed-region client for account-level operations that do not require a specific region (e.g. ListBuckets). */
-export const s3Client = createS3Client(defaultRegion);
+const s3Client = createS3Client(defaultRegion);
 
 /** Lazily-created, region-specific clients for regional bucket-scoped operations. */
 const regionalClientCache = new Map<string, S3Client>();
@@ -79,31 +83,30 @@ export const getRegionalClient = (region: string): S3Client => {
 	return client;
 };
 
+export const listBuckets = () => sendWithDeadline(s3Client, new ListBucketsCommand({ MaxBuckets: BUCKETS_LIST_MAX }));
+
 export const getBucketStats = async (bucketName: string, bucketRegion: string): Promise<BucketStats> => {
-	const stats: BucketStats = { objectCount: 0, totalSize: 0 };
+	const stats: BucketStats = { objectCount: 0, totalSize: 0, partial: false };
 	const client = getRegionalClient(bucketRegion);
 	let continuationToken: string | undefined;
 
 	try {
 		do {
-			const res = await client.send(
-				new ListObjectsV2Command({
-					Bucket: bucketName,
-					ContinuationToken: continuationToken,
-				}),
+			const res = await sendWithDeadline(
+				client,
+				new ListObjectsV2Command({ Bucket: bucketName, ContinuationToken: continuationToken }),
 			);
 
-			if (res.Contents) {
-				for (const obj of res.Contents) {
-					stats.objectCount += 1;
-					stats.totalSize += obj.Size ?? 0;
-				}
+			for (const obj of res.Contents ?? []) {
+				stats.objectCount += 1;
+				stats.totalSize += obj.Size ?? 0;
 			}
 
 			continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
 		} while (continuationToken);
-	} catch {
-		return stats;
+	} catch (error) {
+		console.error(`Bucket stats for "${bucketName}" stopped early: ${errorMessage(error)}`);
+		stats.partial = true;
 	}
 	return stats;
 };
@@ -197,6 +200,9 @@ export const deleteObjects = async (
 };
 
 const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
+
+export const listObjects = ({ bucketName, bucketRegion }: BucketLocation) =>
+	sendWithDeadline(getRegionalClient(bucketRegion), new ListObjectsCommand({ Bucket: bucketName }));
 
 /** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
 export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {
