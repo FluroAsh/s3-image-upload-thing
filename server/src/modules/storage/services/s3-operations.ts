@@ -1,9 +1,9 @@
 import {
+	type _Object,
 	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
 	ListBucketsCommand,
-	ListObjectsCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
@@ -87,30 +87,15 @@ export const listBuckets = () => sendWithDeadline(s3Client, new ListBucketsComma
 
 export const getBucketStats = async (bucketName: string, bucketRegion: string): Promise<BucketStats> => {
 	const stats: BucketStats = { objectCount: 0, totalSize: 0, partial: false };
-	const client = getRegionalClient(bucketRegion);
-	let continuationToken: string | undefined;
-	const startedAt = Date.now();
 
 	try {
-		do {
-			const res = await sendWithDeadline(
-				client,
-				new ListObjectsV2Command({ Bucket: bucketName, ContinuationToken: continuationToken }),
-			);
-
-			for (const obj of res.Contents ?? []) {
+		const { partial } = await listPages({ bucketName, bucketRegion }, (objects) => {
+			for (const obj of objects) {
 				stats.objectCount += 1;
 				stats.totalSize += obj.Size ?? 0;
 			}
-
-			continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
-
-			// The per-page deadline alone leaves a many-page bucket unbounded, and the caller answers only once every bucket is done.
-			if (continuationToken && Date.now() - startedAt >= REQUEST_TIMEOUT_MS) {
-				stats.partial = true;
-				break;
-			}
-		} while (continuationToken);
+		});
+		stats.partial = partial;
 	} catch (error) {
 		console.error(`Bucket stats for "${bucketName}" stopped early: ${errorMessage(error)}`);
 		stats.partial = true;
@@ -208,8 +193,51 @@ export const deleteObjects = async (
 
 const isS3Error = (error: unknown, name: string): boolean => error instanceof Error && error.name === name;
 
-export const listObjects = ({ bucketName, bucketRegion }: BucketLocation) =>
-	sendWithDeadline(getRegionalClient(bucketRegion), new ListObjectsCommand({ Bucket: bucketName }));
+export type ObjectListing = {
+	/** The objects listed, in the order S3 returned them. */
+	objects: _Object[];
+	/** `true` when the listing stopped at its time limit with keys left, so `objects` is only the first part. */
+	partial: boolean;
+};
+
+export type ListPagesOptions = {
+	/** Lists only keys that start with it; include the trailing slash so `japan` does not also match `japan-2025/`. */
+	prefix?: string;
+	/** Longest the whole listing may take, in milliseconds, before it stops early. Defaults to `REQUEST_TIMEOUT_MS`. */
+	timeLimitMs?: number;
+};
+
+/** Hands each ListObjectsV2 page's objects to `onPage`, each page under the request deadline. Stops once the listing as a whole passes `timeLimitMs`, resolving `partial: true`; a failed page throws. */
+export const listPages = async (
+	{ bucketName, bucketRegion }: BucketLocation,
+	onPage: (objects: _Object[]) => void,
+	{ prefix, timeLimitMs = REQUEST_TIMEOUT_MS }: ListPagesOptions = {},
+): Promise<{ partial: boolean }> => {
+	const client = getRegionalClient(bucketRegion);
+	const startedAt = Date.now();
+	let ContinuationToken: string | undefined;
+
+	do {
+		const page = await sendWithDeadline(
+			client,
+			new ListObjectsV2Command({ Bucket: bucketName, Prefix: prefix, ContinuationToken }),
+		);
+		onPage(page.Contents ?? []);
+		ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+
+		// The per-page deadline alone leaves a many-page listing unbounded, and its caller waits on the whole of it.
+		if (ContinuationToken && Date.now() - startedAt >= timeLimitMs) return { partial: true };
+	} while (ContinuationToken);
+
+	return { partial: false };
+};
+
+/** Every object in the bucket, or those listed before the overall limit with `partial: true`. */
+export const listObjects = async (location: BucketLocation): Promise<ObjectListing> => {
+	const objects: _Object[] = [];
+	const { partial } = await listPages(location, (page) => objects.push(...page));
+	return { objects, partial };
+};
 
 /** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
 export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {

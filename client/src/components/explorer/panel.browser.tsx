@@ -1,4 +1,4 @@
-import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
+import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideHourglass, LucideLoader2 } from "lucide-react";
 
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { useExplorer } from "@/lib/providers/explorer-provider";
@@ -7,7 +7,7 @@ import { useFileTree } from "@/lib/query";
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
 import { FileTree } from "./index";
-import { serverErrorMessage } from "./utils";
+import { formatCount, serverErrorMessage } from "./utils";
 
 const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 	<div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
@@ -24,7 +24,7 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 
 export const BrowserPanel = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
-	const { data: flatNodeList, isLoading, error } = useFileTree(bucketName, bucketRegion);
+	const { data, isLoading, error } = useFileTree(bucketName, bucketRegion);
 	const hasMounted = useHasMounted();
 
 	const shouldShowLoading = !hasMounted || isLoading;
@@ -43,8 +43,17 @@ export const BrowserPanel = () => {
 						title="Failed to load files"
 						message={serverErrorMessage(error, "Something went wrong. Try again shortly.")}
 					/>
-				) : flatNodeList?.length ? (
+				) : data?.tree.length ? (
 					<ScrollArea>
+						{data.partial && (
+							<StateMessage
+								size="inline"
+								tone="info"
+								icon={LucideHourglass}
+								title={`Showing the first ${formatCount(data.tree.length, "item", false)}`}
+								message="The listing took too long, so later folders and files are missing."
+							/>
+						)}
 						<ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
 							<FileTree />
 						</ul>

@@ -7,13 +7,13 @@ import { errorMessage } from "@/shared/utils/helpers";
 
 import { parseMigrateArgs } from "./migrate/args";
 import { countFailedMigrations, formatMigrateResult, formatMigrateTotals, migrateAndMap } from "./migrate/run";
-import { listObjects, scopeLabel } from "./shared/list-objects";
+import { listAllObjects, scopeLabel } from "./shared/list-objects";
 
 const main = async (): Promise<void> => {
 	const { location, folder, write, limit, map } = parseMigrateArgs(process.argv.slice(2));
 
 	const listStarted = performance.now();
-	const objects = await listObjects(location, folder);
+	const objects = await listAllObjects(location, folder);
 	const listSeconds = ((performance.now() - listStarted) / 1000).toFixed(1);
 
 	console.log(

@@ -281,6 +281,16 @@ describe("request deadline", () => {
 		await outcome;
 	});
 
+	it("fails listObjects with a reason that names the deadline when a later page never answers", async () => {
+		respondWithPages(() => new Promise(() => {}));
+
+		const outcome = expect(listObjects(LOCATION)).rejects.toThrow(
+			`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`,
+		);
+		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
+		await outcome;
+	});
+
 	it("fails storeOriginal when the listing after a refused copy never answers", async () => {
 		s3.respond = async (sent) => {
 			if (sent.command === "ListObjectsV2") return new Promise(() => {});

@@ -17,6 +17,13 @@ export type TreeNode = {
   presignedUrl?: string;
 };
 
+export type FileTreeResponse = {
+  /** Every folder and file listed in the bucket, flattened, parents before children. */
+  tree: TreeNode[];
+  /** `true` when the listing passed its time limit before S3 sent every key, so `tree` holds only the first part of the bucket. */
+  partial: boolean;
+};
+
 export type Bucket = {
   /** Name of the bucket; empty when S3 returned none. */
   Name: string;

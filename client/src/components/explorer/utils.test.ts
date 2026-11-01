@@ -55,6 +55,7 @@ describe("formatCount", () => {
 		[0, "0 files"],
 		[1, "1 file"],
 		[2, "2 files"],
+		[1848, "1,848 files"],
 	])("pluralises a complete count of %i", (count, expected) => {
 		expect(formatCount(count, "file", false)).toBe(expected);
 	});
@@ -65,7 +66,7 @@ describe("formatCount", () => {
 	});
 
 	it("leaves the noun off when none is given", () => {
-		expect(formatCount(5237, undefined, true)).toBe("at least 5237");
+		expect(formatCount(5237, undefined, true)).toBe("at least 5,237");
 	});
 
 	it("says unknown for a count that never ran, partial or not", () => {

@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 
 import { errorMessage } from "@/shared/utils/helpers";
+import type { FileTreeResponse } from "~/shared/types";
 
 import { constructFileTree } from "../services/file-tree";
 import { listObjects } from "../services/s3-operations";
@@ -14,9 +15,9 @@ export const getBucketHandler = async (ctx: Context) => {
 	}
 
 	try {
-		const listResponse = await listObjects({ bucketName, bucketRegion });
+		const { objects, partial } = await listObjects({ bucketName, bucketRegion });
 
-		return ctx.json({ tree: constructFileTree({ objects: listResponse.Contents ?? [] }) });
+		return ctx.json({ tree: constructFileTree({ objects }), partial } satisfies FileTreeResponse);
 	} catch (e) {
 		console.error(e);
 		return ctx.json({ error: errorMessage(e, "Failed to get bucket") }, 500);

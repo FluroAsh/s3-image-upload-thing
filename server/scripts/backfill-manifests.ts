@@ -5,13 +5,13 @@ import { errorMessage } from "@/shared/utils/helpers";
 import { parseBackfillArgs } from "./backfill/args";
 import { assertImageSets, buildBackfillReport, formatBackfillReport } from "./backfill/report";
 import { countFailed, formatSetResult, formatWriteTotals, writeManifests } from "./backfill/write";
-import { listObjects, scopeLabel } from "./shared/list-objects";
+import { listAllObjects, scopeLabel } from "./shared/list-objects";
 import { guardStall } from "./shared/stall-guard";
 
 const main = async (): Promise<void> => {
 	const { location, folder, write, force } = parseBackfillArgs(process.argv.slice(2));
 
-	const objects = await listObjects(location, folder);
+	const objects = await listAllObjects(location, folder);
 	const scope = scopeLabel(location.bucketName, folder);
 
 	const report = buildBackfillReport(objects);

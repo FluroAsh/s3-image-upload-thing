@@ -11,6 +11,7 @@ const TONES = {
 const SIZES = {
 	sm: { container: "p-12 h-full", circle: "size-12 mb-3", icon: "size-5" },
 	lg: { container: "p-8", circle: "size-16 mb-4", icon: "size-8" },
+	inline: { container: "p-4", circle: "size-10 mb-2", icon: "size-4" },
 } as const;
 
 type StateMessageProps = {
@@ -22,7 +23,7 @@ type StateMessageProps = {
 	message?: string;
 	/** Colours the circle and icon, and the message when `"error"`. Defaults to `"neutral"`. */
 	tone?: keyof typeof TONES;
-	/** `"sm"` fills a narrow column such as the bucket list; `"lg"` suits a wide panel. Defaults to `"lg"`. */
+	/** `"sm"` fills a narrow column such as the bucket list, `"lg"` a wide panel, and `"inline"` sits above content as a notice. Defaults to `"lg"`. */
 	size?: keyof typeof SIZES;
 	/** Makes the icon spin, for a state that is still working. */
 	spin?: boolean;
