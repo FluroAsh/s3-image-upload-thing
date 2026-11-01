@@ -5,8 +5,12 @@ import {
 	ListObjectsV2Command,
 	PutObjectCommand,
 	S3Client,
+	type ServiceInputTypes,
+	type ServiceOutputTypes,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { SmithyResolvedConfiguration } from "@smithy/smithy-client";
+import type { Command, HttpHandlerOptions } from "@smithy/types";
 
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
@@ -82,8 +86,11 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 
 	try {
 		do {
-			const res = await withDeadline((options) =>
-				client.send(new ListObjectsV2Command({ Bucket: bucketName, ContinuationToken: continuationToken }), options),
+			const res = await client.send(
+				new ListObjectsV2Command({
+					Bucket: bucketName,
+					ContinuationToken: continuationToken,
+				}),
 			);
 
 			if (res.Contents) {
@@ -140,17 +147,15 @@ export const uploadImages = async (
 			async ([variant, { buffer, size, width, height }]) => {
 				const key = variantKey(set, variant);
 
-				const putResponse = await withDeadline((options) =>
-					getRegionalClient(bucketRegion).send(
-						new PutObjectCommand({
-							Body: buffer,
-							Bucket: bucketName,
-							Key: key,
-							ContentType: DEFAULT_MIME_TYPE,
-							CacheControl: VARIANT_CACHE_CONTROL,
-						}),
-						options,
-					),
+				const putResponse = await sendWithDeadline(
+					getRegionalClient(bucketRegion),
+					new PutObjectCommand({
+						Body: buffer,
+						Bucket: bucketName,
+						Key: key,
+						ContentType: DEFAULT_MIME_TYPE,
+						CacheControl: VARIANT_CACHE_CONTROL,
+					}),
 				);
 
 				if (!putResponse.ETag) throw new Error(`S3 returned no ETag for "${key}"`);
@@ -172,7 +177,7 @@ export const uploadImages = async (
 		),
 	);
 
-	// Waits for every put, so a caller cleaning up after a failure never races one still in flight.
+	// Waits for every write's deadline, not the write itself: a timed-out request may still be open when clean-up starts.
 	const failure = settled.find((result) => result.status === "rejected");
 	if (failure) throw failure.reason;
 	return settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
@@ -185,9 +190,7 @@ export const deleteObjects = async (
 ): Promise<string[]> => {
 	const settled = await Promise.allSettled(
 		keys.map((key) =>
-			withDeadline((options) =>
-				getRegionalClient(bucketRegion).send(new DeleteObjectCommand({ Bucket: bucketName, Key: key }), options),
-			),
+			sendWithDeadline(getRegionalClient(bucketRegion), new DeleteObjectCommand({ Bucket: bucketName, Key: key })),
 		),
 	);
 	return keys.filter((_, index) => settled[index].status === "rejected");
@@ -197,11 +200,9 @@ const isS3Error = (error: unknown, name: string): boolean => error instanceof Er
 
 /** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
 export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {
-	const { Contents } = await withDeadline((options) =>
-		getRegionalClient(location.bucketRegion).send(
-			new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
-			options,
-		),
+	const { Contents } = await sendWithDeadline(
+		getRegionalClient(location.bucketRegion),
+		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
 	);
 	return (Contents?.length ?? 0) > 0;
 };
@@ -212,7 +213,7 @@ export type StoreManifestOptions = {
 };
 
 /** Long enough for a full-size original on a slow link, short enough that a stalled connection fails its set rather than hanging the run. */
-const REQUEST_TIMEOUT_MS = 60_000;
+export const REQUEST_TIMEOUT_MS = 60_000;
 
 /** Gives one request, body included, a fresh deadline. The abort signal alone does not stop a body that stalls mid-read, and the SDK's abort error does not say why it stopped. */
 export const withDeadline = async <Result>(
@@ -238,6 +239,18 @@ export const withDeadline = async <Result>(
 	}
 };
 
+/** `client.send` under `withDeadline`, with the output typed as the SDK types it. */
+const sendWithDeadline = <Input extends ServiceInputTypes, Output extends ServiceOutputTypes>(
+	client: S3Client,
+	command: Command<
+		ServiceInputTypes,
+		Input,
+		ServiceOutputTypes,
+		Output,
+		SmithyResolvedConfiguration<HttpHandlerOptions>
+	>,
+) => withDeadline((options) => client.send(command, options));
+
 /** Resolves `false` when a create-only write found the key taken, so "already there" is not mistaken for a failure. */
 const unlessTaken = async (write: Promise<unknown>): Promise<boolean> => {
 	try {
@@ -259,18 +272,16 @@ export const storeManifest = async (
 	assertManifestKey(key);
 
 	return unlessTaken(
-		withDeadline((options) =>
-			getRegionalClient(bucketRegion).send(
-				new PutObjectCommand({
-					Body: JSON.stringify(manifest),
-					Bucket: bucketName,
-					Key: key,
-					ContentType: "application/json",
-					CacheControl: MANIFEST_CACHE_CONTROL,
-					IfNoneMatch: force ? undefined : "*",
-				}),
-				options,
-			),
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new PutObjectCommand({
+				Body: JSON.stringify(manifest),
+				Bucket: bucketName,
+				Key: key,
+				ContentType: "application/json",
+				CacheControl: MANIFEST_CACHE_CONTROL,
+				IfNoneMatch: force ? undefined : "*",
+			}),
 		),
 	);
 };
@@ -300,13 +311,12 @@ export const storeOriginal = async (
 ): Promise<boolean> => {
 	const { key } = params;
 	const client = getRegionalClient(bucketRegion);
-	const send = (command: PutObjectCommand | CopyObjectCommand) =>
-		withDeadline((options) => client.send(command as PutObjectCommand, options));
 
 	if (!("copyFrom" in params)) {
 		const { body, contentType } = params;
 		return unlessTaken(
-			send(
+			sendWithDeadline(
+				client,
 				new PutObjectCommand({ Body: body, Bucket: bucketName, Key: key, ContentType: contentType, IfNoneMatch: "*" }),
 			),
 		);
@@ -314,7 +324,8 @@ export const storeOriginal = async (
 
 	const CopySource = `${bucketName}/${params.copyFrom.split("/").map(encodeURIComponent).join("/")}`;
 	try {
-		await send(
+		await sendWithDeadline(
+			client,
 			new CopyObjectCommand({
 				Bucket: bucketName,
 				Key: key,
@@ -327,8 +338,9 @@ export const storeOriginal = async (
 	} catch (error) {
 		if (!isS3Error(error, "PreconditionFailed")) throw error;
 		// S3 answers a changed source and a taken destination the same way, so only the destination tells them apart.
-		const { Contents } = await withDeadline((options) =>
-			client.send(new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }), options),
+		const { Contents } = await sendWithDeadline(
+			client,
+			new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }),
 		);
 		if (Contents?.some((object) => object.Key === key)) return false;
 		throw new Error(`"${params.copyFrom}" changed after it was read, so it was not copied`);

@@ -27,7 +27,7 @@ type FakeBucketOptions = {
 
 /** A bucket that remembers what was stored: create-only puts fail on a taken key, and deletes remove. Listings only find keys already present when the upload begins, like S3's own check. */
 const fakeBucket = (options: FakeBucketOptions) => {
-	const { promise: stalled, resolve: onStall } = Promise.withResolvers<void>();
+	const { promise: stalled, resolve: markStalled } = Promise.withResolvers<void>();
 	const bucket = {
 		...options,
 		objects: new Set<string>(),
@@ -52,7 +52,7 @@ const fakeBucket = (options: FakeBucketOptions) => {
 		if (bucket.failOn?.(Key)) throw new Error("S3 is down");
 		if (bucket.stallOn?.(Key)) {
 			sendOptions?.abortSignal?.addEventListener("abort", () => bucket.objects.add(Key));
-			onStall();
+			markStalled();
 			return new Promise(() => {});
 		}
 		if (IfNoneMatch && bucket.objects.has(Key)) {
