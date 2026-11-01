@@ -89,6 +89,7 @@ export const BucketList = ({
 					formattedCreationDate={bucket.formattedCreationDate}
 					totalSizeHuman={bucket.totalSizeHuman}
 					objectCount={bucket.objectCount}
+					partial={bucket.partial}
 					handleClick={() => handleBucketClick(bucket.Name, bucket.BucketRegion)}
 				/>
 			))}

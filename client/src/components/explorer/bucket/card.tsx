@@ -1,14 +1,25 @@
 import { HardDrive, LucideDatabase, LucideFileText, LucideTimer } from "lucide-react";
 
-interface BucketCardProps {
+import { lowerBound } from "../utils";
+
+type BucketCardProps = {
+	/** Name of the bucket. */
 	name: string;
+	/** AWS region the bucket lives in. */
 	region: string;
+	/** Creation date for display. */
 	formattedCreationDate: string;
+	/** Total size of the bucket's objects for display, e.g. `"1.5 MB"`. */
 	totalSizeHuman: string;
+	/** Number of objects counted in the bucket. */
 	objectCount: number;
+	/** `true` when the count stopped early, so the size and count are lower bounds. */
+	partial: boolean;
+	/** Whether this bucket is the one being explored. */
 	isActive: boolean;
+	/** Selects this bucket. */
 	handleClick: () => void;
-}
+};
 
 export const BucketCard = ({
 	name,
@@ -16,6 +27,7 @@ export const BucketCard = ({
 	formattedCreationDate,
 	totalSizeHuman,
 	objectCount,
+	partial,
 	isActive,
 	handleClick,
 }: BucketCardProps) => (
@@ -53,12 +65,12 @@ export const BucketCard = ({
 				<div className="flex flex-col gap-2 mt-2 ml-5">
 					<span className="text-xs transition-colors flex items-center">
 						<HardDrive className="size-4 inline mr-1" />
-						{totalSizeHuman}
+						{lowerBound(totalSizeHuman, partial)}
 					</span>
 
 					<span className="text-xs transition-colors flex items-center">
 						<LucideFileText className="size-4 inline mr-1" />
-						{objectCount} files
+						{lowerBound(`${objectCount} files`, partial)}
 					</span>
 
 					<span className={`text-xs transition-colors flex items-center`}>

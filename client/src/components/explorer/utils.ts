@@ -24,3 +24,6 @@ export const pickPreviewVariant = (variants: TreeNode[]): TreeNode | undefined =
 		if (found) return found;
 	}
 };
+
+/** Marks a total from a listing that stopped early in words, so it does not read as the real figure. */
+export const lowerBound = (total: string, partial: boolean) => (partial ? `at least ${total}` : total);

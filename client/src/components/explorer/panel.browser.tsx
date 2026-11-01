@@ -1,4 +1,4 @@
-import { LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
+import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
 
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { useExplorer } from "@/lib/providers/explorer-provider";
@@ -20,7 +20,17 @@ const EmptyState = () => (
 			<LucideFolder className="size-8 text-slate-400" />
 		</div>
 		<h3 className="text-sm font-medium text-neutral-100 mb-2">No files found</h3>
-		<p className="text-xs text-slate-400 max-w-xs">This bucket appears to be empty or the files are still loading</p>
+		<p className="text-xs text-slate-400 max-w-xs">This bucket has no files yet</p>
+	</div>
+);
+
+const ErrorState = ({ message }: { message: string }) => (
+	<div className="flex flex-col items-center justify-center p-8 text-center">
+		<div className="size-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+			<LucideAlertTriangle className="size-8 stroke-red-500" />
+		</div>
+		<h3 className="text-sm font-medium text-neutral-100 mb-2">Failed to load files</h3>
+		<p className="text-xs text-red-500 max-w-xs">{message}</p>
 	</div>
 );
 
@@ -39,7 +49,7 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 
 export const BrowserPanel = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
-	const { data: flatNodeList, isLoading } = useFileTree(bucketName, bucketRegion);
+	const { data: flatNodeList, isLoading, error } = useFileTree(bucketName, bucketRegion);
 	const hasMounted = useHasMounted();
 
 	const shouldShowLoading = !hasMounted || isLoading;
@@ -51,7 +61,9 @@ export const BrowserPanel = () => {
 			<ScrollArea>
 				{shouldShowLoading ? (
 					<LoadingState />
-				) : flatNodeList ? (
+				) : error ? (
+					<ErrorState message={error.message} />
+				) : flatNodeList?.length ? (
 					<ScrollArea>
 						<ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
 							<FileTree />

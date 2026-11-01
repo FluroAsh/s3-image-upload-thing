@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
-import { PREVIEW_ORDER, pickPreviewVariant } from "./utils";
+import { lowerBound, PREVIEW_ORDER, pickPreviewVariant } from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -46,5 +46,15 @@ describe("pickPreviewVariant", () => {
 
 	it("returns nothing for a set with no known variant", () => {
 		expect(pick("notes.txt")).toBeUndefined();
+	});
+});
+
+describe("lowerBound", () => {
+	it("says a partial count is a lower bound", () => {
+		expect(lowerBound("1,234 files", true)).toBe("at least 1,234 files");
+	});
+
+	it("leaves a complete count as it is", () => {
+		expect(lowerBound("1,234 files", false)).toBe("1,234 files");
 	});
 });
