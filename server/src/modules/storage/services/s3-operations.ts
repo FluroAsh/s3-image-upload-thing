@@ -212,7 +212,7 @@ export const listPages = async (
 	{ bucketName, bucketRegion }: BucketLocation,
 	onPage: (objects: _Object[]) => void,
 	{ prefix, timeLimitMs = REQUEST_TIMEOUT_MS }: ListPagesOptions = {},
-): Promise<Pick<ObjectListing, "partial">> => {
+): Promise<{ partial: boolean }> => {
 	const client = getRegionalClient(bucketRegion);
 	const startedAt = Date.now();
 	let ContinuationToken: string | undefined;

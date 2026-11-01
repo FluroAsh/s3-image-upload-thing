@@ -6,7 +6,7 @@ import type { ListedObject } from "./listed";
 export const scopeLabel = (bucket: string, folder?: string): string =>
 	`${bucket}${folder ? ` (folder ${folder})` : ""}`;
 
-export const listObjects = async (location: BucketLocation, folder?: string): Promise<ListedObject[]> => {
+export const listAllObjects = async (location: BucketLocation, folder?: string): Promise<ListedObject[]> => {
 	const objects: ListedObject[] = [];
 
 	// No overall limit: a run must see every key, and a stalled page still fails on its own deadline.

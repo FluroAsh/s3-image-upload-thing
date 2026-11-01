@@ -47,8 +47,8 @@ export const BrowserPanel = () => {
 					<ScrollArea>
 						{data.partial && (
 							<StateMessage
-								size="sm"
-								className="h-auto p-4"
+								size="inline"
+								tone="info"
 								icon={LucideHourglass}
 								title={`Showing the first ${formatCount(data.tree.length, "item", false)}`}
 								message="The listing took too long, so later folders and files are missing."

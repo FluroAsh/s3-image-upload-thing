@@ -328,7 +328,7 @@ This is a personal project, but contributions are welcome! Feel free to:
 
 ### The explorer says "Showing the first N items"
 
-- The folder listing took longer than 60 seconds in total, so the tree holds only the keys listed by then; later folders and files are missing
+- The folder listing took longer than 60 seconds in total, so the tree shows only the items listed by then; later folders and files are missing
 - Each page of 1,000 keys answered in time, so the bucket is large or S3 is slow; reload the page to list again
 
 ### Docker container won't start

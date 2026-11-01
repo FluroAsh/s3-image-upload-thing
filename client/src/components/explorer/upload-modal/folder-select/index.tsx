@@ -61,7 +61,6 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 			presignedUrl: "",
 		};
 
-		// Optimistically add to the query cache until next refetch
 		qc.setQueryData<FileTreeResponse>(["fileTree", activeBucketName], (oldData) =>
 			oldData ? { ...oldData, tree: [...oldData.tree, newFolder] } : { tree: [newFolder], partial: false },
 		);

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { s3 } from "@/modules/storage/fake-s3";
 import { REQUEST_TIMEOUT_MS } from "@/modules/storage/services/s3-operations";
 
-import { listObjects } from "./list-objects";
+import { listAllObjects } from "./list-objects";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("@/modules/storage/fake-s3")).s3.sdk);
 
@@ -11,7 +11,7 @@ const location = { bucketName: "example-bucket", bucketRegion: "us-east-1" };
 
 afterEach(() => vi.useRealTimers());
 
-describe("listObjects", () => {
+describe("listAllObjects", () => {
 	it("lists every page under the folder, however long the pages take in total, since a run must see every key", async () => {
 		vi.useFakeTimers();
 		s3.sent.length = 0;
@@ -28,7 +28,7 @@ describe("listObjects", () => {
 				setTimeout(() => resolve(answer), REQUEST_TIMEOUT_MS * 0.6);
 			});
 
-		const listing = listObjects(location, "trip");
+		const listing = listAllObjects(location, "trip");
 		await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS * 2);
 
 		expect(await listing).toEqual([
@@ -42,6 +42,6 @@ describe("listObjects", () => {
 	it("fails an empty listing, which is far more often a wrong bucket, folder or region", async () => {
 		s3.respond = async () => ({});
 
-		await expect(listObjects(location, "trip")).rejects.toThrow("No keys found in example-bucket (folder trip)");
+		await expect(listAllObjects(location, "trip")).rejects.toThrow("No keys found in example-bucket (folder trip)");
 	});
 });

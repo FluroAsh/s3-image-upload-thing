@@ -30,9 +30,16 @@ const qualify = (text: string | undefined, partial: boolean) =>
 	text === undefined ? "unknown" : partial ? `at least ${text}` : text;
 
 /** A count with the right plural; `undefined` means it was never counted, and `partial` that it is a lower bound. */
+// A fixed locale, so the server render and the browser agree on the separator.
+const COUNT_FORMAT = new Intl.NumberFormat("en");
+
 export const formatCount = (count: number | undefined, noun: string | undefined, partial: boolean) =>
 	qualify(
-		count === undefined ? undefined : noun ? `${count} ${count === 1 ? noun : `${noun}s`}` : String(count),
+		count === undefined
+			? undefined
+			: noun
+				? `${COUNT_FORMAT.format(count)} ${count === 1 ? noun : `${noun}s`}`
+				: COUNT_FORMAT.format(count),
 		partial,
 	);
 
