@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { UPLOAD_FIELD } from "~/shared/constants/upload";
+
 import { runUploadPipeline } from "../services/upload-pipeline";
 import { uploadImagesHandler } from "./upload";
 
@@ -16,18 +18,18 @@ const post = (fields: Record<string, string | File | File[]>) => {
 };
 
 const validFields = {
-	bucketName: "b",
-	bucketRegion: "ap-southeast-2",
-	images: new File(["x"], "a.png"),
+	[UPLOAD_FIELD.BucketName]: "b",
+	[UPLOAD_FIELD.BucketRegion]: "ap-southeast-2",
+	[UPLOAD_FIELD.Images]: new File(["x"], "a.png"),
 };
 
 describe("uploadImagesHandler", () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	it.each([
-		["bucketName", "Bucket name is required"],
-		["bucketRegion", "Bucket region is required"],
-		["images", "No images provided"],
+		[UPLOAD_FIELD.BucketName, "Bucket name is required"],
+		[UPLOAD_FIELD.BucketRegion, "Bucket region is required"],
+		[UPLOAD_FIELD.Images, "No images provided"],
 	] as const)("rejects a request missing %s with a 400", async (missingField, message) => {
 		const app = new Hono().post("/upload", uploadImagesHandler);
 		const body = new FormData();
@@ -48,14 +50,14 @@ describe("uploadImagesHandler", () => {
 	])("cleans destination '%s' to '%s' before the pipeline sees it", async (destination, cleaned) => {
 		vi.mocked(runUploadPipeline).mockResolvedValue({ files: [] });
 
-		const res = await post({ ...validFields, destination });
+		const res = await post({ ...validFields, [UPLOAD_FIELD.Destination]: destination });
 
 		expect(res.status).toBe(200);
 		expect(runUploadPipeline).toHaveBeenCalledWith(expect.objectContaining({ destination: cleaned }));
 	});
 
 	it.each(["trip/../x", "./trip", "trip/."])("rejects destination %s with a 400", async (destination) => {
-		const res = await post({ ...validFields, destination });
+		const res = await post({ ...validFields, [UPLOAD_FIELD.Destination]: destination });
 
 		expect(res.status).toBe(400);
 		expect(runUploadPipeline).not.toHaveBeenCalled();

@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { LucidePlus, LucideUpload } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
 import { ImagePreview, PreviewGrid } from "./preview";
 
@@ -88,7 +89,7 @@ export const UploadImageGrid = ({
 			</PreviewGrid>
 
 			<input
-				name="images"
+				name={UPLOAD_FIELD.Images}
 				type="file"
 				accept="image/*"
 				className="hidden"

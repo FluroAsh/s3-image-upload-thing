@@ -1,6 +1,8 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
+import { UPLOAD_FIELD } from "~/shared/constants/upload";
+
 import { uploadSetIdentity } from "../services/manifest";
 import { runUploadPipeline } from "../services/upload-pipeline";
 
@@ -17,7 +19,10 @@ const normaliseDestination = (destination: string): string => {
 
 const parseUploadRequest = async (ctx: Context) => {
 	const body = await ctx.req.parseBody({ all: true });
-	const { bucketName, bucketRegion, images, destination: rawDestination = "" } = body;
+	const bucketName = body[UPLOAD_FIELD.BucketName];
+	const bucketRegion = body[UPLOAD_FIELD.BucketRegion];
+	const images = body[UPLOAD_FIELD.Images];
+	const rawDestination = body[UPLOAD_FIELD.Destination] ?? "";
 
 	if (!bucketName || typeof bucketName !== "string") throw badRequest("Bucket name is required");
 	if (!bucketRegion || typeof bucketRegion !== "string") throw badRequest("Bucket region is required");
