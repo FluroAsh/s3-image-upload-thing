@@ -73,6 +73,7 @@ const fakeS3 = () => {
 			CopyObjectCommand: commandClass("CopyObject"),
 			DeleteObjectCommand: commandClass("DeleteObject"),
 			GetObjectCommand: commandClass("GetObject"),
+			HeadObjectCommand: commandClass("HeadObject"),
 			ListBucketsCommand: commandClass("ListBuckets"),
 			ListObjectsV2Command: commandClass("ListObjectsV2"),
 			PutObjectCommand: commandClass("PutObject"),

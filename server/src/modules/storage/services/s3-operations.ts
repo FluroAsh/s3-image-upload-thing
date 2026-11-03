@@ -3,6 +3,7 @@ import {
 	CopyObjectCommand,
 	DeleteObjectCommand,
 	GetObjectCommand,
+	HeadObjectCommand,
 	ListBucketsCommand,
 	ListObjectsV2Command,
 	PutObjectCommand,
@@ -473,3 +474,14 @@ export const copyObject = (
 			}),
 		),
 	);
+
+/** Whether the key exists; any failure but a missing key propagates, so a refused read is never taken for "absent". */
+export const objectExists = async (key: string, { bucketName, bucketRegion }: BucketLocation): Promise<boolean> => {
+	try {
+		await sendWithDeadline(getRegionalClient(bucketRegion), new HeadObjectCommand({ Bucket: bucketName, Key: key }));
+		return true;
+	} catch (error) {
+		if (isS3Error(error, "NotFound")) return false;
+		throw error;
+	}
+};

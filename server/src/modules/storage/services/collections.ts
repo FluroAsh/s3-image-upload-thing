@@ -1,6 +1,7 @@
 import { COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
 
-import { type BucketLocation, copyObject, getObjectOrNull, putJson } from "./s3-operations";
+import { CDN_PREFIXES } from "./manifest";
+import { type BucketLocation, copyObject, defaultRegion, getObjectOrNull, putJson } from "./s3-operations";
 
 export const COLLECTIONS_KEY = "gallery/collections.json";
 const HISTORY_PREFIX = "gallery/history/collections-";
@@ -82,4 +83,17 @@ export const updateCollections = async (
 			return next;
 	}
 	throw new CollectionsConflictError(`"${COLLECTIONS_KEY}" kept changing; gave up after ${MAX_ATTEMPTS} attempts`);
+};
+
+export const collectionsLocation = (): BucketLocation => {
+	const bucketName = process.env.COLLECTIONS_BUCKET;
+	if (!bucketName) throw new Error("COLLECTIONS_BUCKET is not set");
+	return { bucketName, bucketRegion: defaultRegion };
+};
+
+/** A set under a CDN prefix lives in that prefix's bucket, keyed without the prefix; any other set lives in the collections bucket. */
+export const locateSet = (set: string): { location: BucketLocation; key: string } => {
+	const match = Object.entries(CDN_PREFIXES).find(([, prefix]) => prefix && set.startsWith(prefix));
+	if (!match) return { location: collectionsLocation(), key: set };
+	return { location: { bucketName: match[0], bucketRegion: defaultRegion }, key: set.slice(match[1].length) };
 };
