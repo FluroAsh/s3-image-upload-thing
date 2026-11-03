@@ -303,28 +303,42 @@ const unlessTaken = async (write: Promise<unknown>): Promise<boolean> => {
 	}
 };
 
+const copySource = (bucketName: string, key: string): string =>
+	`${bucketName}/${key.split("/").map(encodeURIComponent).join("/")}`;
+
+/** Create-only unless `ifMatch` names the ETag to replace or `force` skips the check; resolves `false` on a failed precondition. */
+export const putJson = (
+	key: string,
+	body: string,
+	cacheControl: string,
+	{ ifMatch, force }: { ifMatch?: string; force?: boolean },
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> =>
+	unlessTaken(
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new PutObjectCommand({
+				Body: body,
+				Bucket: bucketName,
+				Key: key,
+				ContentType: "application/json",
+				CacheControl: cacheControl,
+				IfMatch: ifMatch,
+				IfNoneMatch: force || ifMatch ? undefined : "*",
+			}),
+		),
+	);
+
 /** Resolves `false`, storing nothing, when a manifest exists and `force` is off. */
 export const storeManifest = async (
 	manifest: Manifest,
-	{ bucketName, bucketRegion }: BucketLocation,
+	location: BucketLocation,
 	{ force }: StoreManifestOptions = { force: false },
 ): Promise<boolean> => {
 	const key = manifestKey(manifest);
 	assertManifestKey(key);
 
-	return unlessTaken(
-		sendWithDeadline(
-			getRegionalClient(bucketRegion),
-			new PutObjectCommand({
-				Body: JSON.stringify(manifest),
-				Bucket: bucketName,
-				Key: key,
-				ContentType: "application/json",
-				CacheControl: MANIFEST_CACHE_CONTROL,
-				IfNoneMatch: force ? undefined : "*",
-			}),
-		),
-	);
+	return putJson(key, JSON.stringify(manifest), MANIFEST_CACHE_CONTROL, { force }, location);
 };
 
 export type StoreOriginalParams = {
@@ -363,7 +377,7 @@ export const storeOriginal = async (
 		);
 	}
 
-	const CopySource = `${bucketName}/${params.copyFrom.split("/").map(encodeURIComponent).join("/")}`;
+	const CopySource = copySource(bucketName, params.copyFrom);
 	try {
 		await sendWithDeadline(
 			client,
@@ -412,12 +426,13 @@ export const getObject = async (key: string, location: BucketLocation): Promise<
 /** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. Throws `NotAManifestError` for any other file at the key. */
 export const readManifest = async (set: NestedSetIdentity, location: BucketLocation): Promise<Manifest | null> => {
 	const key = manifestKey(set);
-	let stored: unknown;
+	const object = await getObjectOrNull(key, location);
+	if (!object) return null;
 
+	let stored: unknown;
 	try {
-		stored = JSON.parse((await readObject(key, location)).toString("utf8"));
+		stored = JSON.parse(object.body.toString("utf8"));
 	} catch (error) {
-		if (isS3Error(error, "NoSuchKey")) return null;
 		if (error instanceof SyntaxError) throw new NotAManifestError(key);
 		throw error;
 	}
@@ -425,3 +440,36 @@ export const readManifest = async (set: NestedSetIdentity, location: BucketLocat
 	if (!isManifest(stored)) throw new NotAManifestError(key);
 	return stored;
 };
+
+/** Like `getObject`, but `null` when the key does not exist. */
+export const getObjectOrNull = async (
+	key: string,
+	location: BucketLocation,
+): Promise<{ body: Buffer; etag: string } | null> => {
+	try {
+		return await getObject(key, location);
+	} catch (error) {
+		if (isS3Error(error, "NoSuchKey")) return null;
+		throw error;
+	}
+};
+
+/** Server-side copy that fails, resolving `false`, if the source's ETag is no longer `ifMatch`. */
+export const copyObject = (
+	fromKey: string,
+	toKey: string,
+	ifMatch: string,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> =>
+	unlessTaken(
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new CopyObjectCommand({
+				Bucket: bucketName,
+				Key: toKey,
+				CopySource: copySource(bucketName, fromKey),
+				CopySourceIfMatch: ifMatch,
+				IfNoneMatch: "*",
+			}),
+		),
+	);
