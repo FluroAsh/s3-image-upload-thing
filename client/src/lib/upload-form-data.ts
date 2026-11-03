@@ -1,3 +1,5 @@
+import { UPLOAD_FIELD } from "~/shared/constants/upload";
+
 type UploadFormDataInput = {
 	/** Name of the bucket the variants are written to. */
 	bucketName: string;
@@ -11,10 +13,10 @@ type UploadFormDataInput = {
 
 export const buildUploadFormData = ({ bucketName, bucketRegion, destination, images }: UploadFormDataInput) => {
 	const formData = new FormData();
-	formData.append("bucketName", bucketName);
-	formData.append("bucketRegion", bucketRegion);
-	formData.append("destination", destination);
-	for (const file of images) formData.append("images", file, file.name);
+	formData.append(UPLOAD_FIELD.BucketName, bucketName);
+	formData.append(UPLOAD_FIELD.BucketRegion, bucketRegion);
+	formData.append(UPLOAD_FIELD.Destination, destination);
+	for (const file of images) formData.append(UPLOAD_FIELD.Images, file, file.name);
 
 	return formData;
 };

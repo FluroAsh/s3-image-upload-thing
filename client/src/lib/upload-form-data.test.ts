@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { UPLOAD_FIELD } from "~/shared/constants/upload";
+
 import { buildUploadFormData } from "./upload-form-data";
 
 describe("buildUploadFormData", () => {
@@ -12,9 +14,9 @@ describe("buildUploadFormData", () => {
 			images: [file],
 		});
 
-		expect(formData.get("bucketName")).toBe("b");
-		expect(formData.get("bucketRegion")).toBe("ap-southeast-2");
-		expect(formData.get("destination")).toBe("dir/");
-		expect((formData.get("images") as File).name).toBe("a.png");
+		expect(formData.get(UPLOAD_FIELD.BucketName)).toBe("b");
+		expect(formData.get(UPLOAD_FIELD.BucketRegion)).toBe("ap-southeast-2");
+		expect(formData.get(UPLOAD_FIELD.Destination)).toBe("dir/");
+		expect((formData.get(UPLOAD_FIELD.Images) as File).name).toBe("a.png");
 	});
 });
