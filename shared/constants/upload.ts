@@ -5,4 +5,3 @@ export const UPLOAD_FIELD = {
 	Destination: "destination",
 	Images: "images",
 } as const;
-export type UploadField = (typeof UPLOAD_FIELD)[keyof typeof UPLOAD_FIELD];
