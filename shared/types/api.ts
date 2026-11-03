@@ -1,3 +1,4 @@
+import type { Collection, CollectionPhoto, CollectionsFile } from "./collections";
 import type { ImageVariant } from "./image";
 
 export type TreeNode = {
@@ -107,4 +108,34 @@ export type FileVariants = FileVariant[];
 export type UploadSuccess = {
   message: string;
   files: FileVariant[];
+};
+
+export type CollectionsResponse = CollectionsFile;
+
+export type CreateCollectionRequest = {
+  name: string;
+};
+
+export type CreateCollectionResponse = {
+  collection: Collection;
+};
+
+export type SetMembersRequest = {
+  /** CDN paths of the sets, each listed once; added to `collection` in this order. */
+  sets: string[];
+  /** Slug of the collection to add or move the sets to; `null` takes them out of their collection. */
+  collection: string | null;
+};
+
+export type SetMembersResponse = {
+  /** The whole document after the change. */
+  file: CollectionsFile;
+  /** Sets taken out of another collection, each with the slug it left. */
+  moved: { set: string; from: string }[];
+};
+
+export type UpdatePhotoRequest = Partial<Pick<CollectionPhoto, "alt" | "caption" | "tags">>;
+
+export type UpdatePhotoResponse = {
+  photo: CollectionPhoto;
 };

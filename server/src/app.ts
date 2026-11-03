@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
+import collections from "./modules/storage/collections-routes";
 import storage from "./modules/storage/routes";
 
 const port = process.env.PORT || 3002;
@@ -24,6 +25,7 @@ app.get("/health", (ctx) =>
 );
 
 app.route("/storage", storage);
+app.route("/collections", collections);
 
 // app.doc("/doc", {
 //   openapi: "3.0.0",
