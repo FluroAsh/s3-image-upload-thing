@@ -37,6 +37,7 @@ const MANIFEST = buildManifest({
 });
 
 const bodyOf = (content: string | Buffer) => ({
+	ETag: '"etag"',
 	Body: {
 		transformToString: async () => String(content),
 		transformToByteArray: async () => new Uint8Array(Buffer.from(content)),
