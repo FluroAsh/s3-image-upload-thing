@@ -425,3 +425,64 @@ export const readManifest = async (set: NestedSetIdentity, location: BucketLocat
 	if (!isManifest(stored)) throw new NotAManifestError(key);
 	return stored;
 };
+
+/** Like `getObject`, but `null` when the key does not exist. */
+export const getObjectOrNull = async (
+	key: string,
+	location: BucketLocation,
+): Promise<{ body: Buffer; etag: string } | null> => {
+	try {
+		return await getObject(key, location);
+	} catch (error) {
+		if (isS3Error(error, "NoSuchKey")) return null;
+		throw error;
+	}
+};
+
+/** Server-side copy that fails, resolving `false`, if the source's ETag is no longer `ifMatch`. */
+export const copyObject = (
+	fromKey: string,
+	toKey: string,
+	ifMatch: string,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> =>
+	unlessTaken(
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new CopyObjectCommand({
+				Bucket: bucketName,
+				Key: toKey,
+				CopySource: `${bucketName}/${fromKey.split("/").map(encodeURIComponent).join("/")}`,
+				CopySourceIfMatch: ifMatch,
+			}),
+		),
+	);
+
+/** Replaces the object only if its ETag is still `ifMatch` (`null`: only if absent); resolves the new ETag, or `null` on a lost race. */
+export const putJsonIfMatch = async (
+	key: string,
+	body: string,
+	ifMatch: string | null,
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<string | null> => {
+	let etag: string | undefined;
+	const written = await unlessTaken(
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new PutObjectCommand({
+				Body: body,
+				Bucket: bucketName,
+				Key: key,
+				ContentType: "application/json",
+				CacheControl: "no-cache",
+				IfMatch: ifMatch ?? undefined,
+				IfNoneMatch: ifMatch === null ? "*" : undefined,
+			}),
+		).then((response) => {
+			etag = response.ETag;
+		}),
+	);
+	if (!written) return null;
+	if (!etag) throw new Error(`S3 returned no ETag for "${key}"`);
+	return etag;
+};
