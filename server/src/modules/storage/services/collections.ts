@@ -1,6 +1,6 @@
-import type { Collection, CollectionsFile } from "~/shared/types";
+import { COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
 
-import { type BucketLocation, copyObject, getObjectOrNull, putJsonIfMatch } from "./s3-operations";
+import { type BucketLocation, copyObject, getObjectOrNull, putJson } from "./s3-operations";
 
 export const COLLECTIONS_KEY = "gallery/collections.json";
 const HISTORY_PREFIX = "gallery/history/collections-";
@@ -11,13 +11,11 @@ const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export class CollectionsValidationError extends Error {}
 export class CollectionsConflictError extends Error {}
 
-/** `{"bucket-name":"legacy/"}`; a bucket not listed serves from the CDN root. */
-const cdnPrefixes = (): Record<string, string> => JSON.parse(process.env.BUCKET_CDN_PREFIXES ?? "{}");
-
-/** Turns a set's bucket key into the CDN path collections record. */
-export const setCdnPath = (bucketName: string, key: string): string => `${cdnPrefixes()[bucketName] ?? ""}${key}`;
-
-const emptyFile = (): CollectionsFile => ({ schema: 1, updatedAt: new Date(0).toISOString(), collections: [] });
+const emptyFile = (): CollectionsFile => ({
+	schema: COLLECTIONS_SCHEMA,
+	updatedAt: new Date(0).toISOString(),
+	collections: [],
+});
 
 export const readCollections = async (
 	location: BucketLocation,
@@ -26,7 +24,8 @@ export const readCollections = async (
 	if (!stored) return { file: emptyFile(), etag: null };
 
 	const file = JSON.parse(stored.body.toString("utf8")) as CollectionsFile;
-	if (file.schema !== 1) throw new Error(`"${COLLECTIONS_KEY}" has unknown schema ${String(file.schema)}`);
+	if (file.schema !== COLLECTIONS_SCHEMA)
+		throw new Error(`"${COLLECTIONS_KEY}" has unknown schema ${String(file.schema)}`);
 	return { file, etag: stored.etag };
 };
 
@@ -69,13 +68,18 @@ export const updateCollections = async (
 ): Promise<CollectionsFile> => {
 	for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
 		const { file, etag } = await readCollections(location);
-		const next: CollectionsFile = { ...change(structuredClone(file)), schema: 1, updatedAt: new Date().toISOString() };
+		const next: CollectionsFile = {
+			...change(structuredClone(file)),
+			schema: COLLECTIONS_SCHEMA,
+			updatedAt: new Date().toISOString(),
+		};
 		validateCollections(next);
 
 		// Recorded even if the write then loses the race: an extra history copy is harmless, a missing one is not.
 		if (etag && !(await copyObject(COLLECTIONS_KEY, `${HISTORY_PREFIX}${next.updatedAt}.json`, etag, location)))
 			continue;
-		if ((await putJsonIfMatch(COLLECTIONS_KEY, JSON.stringify(next), etag, location)) !== null) return next;
+		if (await putJson(COLLECTIONS_KEY, JSON.stringify(next), "no-cache", { ifMatch: etag ?? undefined }, location))
+			return next;
 	}
 	throw new CollectionsConflictError(`"${COLLECTIONS_KEY}" kept changing; gave up after ${MAX_ATTEMPTS} attempts`);
 };

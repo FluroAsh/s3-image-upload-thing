@@ -8,7 +8,6 @@ import {
 	CollectionsConflictError,
 	CollectionsValidationError,
 	readCollections,
-	setCdnPath,
 	updateCollections,
 } from "./collections";
 
@@ -51,7 +50,6 @@ const add = (c: Collection) => (file: CollectionsFile) => ({ ...file, collection
 beforeEach(() => {
 	s3.sent.length = 0;
 	s3.respond = s3.defaultRespond;
-	delete process.env.BUCKET_CDN_PREFIXES;
 });
 
 describe("readCollections", () => {
@@ -81,7 +79,7 @@ describe("updateCollections", () => {
 		await updateCollections(add(collection("japan", ["a/b"])), LOCATION);
 
 		expect(commands()).toEqual(["GetObject", "CopyObject", "PutObject"]);
-		expect(s3.sent[1].input).toMatchObject({ CopySourceIfMatch: '"v1"' });
+		expect(s3.sent[1].input).toMatchObject({ CopySourceIfMatch: '"v1"', IfNoneMatch: "*" });
 		expect(String(s3.sent[1].input.Key)).toMatch(/^gallery\/history\/collections-.+\.json$/);
 		expect(s3.sent[2].input).toMatchObject({ IfMatch: '"v1"' });
 	});
@@ -130,13 +128,5 @@ describe("updateCollections", () => {
 		answer(null);
 		await updateCollections(add(collection("a", ["x/y"], { cover: "x/y" })), LOCATION);
 		expect(commands()).toContain("PutObject");
-	});
-});
-
-describe("setCdnPath", () => {
-	it("prefixes only buckets named in the setting", () => {
-		process.env.BUCKET_CDN_PREFIXES = JSON.stringify({ "legacy-bucket": "legacy/" });
-		expect(setCdnPath("legacy-bucket", "a/b")).toBe("legacy/a/b");
-		expect(setCdnPath("example-bucket", "a/b")).toBe("a/b");
 	});
 });

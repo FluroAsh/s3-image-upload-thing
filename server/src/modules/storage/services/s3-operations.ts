@@ -303,28 +303,42 @@ const unlessTaken = async (write: Promise<unknown>): Promise<boolean> => {
 	}
 };
 
+const copySource = (bucketName: string, key: string): string =>
+	`${bucketName}/${key.split("/").map(encodeURIComponent).join("/")}`;
+
+/** Create-only unless `ifMatch` names the ETag to replace or `force` skips the check; resolves `false` on a failed precondition. */
+export const putJson = (
+	key: string,
+	body: string,
+	cacheControl: string,
+	{ ifMatch, force }: { ifMatch?: string; force?: boolean },
+	{ bucketName, bucketRegion }: BucketLocation,
+): Promise<boolean> =>
+	unlessTaken(
+		sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new PutObjectCommand({
+				Body: body,
+				Bucket: bucketName,
+				Key: key,
+				ContentType: "application/json",
+				CacheControl: cacheControl,
+				IfMatch: ifMatch,
+				IfNoneMatch: force || ifMatch ? undefined : "*",
+			}),
+		),
+	);
+
 /** Resolves `false`, storing nothing, when a manifest exists and `force` is off. */
 export const storeManifest = async (
 	manifest: Manifest,
-	{ bucketName, bucketRegion }: BucketLocation,
+	location: BucketLocation,
 	{ force }: StoreManifestOptions = { force: false },
 ): Promise<boolean> => {
 	const key = manifestKey(manifest);
 	assertManifestKey(key);
 
-	return unlessTaken(
-		sendWithDeadline(
-			getRegionalClient(bucketRegion),
-			new PutObjectCommand({
-				Body: JSON.stringify(manifest),
-				Bucket: bucketName,
-				Key: key,
-				ContentType: "application/json",
-				CacheControl: MANIFEST_CACHE_CONTROL,
-				IfNoneMatch: force ? undefined : "*",
-			}),
-		),
-	);
+	return putJson(key, JSON.stringify(manifest), MANIFEST_CACHE_CONTROL, { force }, location);
 };
 
 export type StoreOriginalParams = {
@@ -363,7 +377,7 @@ export const storeOriginal = async (
 		);
 	}
 
-	const CopySource = `${bucketName}/${params.copyFrom.split("/").map(encodeURIComponent).join("/")}`;
+	const CopySource = copySource(bucketName, params.copyFrom);
 	try {
 		await sendWithDeadline(
 			client,
@@ -412,12 +426,13 @@ export const getObject = async (key: string, location: BucketLocation): Promise<
 /** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. Throws `NotAManifestError` for any other file at the key. */
 export const readManifest = async (set: NestedSetIdentity, location: BucketLocation): Promise<Manifest | null> => {
 	const key = manifestKey(set);
-	let stored: unknown;
+	const object = await getObjectOrNull(key, location);
+	if (!object) return null;
 
+	let stored: unknown;
 	try {
-		stored = JSON.parse((await readObject(key, location)).toString("utf8"));
+		stored = JSON.parse(object.body.toString("utf8"));
 	} catch (error) {
-		if (isS3Error(error, "NoSuchKey")) return null;
 		if (error instanceof SyntaxError) throw new NotAManifestError(key);
 		throw error;
 	}
@@ -452,37 +467,9 @@ export const copyObject = (
 			new CopyObjectCommand({
 				Bucket: bucketName,
 				Key: toKey,
-				CopySource: `${bucketName}/${fromKey.split("/").map(encodeURIComponent).join("/")}`,
+				CopySource: copySource(bucketName, fromKey),
 				CopySourceIfMatch: ifMatch,
+				IfNoneMatch: "*",
 			}),
 		),
 	);
-
-/** Replaces the object only if its ETag is still `ifMatch` (`null`: only if absent); resolves the new ETag, or `null` on a lost race. */
-export const putJsonIfMatch = async (
-	key: string,
-	body: string,
-	ifMatch: string | null,
-	{ bucketName, bucketRegion }: BucketLocation,
-): Promise<string | null> => {
-	let etag: string | undefined;
-	const written = await unlessTaken(
-		sendWithDeadline(
-			getRegionalClient(bucketRegion),
-			new PutObjectCommand({
-				Body: body,
-				Bucket: bucketName,
-				Key: key,
-				ContentType: "application/json",
-				CacheControl: "no-cache",
-				IfMatch: ifMatch ?? undefined,
-				IfNoneMatch: ifMatch === null ? "*" : undefined,
-			}),
-		).then((response) => {
-			etag = response.ETag;
-		}),
-	);
-	if (!written) return null;
-	if (!etag) throw new Error(`S3 returned no ETag for "${key}"`);
-	return etag;
-};
