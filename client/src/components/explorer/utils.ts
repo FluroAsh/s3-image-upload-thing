@@ -53,6 +53,9 @@ export const formatSize = (size: string | undefined, partial: boolean) => qualif
 export const serverErrorMessage = (error: ApiError, fallback = "Something went wrong. Try again shortly.") =>
 	error.data?.error ?? fallback;
 
+export const PRIMARY_BUTTON_CLASS =
+	"bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-neutral-100 text-sm font-medium rounded-lg";
+
 export const FIELD_CLASS = "w-full rounded-lg bg-slate-700/60 border border-slate-600 p-2 text-sm text-neutral-100";
 
 /** The CDN path collections record for a set: the bucket's CDN prefix plus the set's folder (a tree `parentId`, which ends in a slash). */

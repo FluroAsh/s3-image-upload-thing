@@ -3,7 +3,7 @@ import sharp from "sharp";
 import type { OutputOptions } from "@/modules/storage/processors/tools/sharp";
 import type { ImageVariants, ProcessedImage, VariantOutput } from "@/shared/types/image";
 import { readableSize } from "@/shared/utils/helpers";
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
+import { planVariants, VARIANT_LONGEST_EDGE } from "~/shared/constants/image-variants";
 import type { ImageVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, VARIANT_SPEC } from "./config";
@@ -16,13 +16,9 @@ const getOutputOptions = (variant: ImageVariant): OutputOptions => ({
 	effort: VARIANT_SPEC[variant].effort,
 });
 
-/** `full` is the one size every set has, stored at the source's own size when that is below its bound; any other size is skipped rather than upscaled. */
-export const planVariants = (sourceLongestEdge: number): ImageVariant[] =>
-	IMAGE_VARIANTS.filter((variant) => variant === "full" || VARIANT_SPEC[variant].longestEdge <= sourceLongestEdge);
-
 /** Shared with the backfill, so a blur it makes for an old set matches one an upload would have stored. */
 export const encodeVariant = (variant: ImageVariant, source: Buffer) => {
-	const bound = VARIANT_SPEC[variant].longestEdge;
+	const bound = VARIANT_LONGEST_EDGE[variant];
 	let pipeline = sharp(source)
 		.rotate()
 		.resize({ width: bound, height: bound, fit: "inside", withoutEnlargement: true })

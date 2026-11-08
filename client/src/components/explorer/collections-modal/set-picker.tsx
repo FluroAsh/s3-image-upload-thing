@@ -2,6 +2,7 @@ import { LucideDatabase, LucideFolderClosed, LucideImages } from "lucide-react";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import { holdingSet } from "~/shared/collections";
 import type { TreeNode } from "~/shared/types";
 
@@ -9,7 +10,14 @@ import { PartialNotice } from "../partial-notice";
 import { getDepthPadding, isSetFolder, setsUnder, toggleSets } from "../utils";
 import { useBucketSets } from "./use-bucket-sets";
 
-type PickerProps = { picked: ReadonlySet<string>; onChange: (picked: Set<string>) => void };
+const NONE: ReadonlySet<string> = new Set();
+
+/** `locked` sets are already in the collection: shown ticked and faded, and never toggled. */
+type PickerProps = {
+	picked: ReadonlySet<string>;
+	onChange: (picked: Set<string>) => void;
+	locked?: ReadonlySet<string>;
+};
 
 const Row = ({
 	label,
@@ -18,22 +26,28 @@ const Row = ({
 	depth,
 	picked,
 	onChange,
+	locked = NONE,
 	note,
 }: PickerProps & { label: string; icon: typeof LucideImages; group: string[]; depth: number; note?: string }) => {
-	const ticked = group.filter((set) => picked.has(set)).length;
+	const free = group.filter((set) => !locked.has(set));
+	const ticked = group.filter((set) => picked.has(set) || locked.has(set)).length;
 
 	return (
 		<label
-			className="flex items-center gap-2 rounded-md py-1 pr-2 text-sm text-neutral-100 hover:bg-slate-800"
+			className={cn(
+				"flex items-center gap-2 rounded-md py-1 pr-2 text-sm text-neutral-100",
+				free.length ? "hover:bg-slate-800" : "cursor-not-allowed opacity-50",
+			)}
 			style={{ paddingLeft: getDepthPadding(depth) }}
 		>
 			<input
 				type="checkbox"
 				checked={ticked === group.length}
+				disabled={!free.length}
 				ref={(el) => {
 					if (el) el.indeterminate = ticked > 0 && ticked < group.length;
 				}}
-				onChange={() => onChange(toggleSets(picked, group))}
+				onChange={() => onChange(toggleSets(picked, free))}
 			/>
 			<Icon className="size-4 shrink-0 text-sky-400" />
 			<span className="truncate">{label}</span>

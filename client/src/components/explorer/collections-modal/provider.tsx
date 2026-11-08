@@ -1,6 +1,5 @@
 import { createContext, type Dispatch, type SetStateAction, useContext, useState } from "react";
 
-// The detail screen (#59) opens a collection by its slug.
 export type CollectionsScreen = { screen: "list" } | { screen: "create" } | { screen: "detail"; slug: string };
 
 const LIST: CollectionsScreen = { screen: "list" };

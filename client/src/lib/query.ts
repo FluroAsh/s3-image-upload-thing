@@ -10,11 +10,20 @@ import {
 	patchCollection,
 	patchPhoto,
 	postCollection,
+	putCollectionOrder,
 	putSetMembers,
 } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
+import { getManifest } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type { BucketsResponse, CollectionsFile, FileTreeResponse, TreeNode, UpdatePhotoRequest } from "~/shared/types";
+import type {
+	BucketsResponse,
+	CollectionsFile,
+	FileTreeResponse,
+	Manifest,
+	TreeNode,
+	UpdatePhotoRequest,
+} from "~/shared/types";
 
 export const useBuckets = () =>
 	useQuery<BucketsResponse, ApiError>({
@@ -63,6 +72,9 @@ export const useMutateUpload = (bucketName: string) => {
 export const useCollections = () =>
 	useQuery<CollectionsFile, ApiError>({ queryKey: ["collections"], queryFn: getCollections, retry: false });
 
+export const useManifest = (set: string) =>
+	useQuery<Manifest, ApiError>({ queryKey: ["manifest", set], queryFn: () => getManifest(set), retry: false });
+
 /** Refetches collections after a write, so every reader shows what the server saved. */
 const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) => Promise<Response>) => {
 	const qc = useQueryClient();
@@ -75,7 +87,9 @@ const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) 
 
 export const useCreateCollection = () => useCollectionsWrite(postCollection);
 
-export const useRenameCollection = () => useCollectionsWrite(patchCollection);
+export const useUpdateCollection = () => useCollectionsWrite(patchCollection);
+
+export const useReorderCollection = () => useCollectionsWrite(putCollectionOrder);
 
 export const useDeleteCollection = () => useCollectionsWrite(deleteCollection);
 

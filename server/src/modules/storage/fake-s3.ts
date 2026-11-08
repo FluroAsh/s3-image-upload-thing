@@ -90,3 +90,9 @@ const fakeS3 = () => {
 
 /** Stands in for `@aws-sdk/client-s3`: pass `sdk` to `vi.mock`, read what was `sent`, and replace `respond` to script S3's answers. */
 export const s3 = fakeS3();
+
+/** The `Body` S3 returns for an object holding `value` as JSON. */
+export const jsonBody = (value: unknown) => ({
+	transformToString: async () => "",
+	transformToByteArray: async () => new Uint8Array(Buffer.from(JSON.stringify(value))),
+});

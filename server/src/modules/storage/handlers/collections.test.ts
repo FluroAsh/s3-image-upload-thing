@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Collection, CollectionsFile } from "~/shared/types";
 
-import { s3 } from "../fake-s3";
+import { jsonBody, s3 } from "../fake-s3";
 import storage from "../routes";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
@@ -42,13 +42,7 @@ beforeEach(() => {
 	manifests = new Set();
 	s3.respond = async ({ command, input }) => {
 		if (command === "GetObject") {
-			return {
-				ETag: '"v1"',
-				Body: {
-					transformToString: async () => "",
-					transformToByteArray: async () => new Uint8Array(Buffer.from(JSON.stringify(current))),
-				},
-			};
+			return { ETag: '"v1"', Body: jsonBody(current) };
 		}
 		if (command === "HeadObject") {
 			if (manifests.has(`${input.Bucket}/${input.Key}`)) return {};
