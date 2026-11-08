@@ -24,7 +24,7 @@ export const AddSets = ({ collection, onDone }: { collection: Collection; onDone
 
 	return (
 		<div className="space-y-3">
-			<SetPicker picked={picked} onChange={setPicked} />
+			<SetPicker picked={picked} onChange={setPicked} locked={new Set(collection.photos.map((photo) => photo.set))} />
 			{add.error && <p className="text-sm text-red-500">{serverErrorMessage(add.error, "Could not add.")}</p>}
 			<div className="flex gap-2">
 				<button
