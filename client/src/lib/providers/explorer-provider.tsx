@@ -11,6 +11,8 @@ type ReducerState = {
 		remoteURL: string;
 		fileName: string;
 		variants?: TreeNode[];
+		/** CDN path of the image set, which collections key on; unset for a single file. */
+		setPath?: string;
 	};
 };
 
@@ -26,7 +28,7 @@ export type Action =
 	  }
 	| {
 			type: "SET_ACTIVE_FILE";
-			payload: { remoteURL: string; fileName: string; variants?: TreeNode[] };
+			payload: { remoteURL: string; fileName: string; variants?: TreeNode[]; setPath?: string };
 	  };
 
 const initialState: ReducerState = {
@@ -55,10 +57,12 @@ export type Actions = {
 		remoteURL,
 		fileName,
 		variants,
+		setPath,
 	}: {
 		remoteURL: string;
 		fileName: string;
 		variants?: TreeNode[];
+		setPath?: string;
 	}) => void;
 	resetActiveState: () => void;
 };
@@ -75,10 +79,10 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 				type: "SET_BUCKET_SEARCH_TERM",
 				payload: searchTerm,
 			}),
-		setActiveFile: ({ remoteURL, fileName, variants }) =>
+		setActiveFile: ({ remoteURL, fileName, variants, setPath }) =>
 			dispatch({
 				type: "SET_ACTIVE_FILE",
-				payload: { remoteURL, fileName, variants: variants ? variants : [] },
+				payload: { remoteURL, fileName, variants: variants ? variants : [], setPath },
 			}),
 		resetActiveState: () =>
 			dispatch({

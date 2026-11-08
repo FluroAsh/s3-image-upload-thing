@@ -33,7 +33,7 @@ describe("getBucketHandler", () => {
 		const res = await get();
 
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ tree: [], partial: false });
+		expect(await res.json()).toEqual({ tree: [], partial: false, cdnPrefix: "" });
 	});
 
 	it("lists every key of a folder with more than one page of keys", async () => {

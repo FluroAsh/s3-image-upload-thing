@@ -1,6 +1,6 @@
 import type { ApiError } from "@/lib/ofetch";
 import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
-import type { ImageVariant, TreeNode } from "~/shared/types";
+import type { CollectionsFile, ImageVariant, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 24;
 const DEPTH_BASE_OFFSET_PX = 8;
@@ -48,3 +48,14 @@ export const formatSize = (size: string | undefined, partial: boolean) => qualif
 
 /** The server's own `{ error }` text, which says what went wrong, over ofetch's message, which only names the request. */
 export const serverErrorMessage = (error: ApiError, fallback: string) => error.data?.error ?? fallback;
+
+/** The CDN path collections record for a set: the bucket's CDN prefix plus the set's folder (a tree `parentId`, which ends in a slash). */
+export const setPathOf = (cdnPrefix: string, folderId: string) => `${cdnPrefix}${folderId.replace(/\/$/, "")}`;
+
+/** The collection holding a set, with the set's photo record. */
+export const findPhoto = (file: CollectionsFile | undefined, set: string) => {
+	for (const collection of file?.collections ?? []) {
+		const photo = collection.photos.find((candidate) => candidate.set === set);
+		if (photo) return { collection, photo };
+	}
+};

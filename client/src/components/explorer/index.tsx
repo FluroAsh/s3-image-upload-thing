@@ -12,7 +12,7 @@ import type { TreeNode } from "~/shared/types";
 
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename, getDepthPadding, pickPreviewVariant } from "./utils";
+import { extractFilename, getDepthPadding, pickPreviewVariant, setPathOf } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -116,6 +116,8 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 		bucketRegion,
 	);
 
+	const { data: tree } = useFileTree(bucketName, bucketRegion);
+
 	const previewVariant = pickPreviewVariant(variants);
 	const remoteURL = (previewVariant && presignedUrls[previewVariant.id]) ?? "";
 
@@ -134,6 +136,7 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 				setActiveFile({
 					remoteURL,
 					fileName: node.name,
+					setPath: setPathOf(tree?.cdnPrefix ?? "", node.id),
 					variants: variants.map((variant) => ({
 						...variant,
 						presignedUrl: presignedUrls[variant.id],

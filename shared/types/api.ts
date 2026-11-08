@@ -23,6 +23,8 @@ export type FileTreeResponse = {
   tree: TreeNode[];
   /** `true` when the listing passed its time limit before S3 sent every key, so `tree` holds only the first part of the bucket. */
   partial: boolean;
+  /** Path the CDN serves this bucket under, `""` for the CDN root; a set's CDN path is this plus its folder. */
+  cdnPrefix: string;
 };
 
 export type Bucket = {
