@@ -22,6 +22,7 @@ import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
+import { SetInfo } from "./set-info";
 import { useBucketSets } from "./use-bucket-sets";
 
 const PhotoTile = ({
@@ -144,6 +145,7 @@ const PhotoEditor = ({
 					message={serverErrorMessage(error)}
 				/>
 			)}
+			<SetInfo set={photo.set} />
 		</div>
 	);
 };
