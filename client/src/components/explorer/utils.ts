@@ -1,6 +1,6 @@
 import type { ApiError } from "@/lib/ofetch";
 import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
-import type { ImageVariant, TreeNode } from "~/shared/types";
+import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 24;
 const DEPTH_BASE_OFFSET_PX = 8;
@@ -51,3 +51,30 @@ export const serverErrorMessage = (error: ApiError, fallback: string) => error.d
 
 /** The CDN path collections record for a set: the bucket's CDN prefix plus the set's folder (a tree `parentId`, which ends in a slash). */
 export const setPathOf = (cdnPrefix: string, folderId: string) => `${cdnPrefix}${folderId.replace(/\/$/, "")}`;
+
+/** A folder is an image set when every child is a variant file named after it. */
+export const isSetFolder = (node: TreeNode, children: TreeNode[] = []) =>
+	node.isFolder && children.length > 0 && children.every((child) => extractFilename(child.name) === node.name);
+
+/** The set folders at or below `folderId` (`""` for the whole bucket), in tree order. */
+export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: string): TreeNode[] =>
+	(childMap.get(folderId) ?? []).flatMap((node) => {
+		if (!node.isFolder) return [];
+		return isSetFolder(node, childMap.get(node.id)) ? [node] : setFoldersUnder(childMap, node.id);
+	});
+
+/** Collections holding a set of this bucket. A set belongs to a bucket when its folder is in the bucket's listing: the client knows only this bucket's CDN prefix, which cannot tell an unprefixed bucket's sets from another's. */
+export const collectionsInBucket = (collections: Collection[], bucketSets: ReadonlyMap<string, TreeNode>) =>
+	collections.filter((collection) => collection.photos.some((photo) => bucketSets.has(photo.set)));
+
+/** Every folder above the given set folders, as ids ending in a slash, so "all sets in this folder" works at any level. */
+export const foldersAbove = (setFolderIds: string[]) => [
+	...new Set(
+		setFolderIds.flatMap((id) =>
+			id
+				.split("/")
+				.slice(0, -2)
+				.map((_, i, parents) => `${parents.slice(0, i + 1).join("/")}/`),
+		),
+	),
+];

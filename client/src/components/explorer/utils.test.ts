@@ -4,7 +4,17 @@ import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
-import { formatCount, formatSize, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage, setPathOf } from "./utils";
+import {
+	collectionsInBucket,
+	foldersAbove,
+	formatCount,
+	formatSize,
+	PREVIEW_ORDER,
+	pickPreviewVariant,
+	serverErrorMessage,
+	setFoldersUnder,
+	setPathOf,
+} from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -108,5 +118,50 @@ describe("setPathOf", () => {
 	it("joins the CDN prefix to the set folder without its trailing slash", () => {
 		expect(setPathOf("legacy/", "trip/kyoto/")).toBe("legacy/trip/kyoto");
 		expect(setPathOf("", "kyoto/")).toBe("kyoto");
+	});
+});
+
+const dir = (id: string, depth: number): TreeNode => ({
+	id,
+	parentId: id.replace(/[^/]+\/$/, ""),
+	name: id.split("/").at(-2) ?? "",
+	depth,
+	isFolder: true,
+	childCount: 1,
+});
+const file = (parent: string, name: string): TreeNode => ({ ...node(name), id: `${parent}${name}`, parentId: parent });
+
+const tree = [
+	dir("trip/", 0),
+	dir("trip/kyoto/", 1),
+	file("trip/kyoto/", "large_kyoto.webp"),
+	dir("trip/osaka/", 1),
+	file("trip/osaka/", "large_osaka.webp"),
+	dir("misc/", 0),
+	file("misc/", "notes.txt"),
+];
+const childMap = new Map<string, TreeNode[]>();
+for (const n of tree) childMap.set(n.parentId, [...(childMap.get(n.parentId) ?? []), n]);
+
+describe("setFoldersUnder", () => {
+	it("finds set folders at any depth and skips plain folders", () => {
+		expect(setFoldersUnder(childMap, "").map((f) => f.id)).toEqual(["trip/kyoto/", "trip/osaka/"]);
+		expect(setFoldersUnder(childMap, "trip/kyoto/").map((f) => f.id)).toEqual([]);
+	});
+});
+
+describe("foldersAbove", () => {
+	it("lists each ancestor folder once", () => {
+		expect(foldersAbove(["trip/kyoto/", "trip/osaka/", "a/b/c/"])).toEqual(["trip/", "a/", "a/b/"]);
+	});
+});
+
+describe("collectionsInBucket", () => {
+	it("keeps collections holding at least one set of the bucket", () => {
+		const photo = (set: string) => ({ set, alt: null, caption: null, tags: [] });
+		const mixed = { slug: "mixed", name: "Mixed", photos: [photo("other/x"), photo("trip/kyoto")] };
+		const away = { slug: "away", name: "Away", photos: [photo("other/x")] };
+		const bucketSets = new Map([["trip/kyoto", tree[1]]]);
+		expect(collectionsInBucket([mixed, away], bucketSets)).toEqual([mixed]);
 	});
 });
