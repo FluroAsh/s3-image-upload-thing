@@ -4,13 +4,11 @@ import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } fr
 import { holdingSet, setsToMove } from "~/shared/collections";
 
 import { StateMessage } from "../ui/state-message";
-import { serverErrorMessage } from "./utils";
+import { FIELD_CLASS, serverErrorMessage } from "./utils";
 
 const NONE = "";
 // A real slug can't hold underscores, so this never collides with one.
 const NEW = "__new__";
-
-const FIELD_CLASS = "w-full rounded-lg bg-slate-700/60 border border-slate-600 p-2 text-sm text-neutral-100";
 
 export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const { data, isLoading, error } = useCollections();
@@ -53,7 +51,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 					tone="error"
 					icon={LucideAlertTriangle}
 					title="Failed to load collections"
-					message={serverErrorMessage(error, "Something went wrong. Try again shortly.")}
+					message={serverErrorMessage(error)}
 				/>
 			) : (
 				<div className="space-y-3">
@@ -93,7 +91,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 							tone="error"
 							icon={LucideAlertTriangle}
 							title="Could not save"
-							message={serverErrorMessage(writeError, "Something went wrong. Try again shortly.")}
+							message={serverErrorMessage(writeError)}
 						/>
 					)}
 				</div>

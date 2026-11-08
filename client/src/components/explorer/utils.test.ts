@@ -6,7 +6,6 @@ import type { TreeNode } from "~/shared/types";
 
 import {
 	collectionsInBucket,
-	foldersAbove,
 	formatCount,
 	formatSize,
 	PREVIEW_ORDER,
@@ -14,6 +13,8 @@ import {
 	serverErrorMessage,
 	setFoldersUnder,
 	setPathOf,
+	setsUnder,
+	toggleSets,
 } from "./utils";
 
 const node = (name: string): TreeNode => ({
@@ -150,9 +151,27 @@ describe("setFoldersUnder", () => {
 	});
 });
 
-describe("foldersAbove", () => {
-	it("lists each ancestor folder once", () => {
-		expect(foldersAbove(["trip/kyoto/", "trip/osaka/", "a/b/c/"])).toEqual(["trip/", "a/", "a/b/"]);
+describe("set picker selection", () => {
+	const folder = (id: string): TreeNode => ({ ...node("x"), id, isFolder: true });
+	const sets = new Map([
+		["cdn/trip/kyoto", folder("trip/kyoto/")],
+		["cdn/trip/osaka", folder("trip/osaka/")],
+		["cdn/solo", folder("solo/")],
+	]);
+
+	it("takes every set under a folder", () => {
+		expect(setsUnder(sets, "trip/")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
+	});
+
+	it("takes every set for the bucket root", () => {
+		expect(setsUnder(sets, "")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka", "cdn/solo"]);
+	});
+
+	it("ticks a partly ticked group, then clears it once whole", () => {
+		const group = setsUnder(sets, "trip/");
+		const whole = toggleSets(new Set(["cdn/trip/kyoto"]), group);
+		expect([...whole]).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
+		expect(toggleSets(whole, group).size).toBe(0);
 	});
 });
 

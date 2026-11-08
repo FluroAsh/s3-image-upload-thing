@@ -1,4 +1,4 @@
-import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideHourglass, LucideLoader2 } from "lucide-react";
+import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
 
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { useExplorer } from "@/lib/providers/explorer-provider";
@@ -7,7 +7,8 @@ import { useFileTree } from "@/lib/query";
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
 import { FileTree } from "./index";
-import { formatCount, serverErrorMessage } from "./utils";
+import { PartialNotice } from "./partial-notice";
+import { serverErrorMessage } from "./utils";
 
 const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 	<div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
@@ -41,19 +42,11 @@ export const BrowserPanel = () => {
 						tone="error"
 						icon={LucideAlertTriangle}
 						title="Failed to load files"
-						message={serverErrorMessage(error, "Something went wrong. Try again shortly.")}
+						message={serverErrorMessage(error)}
 					/>
 				) : data?.tree.length ? (
 					<ScrollArea>
-						{data.partial && (
-							<StateMessage
-								size="inline"
-								tone="info"
-								icon={LucideHourglass}
-								title={`Showing the first ${formatCount(data.tree.length, "item", false)}`}
-								message="The listing took too long, so later folders and files are missing."
-							/>
-						)}
+						{data.partial && <PartialNotice count={data.tree.length} />}
 						<ul key={`file-tree-${bucketName}`} className="space-y-1 p-2">
 							<FileTree />
 						</ul>

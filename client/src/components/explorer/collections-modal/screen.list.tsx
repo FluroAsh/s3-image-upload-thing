@@ -1,32 +1,30 @@
 import {
 	LucideAlertTriangle,
-	LucideArrowLeft,
 	LucideFolderHeart,
 	LucideLoader2,
 	LucidePencil,
+	LucidePlus,
 	LucideTrash2,
 } from "lucide-react";
-import { useQueryState } from "nuqs";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections, useDeleteCollection, useFileTree, usePresignedUrls, useRenameCollection } from "@/lib/query";
-import { dashboardSearchParams } from "@/lib/search-params";
-import type { Collection, TreeNode } from "~/shared/types";
+import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
 
-import { ScrollArea } from "../ui/scroll-area";
-import { StateMessage } from "../ui/state-message";
-import { CreateCollection } from "./panel.collections.create";
+import { StateMessage } from "../../ui/state-message";
+import { PartialNotice } from "../partial-notice";
+import { collectionsInBucket, formatCount, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage } from "../utils";
+import { useCollectionsModal } from "./provider";
 import { useBucketSets } from "./use-bucket-sets";
-import { collectionsInBucket, formatCount, pickPreviewVariant, serverErrorMessage } from "./utils";
 
-const FALLBACK = "Something went wrong. Try again shortly.";
+const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
 const CollectionThumb = ({ folder }: { folder: TreeNode | undefined }) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { childMap } = useFileTree(bucketName, bucketRegion);
 
 	const variants = childMap.get(folder?.id ?? "") ?? [];
-	const variant = variants.find((v) => v.name.startsWith("thumbnail_")) ?? pickPreviewVariant(variants);
+	const variant = pickPreviewVariant(variants, THUMBNAIL_FIRST);
 	const { data } = usePresignedUrls(variant ? [variant.id] : [], bucketName, bucketRegion);
 	const url = variant && data?.[variant.id];
 
@@ -65,7 +63,7 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 				<p className="truncate text-xs text-slate-400">
 					{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
 				</p>
-				{error && <p className="text-xs text-red-500">{serverErrorMessage(error, FALLBACK)}</p>}
+				{error && <p className="text-xs text-red-500">{serverErrorMessage(error)}</p>}
 			</div>
 			<button
 				type="button"
@@ -89,9 +87,8 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	);
 };
 
-export const CollectionsView = () => {
-	const { bucketName } = useExplorer().state;
-	const [, setShowCollections] = useQueryState("collections", dashboardSearchParams.collections);
+export const ListScreen = () => {
+	const { setScreen } = useCollectionsModal();
 	const tree = useBucketSets();
 	const collections = useCollections();
 
@@ -100,21 +97,22 @@ export const CollectionsView = () => {
 	const listed = collectionsInBucket(collections.data?.collections ?? [], tree.sets);
 
 	return (
-		<section className="flex flex-1 flex-col bg-slate-900" aria-label="Collections">
-			<div className="flex items-center gap-3 border-b border-slate-700 bg-slate-800 p-4">
+		<section className="space-y-3" aria-label="Collections">
+			<div className="flex justify-end">
 				<button
 					type="button"
-					onClick={() => setShowCollections(false)}
-					className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-neutral-100"
+					disabled={loading || !!error}
+					onClick={() => setScreen({ screen: "create" })}
+					className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-neutral-100 font-medium text-sm rounded-lg"
 				>
-					<LucideArrowLeft className="size-4" />
-					Back to files
+					<LucidePlus className="size-4" />
+					New collection
 				</button>
-				<h2 className="text-sm font-semibold text-neutral-100">Collections in {bucketName}</h2>
-				<div className="ml-auto">{!loading && !error && <CreateCollection />}</div>
 			</div>
 
-			<ScrollArea>
+			{tree.data?.partial && <PartialNotice count={tree.data.tree.length} />}
+
+			<div className="max-h-[440px] overflow-y-auto">
 				{loading ? (
 					<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collections..." />
 				) : error ? (
@@ -122,10 +120,10 @@ export const CollectionsView = () => {
 						tone="error"
 						icon={LucideAlertTriangle}
 						title="Failed to load collections"
-						message={serverErrorMessage(error, FALLBACK)}
+						message={serverErrorMessage(error)}
 					/>
 				) : listed.length ? (
-					<ul className="space-y-2 p-4">
+					<ul className="space-y-2">
 						{listed.map((collection) => (
 							<CollectionCard key={collection.slug} collection={collection} sets={tree.sets} />
 						))}
@@ -137,7 +135,7 @@ export const CollectionsView = () => {
 						message="None of this bucket's sets are in a collection yet"
 					/>
 				)}
-			</ScrollArea>
+			</div>
 		</section>
 	);
 };

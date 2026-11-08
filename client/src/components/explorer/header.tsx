@@ -1,30 +1,11 @@
 "use client";
 
-import { LucideCloud, LucideFolderHeart } from "lucide-react";
-import { useQueryState } from "nuqs";
+import { LucideCloud } from "lucide-react";
 
-import { useExplorer } from "@/lib/providers/explorer-provider";
-import { dashboardSearchParams } from "@/lib/search-params";
-
+import { CollectionsTrigger } from "./collections-modal";
+import { CollectionsProvider } from "./collections-modal/provider";
 import { UploadTrigger } from "./upload-modal";
 import { UploadProvider } from "./upload-modal/provider";
-
-const CollectionsButton = () => {
-	const { bucketName } = useExplorer().state;
-	const [, setShowCollections] = useQueryState("collections", dashboardSearchParams.collections);
-
-	return (
-		<button
-			type="button"
-			disabled={!bucketName}
-			onClick={() => setShowCollections(true)}
-			className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:hover:bg-slate-700 text-neutral-100 font-medium text-sm rounded-lg transition-colors duration-200"
-		>
-			<LucideFolderHeart className="size-4" />
-			Collections
-		</button>
-	);
-};
 
 export const Header = () => {
 	return (
@@ -42,7 +23,9 @@ export const Header = () => {
 			</div>
 
 			<nav className="flex items-center gap-3" aria-label="File actions">
-				<CollectionsButton />
+				<CollectionsProvider>
+					<CollectionsTrigger />
+				</CollectionsProvider>
 				<UploadProvider>
 					<UploadTrigger />
 				</UploadProvider>
