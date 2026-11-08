@@ -7,7 +7,10 @@ import type {
 	CollectionPhoto,
 	CollectionsFile,
 	CreateCollectionResponse,
+	DeleteCollectionResponse,
+	ReorderCollectionResponse,
 	SetMembersResponse,
+	UpdateCollectionResponse,
 	UpdatePhotoResponse,
 } from "~/shared/types";
 
@@ -187,4 +190,62 @@ export const updatePhotoHandler = (ctx: Context) =>
 		const photo = holdingSet(after, set)?.photo;
 		if (!photo) throw new Error(`Photo "${set}" was not written`);
 		return { photo };
+	});
+
+/** Applies `change` to the collection at `:slug`, answering 404 when it is gone and the stored collection after the write. */
+const changeCollection = async (ctx: Context, change: (collection: Collection) => Collection) => {
+	const slug = ctx.req.param("slug");
+	const { after } = await updateCollections((file) => {
+		if (!file.collections.some((candidate) => candidate.slug === slug)) {
+			throw new HTTPException(404, { message: `No collection "${slug}"` });
+		}
+		return {
+			...file,
+			collections: file.collections.map((candidate) => (candidate.slug === slug ? change(candidate) : candidate)),
+		};
+	}, collectionsLocation());
+
+	const collection = after.collections.find((candidate) => candidate.slug === slug);
+	if (!collection) throw new Error(`Collection "${slug}" was not written`);
+	return { collection };
+};
+
+export const updateCollectionHandler = (ctx: Context) =>
+	respondCollections<UpdateCollectionResponse>(ctx, async () => {
+		const { name, cover } = await readBody(ctx);
+		if (name !== undefined && (typeof name !== "string" || !name.trim())) throw badRequest("Name must be text");
+		if (cover !== undefined && cover !== null && typeof cover !== "string")
+			throw badRequest("Cover must be a set path or null");
+
+		return changeCollection(ctx, ({ cover: current, ...rest }) => {
+			// The validator rejects a cover outside the collection, which answers 400.
+			const next = cover === undefined ? current : cover;
+			return { ...rest, ...(name !== undefined && { name: name.trim() }), ...(next != null && { cover: next }) };
+		});
+	});
+
+export const deleteCollectionHandler = (ctx: Context) =>
+	respondCollections<DeleteCollectionResponse>(ctx, async () => {
+		const slug = ctx.req.param("slug");
+		const { after } = await updateCollections((file) => {
+			if (!file.collections.some((candidate) => candidate.slug === slug)) {
+				throw new HTTPException(404, { message: `No collection "${slug}"` });
+			}
+			return { ...file, collections: file.collections.filter((candidate) => candidate.slug !== slug) };
+		}, collectionsLocation());
+		return { file: after };
+	});
+
+export const reorderCollectionHandler = (ctx: Context) =>
+	respondCollections<ReorderCollectionResponse>(ctx, async () => {
+		const { sets } = await readBody(ctx);
+		if (!isStringArray(sets)) throw badRequest("Sets must be a list of set paths");
+
+		return changeCollection(ctx, (collection) => {
+			const bySet = new Map(collection.photos.map((photo) => [photo.set, photo]));
+			if (sets.length !== bySet.size || new Set(sets).size !== sets.length || !sets.every((set) => bySet.has(set))) {
+				throw badRequest("Sets must be exactly the collection's current sets");
+			}
+			return { ...collection, photos: sets.map((set) => bySet.get(set) as CollectionPhoto) };
+		});
 	});
