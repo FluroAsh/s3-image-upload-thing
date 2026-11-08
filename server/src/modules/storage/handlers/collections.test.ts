@@ -232,12 +232,13 @@ describe("PATCH /storage/collections/:slug", () => {
 
 		expect((await send("PATCH", "/tokyo", { cover: "trip/b" })).status).toBe(400);
 		expect((await send("PATCH", "/tokyo", { name: " " })).status).toBe(400);
+		expect((await send("PATCH", "/tokyo", { name: "!!!" })).status).toBe(400);
 		expect((await send("PATCH", "/nowhere", { name: "x" })).status).toBe(404);
 	});
 });
 
 describe("DELETE /storage/collections/:slug", () => {
-	it("removes the collection and its photos' text", async () => {
+	it("removes the collection and answers 404 for an unknown slug", async () => {
 		current.collections = [collection("tokyo", ["trip/a"]), collection("kyoto", ["trip/b"])];
 		const res = await send("DELETE", "/tokyo");
 
