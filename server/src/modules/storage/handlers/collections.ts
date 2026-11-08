@@ -35,13 +35,10 @@ const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
 	return body;
 };
 
-// biome-ignore lint/complexity/useRegexLiterals: a `u` flag literal fails the type check under the tsconfig target
-const COMBINING_MARKS = new RegExp("\\p{M}", "gu");
-
 const slugOf = (name: string): string =>
 	name
 		.normalize("NFKD")
-		.replace(COMBINING_MARKS, "")
+		.replace(/[̀-ͯ]/g, "")
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-|-$/g, "");
