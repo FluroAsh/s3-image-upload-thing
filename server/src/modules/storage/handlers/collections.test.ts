@@ -207,3 +207,66 @@ describe("PATCH /storage/collections/members/:set", () => {
 		expect((await send("PATCH", "/members/trip/a", { tags: "x" })).status).toBe(400);
 	});
 });
+
+describe("PATCH /storage/collections/:slug", () => {
+	it("renames without changing the slug", async () => {
+		current.collections = [collection("tokyo", ["trip/a"], { cover: "trip/a" })];
+		const res = await send("PATCH", "/tokyo", { name: " Tokyo trip " });
+
+		expect(res.status).toBe(200);
+		expect((await res.json()).collection).toMatchObject({ slug: "tokyo", name: "Tokyo trip", cover: "trip/a" });
+	});
+
+	it("sets and clears the cover", async () => {
+		current.collections = [collection("tokyo", ["trip/a", "trip/b"])];
+		expect((await (await send("PATCH", "/tokyo", { cover: "trip/b" })).json()).collection.cover).toBe("trip/b");
+
+		current.collections[0].cover = "trip/b";
+		const cleared = (await (await send("PATCH", "/tokyo", { cover: null })).json()).collection;
+		expect(cleared).not.toHaveProperty("cover");
+		expect(written().collections[0]).not.toHaveProperty("cover");
+	});
+
+	it("answers 400 for a cover outside the collection or bad text, and 404 for an unknown slug", async () => {
+		current.collections = [collection("tokyo", ["trip/a"]), collection("kyoto", ["trip/b"])];
+
+		expect((await send("PATCH", "/tokyo", { cover: "trip/b" })).status).toBe(400);
+		expect((await send("PATCH", "/tokyo", { name: " " })).status).toBe(400);
+		expect((await send("PATCH", "/tokyo", { name: "!!!" })).status).toBe(400);
+		expect((await send("PATCH", "/nowhere", { name: "x" })).status).toBe(404);
+	});
+});
+
+describe("DELETE /storage/collections/:slug", () => {
+	it("removes the collection and answers 404 for an unknown slug", async () => {
+		current.collections = [collection("tokyo", ["trip/a"]), collection("kyoto", ["trip/b"])];
+		const res = await send("DELETE", "/tokyo");
+
+		expect(res.status).toBe(200);
+		expect(written().collections.map(({ slug }) => slug)).toEqual(["kyoto"]);
+		expect((await send("DELETE", "/nowhere")).status).toBe(404);
+	});
+});
+
+describe("PUT /storage/collections/:slug/order", () => {
+	it("reorders the photos, keeping their text", async () => {
+		current.collections = [collection("tokyo", ["trip/a", "trip/b"])];
+		current.collections[0].photos[0].alt = "A bridge";
+		const res = await send("PUT", "/tokyo/order", { sets: ["trip/b", "trip/a"] });
+
+		expect(res.status).toBe(200);
+		expect((await res.json()).collection.photos.map(({ set }: { set: string }) => set)).toEqual(["trip/b", "trip/a"]);
+		expect(written().collections[0].photos[1].alt).toBe("A bridge");
+	});
+
+	it("answers 400 for an order that adds, drops or repeats sets, and 404 for an unknown slug", async () => {
+		current.collections = [collection("tokyo", ["trip/a", "trip/b"])];
+
+		expect((await send("PUT", "/tokyo/order", { sets: ["trip/a", "trip/b", "trip/c"] })).status).toBe(400);
+		expect((await send("PUT", "/tokyo/order", { sets: ["trip/a"] })).status).toBe(400);
+		expect((await send("PUT", "/tokyo/order", { sets: ["trip/a", "trip/a"] })).status).toBe(400);
+		expect((await send("PUT", "/tokyo/order", {})).status).toBe(400);
+		expect((await send("PUT", "/nowhere/order", { sets: [] })).status).toBe(404);
+		expect(s3.sent.some(({ command }) => command === "PutObject")).toBe(false);
+	});
+});

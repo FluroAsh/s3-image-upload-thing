@@ -3,8 +3,11 @@ import { bodyLimit } from "hono/body-limit";
 
 import {
 	createCollectionHandler,
+	deleteCollectionHandler,
 	listCollectionsHandler,
+	reorderCollectionHandler,
 	setMembersHandler,
+	updateCollectionHandler,
 	updatePhotoHandler,
 } from "./handlers/collections";
 import { getBucketHandler } from "./handlers/get-bucket";
@@ -34,6 +37,10 @@ storage.post("/collections", createCollectionHandler);
 storage.put("/collections/members", setMembersHandler);
 // A set path holds slashes, so the param takes the rest of the path.
 storage.patch("/collections/members/:set{.+}", updatePhotoHandler);
+// `:slug` takes one segment, so it never captures the `members` routes above.
+storage.patch("/collections/:slug", updateCollectionHandler);
+storage.delete("/collections/:slug", deleteCollectionHandler);
+storage.put("/collections/:slug/order", reorderCollectionHandler);
 
 // -------------------------------------//
 // ---- Single "Bucket" Operations ---- //

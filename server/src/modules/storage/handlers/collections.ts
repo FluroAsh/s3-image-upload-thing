@@ -7,7 +7,10 @@ import type {
 	CollectionPhoto,
 	CollectionsFile,
 	CreateCollectionResponse,
+	DeleteCollectionResponse,
+	ReorderCollectionResponse,
 	SetMembersResponse,
+	UpdateCollectionResponse,
 	UpdatePhotoResponse,
 } from "~/shared/types";
 
@@ -43,6 +46,21 @@ const slugOf = (name: string): string =>
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-|-$/g, "");
+
+const requireName = (name: unknown): string => {
+	if (typeof name !== "string" || !slugOf(name)) throw badRequest("Name must be text with a letter or digit");
+	return name;
+};
+
+const assertCollection = (file: CollectionsFile, slug: string): void => {
+	if (!file.collections.some((candidate) => candidate.slug === slug)) {
+		throw new HTTPException(404, { message: `No collection "${slug}"` });
+	}
+};
+
+// The file was just written and validated, so the collection is there.
+const written = (file: CollectionsFile, slug: string): Collection =>
+	file.collections.find((candidate) => candidate.slug === slug) as Collection;
 
 const uniqueSlug = (base: string, collections: Collection[]): string => {
 	const taken = new Set(collections.map(({ slug }) => slug));
@@ -107,8 +125,9 @@ export const createCollectionHandler = (ctx: Context) =>
 	respondCollections<CreateCollectionResponse>(
 		ctx,
 		async () => {
-			const { name, sets } = await readBody(ctx);
-			if (typeof name !== "string" || !slugOf(name)) throw badRequest("Name must be text with a letter or digit");
+			const body = await readBody(ctx);
+			const name = requireName(body.name);
+			const { sets } = body;
 			if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
 			await assertSetsHaveManifests(sets);
 
@@ -123,9 +142,7 @@ export const createCollectionHandler = (ctx: Context) =>
 				return { ...file, collections: [...remaining, created] };
 			}, collectionsLocation());
 
-			const slug = uniqueSlug(base, before.collections);
-			const collection = after.collections.find((candidate) => candidate.slug === slug);
-			if (!collection) throw new Error(`Collection "${slug}" was not written`);
+			const collection = written(after, uniqueSlug(base, before.collections));
 			return { collection, moved: movedFrom(before, sets, null) };
 		},
 		201,
@@ -140,9 +157,7 @@ export const setMembersHandler = (ctx: Context) =>
 		if (collection !== null) await assertSetsHaveManifests(sets);
 
 		const { before, after } = await updateCollections((file) => {
-			if (collection !== null && !file.collections.some(({ slug }) => slug === collection)) {
-				throw new HTTPException(404, { message: `No collection "${collection}"` });
-			}
+			if (collection !== null) assertCollection(file, collection);
 
 			const { taken, remaining } = takeOut(file.collections, sets, collection);
 			return {
@@ -187,4 +202,55 @@ export const updatePhotoHandler = (ctx: Context) =>
 		const photo = holdingSet(after, set)?.photo;
 		if (!photo) throw new Error(`Photo "${set}" was not written`);
 		return { photo };
+	});
+
+/** Applies `change` to the collection at `:slug`, answering 404 when it is gone and the stored collection after the write. */
+const changeCollection = async (ctx: Context, change: (collection: Collection) => Collection) => {
+	const slug = ctx.req.param("slug");
+	const { after } = await updateCollections((file) => {
+		assertCollection(file, slug);
+		return {
+			...file,
+			collections: file.collections.map((candidate) => (candidate.slug === slug ? change(candidate) : candidate)),
+		};
+	}, collectionsLocation());
+
+	return { collection: written(after, slug) };
+};
+
+export const updateCollectionHandler = (ctx: Context) =>
+	respondCollections<UpdateCollectionResponse>(ctx, async () => {
+		const { name, cover } = await readBody(ctx);
+		const newName = name === undefined ? undefined : requireName(name).trim();
+		if (!isText(cover)) throw badRequest("Cover must be a set path or null");
+
+		return changeCollection(ctx, ({ cover: current, ...rest }) => {
+			// The validator rejects a cover outside the collection, which answers 400.
+			const next = cover === undefined ? current : cover;
+			return { ...rest, ...(newName !== undefined && { name: newName }), ...(next != null && { cover: next }) };
+		});
+	});
+
+export const deleteCollectionHandler = (ctx: Context) =>
+	respondCollections<DeleteCollectionResponse>(ctx, async () => {
+		const slug = ctx.req.param("slug");
+		const { after } = await updateCollections((file) => {
+			assertCollection(file, slug);
+			return { ...file, collections: file.collections.filter((candidate) => candidate.slug !== slug) };
+		}, collectionsLocation());
+		return { file: after };
+	});
+
+export const reorderCollectionHandler = (ctx: Context) =>
+	respondCollections<ReorderCollectionResponse>(ctx, async () => {
+		const { sets } = await readBody(ctx);
+		if (!isStringArray(sets)) throw badRequest("Sets must be a list of set paths");
+
+		return changeCollection(ctx, (collection) => {
+			const bySet = new Map(collection.photos.map((photo) => [photo.set, photo]));
+			if (sets.length !== bySet.size || new Set(sets).size !== sets.length || !sets.every((set) => bySet.has(set))) {
+				throw badRequest("Sets must be exactly the collection's current sets");
+			}
+			return { ...collection, photos: sets.map((set) => bySet.get(set) as CollectionPhoto) };
+		});
 	});

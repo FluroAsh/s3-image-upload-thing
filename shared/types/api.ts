@@ -138,6 +138,29 @@ export type SetMembersResponse = {
   moved: { set: string; from: string }[];
 };
 
+export type UpdateCollectionRequest = {
+  /** The slug stays, so links to the collection keep working. */
+  name?: string;
+  /** A set in the collection; `null` goes back to the first photo. */
+  cover?: string | null;
+};
+
+export type UpdateCollectionResponse = {
+  collection: Collection;
+};
+
+export type DeleteCollectionResponse = {
+  /** The whole document after the change. */
+  file: CollectionsFile;
+};
+
+export type ReorderCollectionRequest = {
+  /** Exactly the collection's current sets, in the new display order. */
+  sets: string[];
+};
+
+export type ReorderCollectionResponse = UpdateCollectionResponse;
+
 export type UpdatePhotoRequest = Partial<Pick<CollectionPhoto, "alt" | "caption" | "tags">>;
 
 export type UpdatePhotoResponse = {
