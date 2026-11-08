@@ -98,7 +98,7 @@ export const uploadSetIdentity = (destination: string, fileName: string): Nested
 export const setKeyPrefix = ({ folder, name }: NestedSetIdentity): string =>
 	folder ? `${folder}/${name}/` : `${name}/`;
 
-const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_PREFIXES ?? "{}");
+const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_PREFIXES || "{}");
 
 /** A bucket not in `BUCKET_CDN_PREFIXES` serves from the CDN root. */
 export const cdnPrefixOf = (bucketName: string): string => CDN_PREFIXES[bucketName] ?? "";
