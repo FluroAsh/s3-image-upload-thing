@@ -1,6 +1,7 @@
 import { LucideAlertTriangle } from "lucide-react";
 
 import { useManifest } from "@/lib/query";
+import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { Manifest } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
@@ -17,20 +18,35 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 const Info = ({ manifest }: { manifest: Manifest }) => {
 	const { placeholder, source } = manifest;
-	const variants = Object.entries(manifest.variants).sort(([, a], [, b]) => a.width - b.width);
+	// Expected sizes first, smallest to largest, so a missing one shows in its place; then any the table no longer lists.
+	const names = [
+		...IMAGE_VARIANTS,
+		...Object.keys(manifest.variants).filter((name) => !(IMAGE_VARIANTS as readonly string[]).includes(name)),
+	];
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 			<span className="flex flex-wrap gap-1">
-				{variants.map(([name, v]) => (
-					<span
-						key={name}
-						title={`${v.width}×${v.height} · ${formatBytes(v.bytes)} · ${v.format}`}
-						className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
-					>
-						{name} {v.width}
-					</span>
-				))}
+				{names.map((name) => {
+					const v = manifest.variants[name];
+					return v ? (
+						<span
+							key={name}
+							title={`${v.width}×${v.height} · ${formatBytes(v.bytes)} · ${v.format}`}
+							className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
+						>
+							{name} {v.width}
+						</span>
+					) : (
+						<span
+							key={name}
+							title="This size is missing"
+							className="rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
+						>
+							{name}
+						</span>
+					);
+				})}
 			</span>
 			{placeholder ? (
 				<span className="inline-flex items-center gap-1">
