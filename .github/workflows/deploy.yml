@@ -68,6 +68,10 @@ jobs:
             mkdir -p server
             echo "ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" > server/.env
             echo "SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> server/.env
+            # The collections routes resolve COLLECTIONS_BUCKET in this region; single quotes keep the JSON's quotes intact.
+            echo "AWS_REGION=ap-southeast-2" >> server/.env
+            echo "COLLECTIONS_BUCKET=${{ secrets.COLLECTIONS_BUCKET }}" >> server/.env
+            echo 'BUCKET_CDN_PREFIXES=${{ secrets.BUCKET_CDN_PREFIXES }}' >> server/.env
 
             docker compose -f ${{ env.DOCKER_COMPOSE_FILE }} down || true
             docker compose -f ${{ env.DOCKER_COMPOSE_FILE }} build --no-cache
