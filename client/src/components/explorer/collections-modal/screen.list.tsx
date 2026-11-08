@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useCollections, useDeleteCollection, useFileTree, usePresignedUrls, useRenameCollection } from "@/lib/query";
+import { useCollections, useDeleteCollection, useFileTree, usePresignedUrls, useUpdateCollection } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
@@ -19,7 +20,13 @@ import { useBucketSets } from "./use-bucket-sets";
 
 const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
-const CollectionThumb = ({ folder }: { folder: TreeNode | undefined }) => {
+export const CollectionThumb = ({
+	folder,
+	className = "size-16",
+}: {
+	folder: TreeNode | undefined;
+	className?: string;
+}) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { childMap } = useFileTree(bucketName, bucketRegion);
 
@@ -29,15 +36,16 @@ const CollectionThumb = ({ folder }: { folder: TreeNode | undefined }) => {
 	const url = variant && data?.[variant.id];
 
 	return (
-		<div className="size-16 shrink-0 rounded-md bg-slate-700 overflow-hidden">
+		<div className={cn("shrink-0 rounded-md bg-slate-700 overflow-hidden", className)}>
 			{url && <img src={url} alt="" className="size-full object-cover" />}
 		</div>
 	);
 };
 
 const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Map<string, TreeNode> }) => {
-	const rename = useRenameCollection();
+	const rename = useUpdateCollection();
 	const remove = useDeleteCollection();
+	const { setScreen } = useCollectionsModal();
 
 	// The cover can sit in another bucket, which has no thumbnail here.
 	const shown = sets.has(collection.cover ?? "")
@@ -56,21 +64,28 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	};
 
 	return (
-		<li className="flex items-center gap-4 rounded-lg border border-slate-600 bg-slate-800 p-3">
-			<CollectionThumb folder={shown ? sets.get(shown) : undefined} />
-			<div className="min-w-0 flex-1">
-				<h3 className="truncate text-sm font-medium text-neutral-100">{collection.name}</h3>
-				<p className="truncate text-xs text-slate-400">
-					{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
-				</p>
-				{error && <p className="text-xs text-red-500">{serverErrorMessage(error)}</p>}
-			</div>
+		// The open button stretches over the whole row; the actions sit above it.
+		<li className="relative flex cursor-pointer items-center gap-4 rounded-lg border border-slate-600 bg-slate-800 p-3 hover:bg-slate-700/60">
+			<button
+				type="button"
+				onClick={() => setScreen({ screen: "detail", slug: collection.slug })}
+				className="flex min-w-0 flex-1 items-center gap-4 text-left after:absolute after:inset-0"
+			>
+				<CollectionThumb folder={shown ? sets.get(shown) : undefined} />
+				<div className="min-w-0 flex-1">
+					<h3 className="truncate text-sm font-medium text-neutral-100">{collection.name}</h3>
+					<p className="truncate text-xs text-slate-400">
+						{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
+					</p>
+					{error && <p className="text-xs text-red-500">{serverErrorMessage(error)}</p>}
+				</div>
+			</button>
 			<button
 				type="button"
 				aria-label={`Rename ${collection.name}`}
 				disabled={rename.isPending}
 				onClick={onRename}
-				className="p-2 rounded-md text-slate-300 hover:bg-slate-700"
+				className="relative z-10 p-2 rounded-md text-slate-300 hover:bg-slate-700"
 			>
 				<LucidePencil className="size-4" />
 			</button>
@@ -79,7 +94,7 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 				aria-label={`Delete ${collection.name}`}
 				disabled={remove.isPending}
 				onClick={onDelete}
-				className="p-2 rounded-md text-red-400 hover:bg-slate-700"
+				className="relative z-10 p-2 rounded-md text-red-400 hover:bg-slate-700"
 			>
 				<LucideTrash2 className="size-4" />
 			</button>

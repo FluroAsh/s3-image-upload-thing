@@ -5,6 +5,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 
 import { useCollectionsModal } from "./provider";
 import { CreateScreen } from "./screen.create";
+import { DetailScreen } from "./screen.detail";
 import { ListScreen } from "./screen.list";
 
 const DIALOG_CLOSE_DELAY_MS = 500;
@@ -33,7 +34,15 @@ export const CollectionsTrigger = () => {
 				<DialogTitle className="text-xl font-semibold text-neutral-100">
 					{screen.screen === "create" ? "New collection" : `Collections in ${bucketName}`}
 				</DialogTitle>
-				<div className="min-h-[500px]">{screen.screen === "create" ? <CreateScreen /> : <ListScreen />}</div>
+				<div className="min-h-[500px]">
+					{screen.screen === "create" ? (
+						<CreateScreen />
+					) : screen.screen === "detail" ? (
+						<DetailScreen slug={screen.slug} />
+					) : (
+						<ListScreen />
+					)}
+				</div>
 			</DialogContent>
 		</Dialog>
 	);

@@ -5,6 +5,7 @@ import type {
 	CreateCollectionRequest,
 	CreateCollectionResponse,
 	DeleteCollectionResponse,
+	ReorderCollectionResponse,
 	SetMembersRequest,
 	SetMembersResponse,
 	UpdateCollectionRequest,
@@ -33,3 +34,6 @@ export const patchCollection = ({
 
 export const deleteCollection = (slug: string): Promise<DeleteCollectionResponse> =>
 	ofetch<DeleteCollectionResponse>(`/storage/collections/${slug}`, { method: "DELETE" });
+
+export const putOrder = ({ slug, sets }: { slug: string; sets: string[] }): Promise<ReorderCollectionResponse> =>
+	ofetch<ReorderCollectionResponse>(`/storage/collections/${slug}/order`, { method: "PUT", body: { sets } });
