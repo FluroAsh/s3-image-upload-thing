@@ -12,7 +12,7 @@ import type { TreeNode } from "~/shared/types";
 
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { extractFilename, getDepthPadding, pickPreviewVariant, setPathOf } from "./utils";
+import { getDepthPadding, isSetFolder, pickPreviewVariant, setPathOf } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -31,8 +31,6 @@ type RenderTreeNode = TreeNode & {
 	isImageCollection?: boolean;
 	variants?: TreeNode[];
 };
-
-const MIN_IMAGE_COLLECTION_SIZE = 1;
 
 export const FileTree = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
@@ -54,21 +52,11 @@ export const FileTree = () => {
 
 		const renderChildrenByFolder = (parentId: string) => {
 			(childMap.get(parentId) || []).forEach((node) => {
-				if (node.isFolder && node.childCount >= MIN_IMAGE_COLLECTION_SIZE) {
-					const children = childMap.get(node.id) ?? [];
+				const children = childMap.get(node.id) ?? [];
 
-					// Folder object name should always be the same as the variant object name (minus variant prefix and .ext)
-					const isImageCollection = children.every((child) => extractFilename(child.name) === node.name);
-
-					if (isImageCollection) {
-						nodes.push({
-							...node,
-							isImageCollection: true,
-							variants: children,
-						});
-
-						return;
-					}
+				if (isSetFolder(node, children)) {
+					nodes.push({ ...node, isImageCollection: true, variants: children });
+					return;
 				}
 
 				nodes.push(node); // Root level folder nodes

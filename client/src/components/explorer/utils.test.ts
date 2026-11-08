@@ -4,7 +4,18 @@ import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
-import { formatCount, formatSize, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage, setPathOf } from "./utils";
+import {
+	collectionsInBucket,
+	formatCount,
+	formatSize,
+	PREVIEW_ORDER,
+	pickPreviewVariant,
+	serverErrorMessage,
+	setFoldersUnder,
+	setPathOf,
+	setsUnder,
+	toggleSets,
+} from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -108,5 +119,68 @@ describe("setPathOf", () => {
 	it("joins the CDN prefix to the set folder without its trailing slash", () => {
 		expect(setPathOf("legacy/", "trip/kyoto/")).toBe("legacy/trip/kyoto");
 		expect(setPathOf("", "kyoto/")).toBe("kyoto");
+	});
+});
+
+const dir = (id: string, depth: number): TreeNode => ({
+	id,
+	parentId: id.replace(/[^/]+\/$/, ""),
+	name: id.split("/").at(-2) ?? "",
+	depth,
+	isFolder: true,
+	childCount: 1,
+});
+const file = (parent: string, name: string): TreeNode => ({ ...node(name), id: `${parent}${name}`, parentId: parent });
+
+const tree = [
+	dir("trip/", 0),
+	dir("trip/kyoto/", 1),
+	file("trip/kyoto/", "large_kyoto.webp"),
+	dir("trip/osaka/", 1),
+	file("trip/osaka/", "large_osaka.webp"),
+	dir("misc/", 0),
+	file("misc/", "notes.txt"),
+];
+const childMap = new Map<string, TreeNode[]>();
+for (const n of tree) childMap.set(n.parentId, [...(childMap.get(n.parentId) ?? []), n]);
+
+describe("setFoldersUnder", () => {
+	it("finds set folders at any depth and skips plain folders", () => {
+		expect(setFoldersUnder(childMap, "").map((f) => f.id)).toEqual(["trip/kyoto/", "trip/osaka/"]);
+		expect(setFoldersUnder(childMap, "trip/kyoto/").map((f) => f.id)).toEqual([]);
+	});
+});
+
+describe("set picker selection", () => {
+	const folder = (id: string): TreeNode => ({ ...node("x"), id, isFolder: true });
+	const sets = new Map([
+		["cdn/trip/kyoto", folder("trip/kyoto/")],
+		["cdn/trip/osaka", folder("trip/osaka/")],
+		["cdn/solo", folder("solo/")],
+	]);
+
+	it("takes every set under a folder", () => {
+		expect(setsUnder(sets, "trip/")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
+	});
+
+	it("takes every set for the bucket root", () => {
+		expect(setsUnder(sets, "")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka", "cdn/solo"]);
+	});
+
+	it("ticks a partly ticked group, then clears it once whole", () => {
+		const group = setsUnder(sets, "trip/");
+		const whole = toggleSets(new Set(["cdn/trip/kyoto"]), group);
+		expect([...whole]).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
+		expect(toggleSets(whole, group).size).toBe(0);
+	});
+});
+
+describe("collectionsInBucket", () => {
+	it("keeps collections holding at least one set of the bucket", () => {
+		const photo = (set: string) => ({ set, alt: null, caption: null, tags: [] });
+		const mixed = { slug: "mixed", name: "Mixed", photos: [photo("other/x"), photo("trip/kyoto")] };
+		const away = { slug: "away", name: "Away", photos: [photo("other/x")] };
+		const bucketSets = new Map([["trip/kyoto", tree[1]]]);
+		expect(collectionsInBucket([mixed, away], bucketSets)).toEqual([mixed]);
 	});
 });

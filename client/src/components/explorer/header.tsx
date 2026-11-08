@@ -2,6 +2,8 @@
 
 import { LucideCloud } from "lucide-react";
 
+import { CollectionsTrigger } from "./collections-modal";
+import { CollectionsProvider } from "./collections-modal/provider";
 import { UploadTrigger } from "./upload-modal";
 import { UploadProvider } from "./upload-modal/provider";
 
@@ -21,6 +23,9 @@ export const Header = () => {
 			</div>
 
 			<nav className="flex items-center gap-3" aria-label="File actions">
+				<CollectionsProvider>
+					<CollectionsTrigger />
+				</CollectionsProvider>
 				<UploadProvider>
 					<UploadTrigger />
 				</UploadProvider>

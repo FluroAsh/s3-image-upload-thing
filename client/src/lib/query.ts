@@ -4,7 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
-import { getCollections, patchPhoto, postCollection, putSetMembers } from "@/services/collections";
+import {
+	deleteCollection,
+	getCollections,
+	patchCollection,
+	patchPhoto,
+	postCollection,
+	putSetMembers,
+} from "@/services/collections";
 import { postUploadImages } from "@/services/images";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type { BucketsResponse, CollectionsFile, FileTreeResponse, TreeNode, UpdatePhotoRequest } from "~/shared/types";
@@ -67,6 +74,10 @@ const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) 
 };
 
 export const useCreateCollection = () => useCollectionsWrite(postCollection);
+
+export const useRenameCollection = () => useCollectionsWrite(patchCollection);
+
+export const useDeleteCollection = () => useCollectionsWrite(deleteCollection);
 
 export const useSetMembers = () => useCollectionsWrite(putSetMembers);
 

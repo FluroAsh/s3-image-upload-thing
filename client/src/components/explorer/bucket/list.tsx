@@ -38,7 +38,7 @@ export const BucketList = ({
 				tone="error"
 				icon={LucideAlertTriangle}
 				title="Failed to load buckets"
-				message={error ? serverErrorMessage(error, "Something went wrong. Try again shortly.") : undefined}
+				message={error ? serverErrorMessage(error) : undefined}
 			/>
 		);
 	}
