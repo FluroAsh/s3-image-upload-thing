@@ -22,5 +22,5 @@ export const coverOf = (collection: Collection) => collection.cover ?? collectio
 /** Of `picked`, the sets not already photos of `collection`. */
 export const setsNotIn = (collection: Collection, picked: Iterable<string>) => {
 	const held = new Set(collection.photos.map((p) => p.set));
-	return [...picked].filter((set) => !held.has(set));
+	return Array.from(picked).filter((set) => !held.has(set));
 };

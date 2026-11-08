@@ -1,7 +1,7 @@
 import { LucideAlertTriangle } from "lucide-react";
 
 import { useManifest } from "@/lib/query";
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
+import { IMAGE_VARIANTS, planVariants } from "~/shared/constants/image-variants";
 import type { Manifest } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
@@ -18,11 +18,9 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 const Info = ({ manifest }: { manifest: Manifest }) => {
 	const { placeholder, source } = manifest;
-	// Expected sizes first, smallest to largest, so a missing one shows in its place; then any the table no longer lists.
-	const names = [
-		...IMAGE_VARIANTS,
-		...Object.keys(manifest.variants).filter((name) => !(IMAGE_VARIANTS as readonly string[]).includes(name)),
-	];
+	const { full } = manifest.variants;
+	// An upload skips sizes above the source's, so `full` (stored at the source's size) says which were expected; legacy sets without it expect them all.
+	const names = full ? planVariants(Math.max(full.width, full.height)) : IMAGE_VARIANTS;
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">

@@ -1,8 +1,10 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 
+import { planVariants } from "~/shared/constants/image-variants";
+
 import { dimensionsOf, makeJpeg } from "../../test-helpers";
-import { createImageVariants, planVariants } from "./processor";
+import { createImageVariants } from "./processor";
 
 const sourceImage = async (width: number, height: number, orientation?: number, noisy?: boolean) => {
 	const buffer = await makeJpeg({ width, height, orientation, noisy });
