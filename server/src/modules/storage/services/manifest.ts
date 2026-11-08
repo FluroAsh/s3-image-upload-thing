@@ -6,6 +6,7 @@ import sharp from "sharp";
 import type { ImageVariant, Manifest, ManifestSource, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
+import type { BucketLocation } from "./s3-operations";
 
 /** What makes two keys part of the same image set. */
 export type SetIdentity = Pick<Manifest, "layout" | "folder" | "name">;
@@ -101,6 +102,13 @@ const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_P
 
 /** Turns a set's bucket key into the CDN path collections record; a bucket not in `BUCKET_CDN_PREFIXES` serves from the CDN root. */
 export const cdnPathOf = (bucketName: string, key: string): string => `${CDN_PREFIXES[bucketName] ?? ""}${key}`;
+
+/** The inverse of `cdnPathOf`: a set under a CDN prefix lives in that prefix's bucket, keyed without the prefix; any other set lives in `fallback`; both share its region. */
+export const locateSet = (set: string, fallback: BucketLocation): { location: BucketLocation; key: string } => {
+	const match = Object.entries(CDN_PREFIXES).find(([, prefix]) => prefix && set.startsWith(prefix));
+	if (!match) return { location: fallback, key: set };
+	return { location: { ...fallback, bucketName: match[0] }, key: set.slice(match[1].length) };
+};
 
 /** The nested set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
 const nestedSetOf = (key: string): NestedSetIdentity | undefined => {

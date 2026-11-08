@@ -1,6 +1,6 @@
 import { COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
 
-import { type BucketLocation, copyObject, getObjectOrNull, putJson } from "./s3-operations";
+import { type BucketLocation, copyObject, defaultRegion, getObjectOrNull, putJson } from "./s3-operations";
 
 export const COLLECTIONS_KEY = "gallery/collections.json";
 const HISTORY_PREFIX = "gallery/history/collections-";
@@ -31,6 +31,7 @@ export const readCollections = async (
 
 const validateCollection = ({ slug, cover, photos }: Collection, seenSets: Set<string>): void => {
 	if (!SLUG.test(slug)) throw new CollectionsValidationError(`Invalid slug "${slug}"`);
+	if (photos.length === 0) throw new CollectionsValidationError(`Collection "${slug}" has no photos`);
 
 	for (const { set } of photos) {
 		// Empty segments cover a leading, trailing or doubled slash.
@@ -61,15 +62,15 @@ export const validateCollections = (file: CollectionsFile): void => {
 	}
 };
 
-/** Read, apply `change`, validate, copy the current file to history, then write only if nobody wrote since; a lost race re-reads and re-applies. */
+/** Read, apply `change` (which must return a new file, not mutate its argument), validate, copy the current file to history, then write only if nobody wrote since; a lost race re-reads and re-applies. */
 export const updateCollections = async (
 	change: (file: CollectionsFile) => CollectionsFile,
 	location: BucketLocation,
-): Promise<CollectionsFile> => {
+): Promise<{ before: CollectionsFile; after: CollectionsFile }> => {
 	for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
 		const { file, etag } = await readCollections(location);
 		const next: CollectionsFile = {
-			...change(structuredClone(file)),
+			...change(file),
 			schema: COLLECTIONS_SCHEMA,
 			updatedAt: new Date().toISOString(),
 		};
@@ -79,7 +80,14 @@ export const updateCollections = async (
 		if (etag && !(await copyObject(COLLECTIONS_KEY, `${HISTORY_PREFIX}${next.updatedAt}.json`, etag, location)))
 			continue;
 		if (await putJson(COLLECTIONS_KEY, JSON.stringify(next), "no-cache", { ifMatch: etag ?? undefined }, location))
-			return next;
+			return { before: file, after: next };
 	}
 	throw new CollectionsConflictError(`"${COLLECTIONS_KEY}" kept changing; gave up after ${MAX_ATTEMPTS} attempts`);
+};
+
+const COLLECTIONS_BUCKET = process.env.COLLECTIONS_BUCKET;
+
+export const collectionsLocation = (): BucketLocation => {
+	if (!COLLECTIONS_BUCKET) throw new Error("COLLECTIONS_BUCKET is not set");
+	return { bucketName: COLLECTIONS_BUCKET, bucketRegion: defaultRegion };
 };

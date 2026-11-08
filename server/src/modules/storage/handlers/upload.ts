@@ -5,8 +5,7 @@ import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
 import { uploadSetIdentity } from "../services/manifest";
 import { runUploadPipeline } from "../services/upload-pipeline";
-
-const badRequest = (message: string) => new HTTPException(400, { message });
+import { badRequest, respond } from "./respond";
 
 /** Trims and collapses slashes so `trip/` and `trip` store under the same keys; dot segments could climb out of the folder. */
 const normaliseDestination = (destination: string): string => {
@@ -48,8 +47,8 @@ const parseUploadRequest = async (ctx: Context) => {
 	};
 };
 
-export const uploadImagesHandler = async (ctx: Context) => {
-	try {
+export const uploadImagesHandler = (ctx: Context) =>
+	respond(ctx, async () => {
 		const { bucketName, bucketRegion, destination, fileEntries } = await parseUploadRequest(ctx);
 
 		if (fileEntries.length === 0) {
@@ -65,17 +64,8 @@ export const uploadImagesHandler = async (ctx: Context) => {
 			throw new HTTPException(409, { message: `An image set already exists for: ${outcome.names.join(", ")}` });
 		}
 
-		return ctx.json({
+		return {
 			message: "Successfully uploaded images",
 			files: outcome.files,
-		});
-	} catch (error) {
-		if (error instanceof HTTPException) return ctx.json({ error: error.message }, error.status);
-
-		console.error("Error in upload process:", error);
-
-		const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred during upload";
-
-		return ctx.json({ error: errorMessage }, 500);
-	}
-};
+		};
+	});
