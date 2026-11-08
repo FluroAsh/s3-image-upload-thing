@@ -11,6 +11,7 @@ import {
 	updatePhotoHandler,
 } from "./handlers/collections";
 import { getBucketHandler } from "./handlers/get-bucket";
+import { getManifestHandler } from "./handlers/get-manifest";
 import { listBucketsHandler } from "./handlers/list-buckets";
 import { presignedUrlsHandler } from "./handlers/presigned-urls";
 import { uploadImagesHandler } from "./handlers/upload";
@@ -31,6 +32,9 @@ storage.post("/upload", uploadImagesHandler);
 storage.get("/buckets", listBucketsHandler);
 storage.get("/buckets/:bucketName", getBucketHandler);
 storage.post("/presigned-urls", presignedUrlsHandler);
+
+// A set path holds slashes, so the param takes the rest of the path.
+storage.get("/manifests/:set{.+}", getManifestHandler);
 
 storage.get("/collections", listCollectionsHandler);
 storage.post("/collections", createCollectionHandler);
