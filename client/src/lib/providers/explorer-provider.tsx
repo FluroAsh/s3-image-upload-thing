@@ -5,15 +5,17 @@ import { useQueryStates } from "nuqs";
 import { dashboardSearchParams } from "@/lib/search-params";
 import type { TreeNode } from "~/shared/types";
 
+type ActiveFile = {
+	remoteURL: string;
+	fileName: string;
+	variants?: TreeNode[];
+	/** CDN path of the image set, which collections key on; unset for a single file. */
+	setPath?: string;
+};
+
 type ReducerState = {
 	bucketSearchTerm: string;
-	activeFile: {
-		remoteURL: string;
-		fileName: string;
-		variants?: TreeNode[];
-		/** CDN path of the image set, which collections key on; unset for a single file. */
-		setPath?: string;
-	};
+	activeFile: ActiveFile;
 };
 
 export type State = ReducerState & {
@@ -28,7 +30,7 @@ export type Action =
 	  }
 	| {
 			type: "SET_ACTIVE_FILE";
-			payload: { remoteURL: string; fileName: string; variants?: TreeNode[]; setPath?: string };
+			payload: ActiveFile;
 	  };
 
 const initialState: ReducerState = {
@@ -53,17 +55,7 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
 
 export type Actions = {
 	setBucketSearchTerm: (searchTerm: string) => void;
-	setActiveFile: ({
-		remoteURL,
-		fileName,
-		variants,
-		setPath,
-	}: {
-		remoteURL: string;
-		fileName: string;
-		variants?: TreeNode[];
-		setPath?: string;
-	}) => void;
+	setActiveFile: (file: ActiveFile) => void;
 	resetActiveState: () => void;
 };
 
@@ -82,7 +74,7 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 		setActiveFile: ({ remoteURL, fileName, variants, setPath }) =>
 			dispatch({
 				type: "SET_ACTIVE_FILE",
-				payload: { remoteURL, fileName, variants: variants ? variants : [], setPath },
+				payload: { remoteURL, fileName, variants: variants ?? [], setPath },
 			}),
 		resetActiveState: () =>
 			dispatch({

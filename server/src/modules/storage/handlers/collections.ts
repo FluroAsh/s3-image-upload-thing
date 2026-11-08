@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
+import { holdingSet, setsToMove } from "~/shared/collections";
 import type {
 	Collection,
 	CollectionPhoto,
@@ -96,12 +97,8 @@ const takeOut = (collections: Collection[], sets: string[], keep: string | null)
 	return { taken, remaining };
 };
 
-/** Where each set sat before the write, for those the write took from another collection (or out of all of them). */
 const movedFrom = (before: CollectionsFile, sets: string[], into: string | null): Moved =>
-	sets.flatMap((set) => {
-		const from = before.collections.find(({ photos }) => photos.some((photo) => photo.set === set));
-		return from && from.slug !== into ? [{ set, from: from.slug }] : [];
-	});
+	setsToMove(before, sets, into).map(({ set, from }) => ({ set, from: from.slug }));
 
 export const listCollectionsHandler = (ctx: Context) =>
 	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(collectionsLocation())).file);
@@ -175,7 +172,7 @@ export const updatePhotoHandler = (ctx: Context) =>
 			...(tags !== undefined && { tags }),
 		};
 		const { after } = await updateCollections((file) => {
-			if (!file.collections.some(({ photos }) => photos.some((photo) => photo.set === set))) {
+			if (!holdingSet(file, set)) {
 				throw new HTTPException(404, { message: `Set "${set}" is not in a collection` });
 			}
 			return {
@@ -187,7 +184,7 @@ export const updatePhotoHandler = (ctx: Context) =>
 			};
 		}, collectionsLocation());
 
-		const photo = after.collections.flatMap(({ photos }) => photos).find((candidate) => candidate.set === set);
+		const photo = holdingSet(after, set)?.photo;
 		if (!photo) throw new Error(`Photo "${set}" was not written`);
 		return { photo };
 	});

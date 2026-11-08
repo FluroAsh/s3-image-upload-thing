@@ -7,15 +7,7 @@ import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher
 import { getCollections, patchPhoto, postCollection, putSetMembers } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
 import { getBuckets, getFileTree } from "@/services/s3";
-import type {
-	BucketsResponse,
-	CollectionsFile,
-	CreateCollectionRequest,
-	FileTreeResponse,
-	SetMembersRequest,
-	TreeNode,
-	UpdatePhotoRequest,
-} from "~/shared/types";
+import type { BucketsResponse, CollectionsFile, FileTreeResponse, TreeNode, UpdatePhotoRequest } from "~/shared/types";
 
 export const useBuckets = () =>
 	useQuery<BucketsResponse, ApiError>({
@@ -65,18 +57,18 @@ export const useCollections = () =>
 	useQuery<CollectionsFile, ApiError>({ queryKey: ["collections"], queryFn: getCollections, retry: false });
 
 /** Refetches collections after a write, so every reader shows what the server saved. */
-const useCollectionsWrite = <Variables>(write: (variables: Variables) => Promise<unknown>) => {
+const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) => Promise<Response>) => {
 	const qc = useQueryClient();
 
-	return useMutation<unknown, ApiError, Variables>({
+	return useMutation<Response, ApiError, Variables>({
 		mutationFn: write,
 		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections"] }),
 	});
 };
 
-export const useCreateCollection = () => useCollectionsWrite((body: CreateCollectionRequest) => postCollection(body));
+export const useCreateCollection = () => useCollectionsWrite(postCollection);
 
-export const useSetMembers = () => useCollectionsWrite((body: SetMembersRequest) => putSetMembers(body));
+export const useSetMembers = () => useCollectionsWrite(putSetMembers);
 
 export const useUpdatePhoto = () =>
 	useCollectionsWrite(({ set, ...body }: { set: string } & UpdatePhotoRequest) => patchPhoto(set, body));

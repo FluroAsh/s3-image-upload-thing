@@ -2,17 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
-import type { CollectionsFile, TreeNode } from "~/shared/types";
+import type { TreeNode } from "~/shared/types";
 
-import {
-	findPhoto,
-	formatCount,
-	formatSize,
-	PREVIEW_ORDER,
-	pickPreviewVariant,
-	serverErrorMessage,
-	setPathOf,
-} from "./utils";
+import { formatCount, formatSize, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage, setPathOf } from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -116,23 +108,5 @@ describe("setPathOf", () => {
 	it("joins the CDN prefix to the set folder without its trailing slash", () => {
 		expect(setPathOf("legacy/", "trip/kyoto/")).toBe("legacy/trip/kyoto");
 		expect(setPathOf("", "kyoto/")).toBe("kyoto");
-	});
-});
-
-describe("findPhoto", () => {
-	const photo = { set: "trip/kyoto", alt: null, caption: null, tags: [] };
-	const file: CollectionsFile = {
-		schema: 1,
-		updatedAt: "",
-		collections: [{ slug: "japan", name: "Japan", photos: [photo] }],
-	};
-
-	it("finds the collection and photo holding a set", () => {
-		expect(findPhoto(file, "trip/kyoto")).toEqual({ collection: file.collections[0], photo });
-	});
-
-	it("is undefined for a set in no collection", () => {
-		expect(findPhoto(file, "trip/osaka")).toBeUndefined();
-		expect(findPhoto(undefined, "trip/kyoto")).toBeUndefined();
 	});
 });

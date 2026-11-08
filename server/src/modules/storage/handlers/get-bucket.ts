@@ -4,7 +4,7 @@ import { errorMessage } from "@/shared/utils/helpers";
 import type { FileTreeResponse } from "~/shared/types";
 
 import { constructFileTree } from "../services/file-tree";
-import { cdnPathOf } from "../services/manifest";
+import { cdnPrefixOf } from "../services/manifest";
 import { listObjects } from "../services/s3-operations";
 
 export const getBucketHandler = async (ctx: Context) => {
@@ -21,7 +21,7 @@ export const getBucketHandler = async (ctx: Context) => {
 		return ctx.json({
 			tree: constructFileTree({ objects }),
 			partial,
-			cdnPrefix: cdnPathOf(bucketName, ""),
+			cdnPrefix: cdnPrefixOf(bucketName),
 		} satisfies FileTreeResponse);
 	} catch (e) {
 		console.error(e);

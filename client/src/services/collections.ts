@@ -1,4 +1,5 @@
 import ofetch from "@/lib/ofetch";
+import { NO_RETRY } from "@/services/s3";
 import type {
 	CollectionsFile,
 	CreateCollectionRequest,
@@ -9,7 +10,7 @@ import type {
 	UpdatePhotoResponse,
 } from "~/shared/types";
 
-export const getCollections = (): Promise<CollectionsFile> => ofetch<CollectionsFile>("/storage/collections");
+export const getCollections = (): Promise<CollectionsFile> => ofetch<CollectionsFile>("/storage/collections", NO_RETRY);
 
 export const postCollection = (body: CreateCollectionRequest): Promise<CreateCollectionResponse> =>
 	ofetch<CreateCollectionResponse>("/storage/collections", { method: "POST", body });

@@ -1,15 +1,16 @@
 import { LucideAlertTriangle, LucideFolderHeart, LucideLoader2 } from "lucide-react";
 
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
+import { holdingSet, setsToMove } from "~/shared/collections";
 
 import { StateMessage } from "../ui/state-message";
-import { findPhoto, serverErrorMessage } from "./utils";
+import { serverErrorMessage } from "./utils";
 
 const NONE = "";
 // A real slug can't hold underscores, so this never collides with one.
 const NEW = "__new__";
 
-const FIELD = "w-full rounded-lg bg-slate-700/60 border border-slate-600 p-2 text-sm text-neutral-100";
+const FIELD_CLASS = "w-full rounded-lg bg-slate-700/60 border border-slate-600 p-2 text-sm text-neutral-100";
 
 export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const { data, isLoading, error } = useCollections();
@@ -17,19 +18,24 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const setMembers = useSetMembers();
 	const updatePhoto = useUpdatePhoto();
 
-	const saved = findPhoto(data, setPath);
+	const saved = holdingSet(data, setPath);
 	const writeError = create.error ?? setMembers.error ?? updatePhoto.error;
 
-	const choose = (value: string) => {
+	const onCollectionChange = (value: string) => {
 		const target = value === NEW ? window.prompt("Name the new collection") : value;
 		if (target === null || (value === NEW && !target.trim())) return;
 
-		const from = saved?.collection;
-		const isMove = from && target !== NONE && from.slug !== target;
-		if (isMove && !window.confirm(`Move this set out of "${from.name}"?`)) return;
+		const into = target === NONE ? null : target;
+		const leaving = setsToMove(data, [setPath], into)[0]?.from;
+		// Dropping a set from every collection deletes its alt text and caption, and the collection if it was the last set.
+		const prompt =
+			into === null
+				? `Remove this set from "${leaving?.name}"? Its alt text and caption are deleted.`
+				: `Move this set out of "${leaving?.name}"?`;
+		if (leaving && !window.confirm(prompt)) return;
 
 		if (value === NEW) create.mutate({ name: target, sets: [setPath] });
-		else setMembers.mutate({ sets: [setPath], collection: target === NONE ? null : target });
+		else setMembers.mutate({ sets: [setPath], collection: into });
 	};
 
 	return (
@@ -53,10 +59,10 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 				<div className="space-y-3">
 					<select
 						aria-label="Collection"
-						className={FIELD}
+						className={FIELD_CLASS}
 						value={saved?.collection.slug ?? NONE}
 						disabled={create.isPending || setMembers.isPending}
-						onChange={(e) => choose(e.target.value)}
+						onChange={(e) => onCollectionChange(e.target.value)}
 					>
 						<option value={NONE}>None</option>
 						{data?.collections.map(({ slug, name }) => (
@@ -72,16 +78,24 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 						key={`${setPath}:${saved?.photo.alt ?? ""}`}
 						aria-label="Alt text"
 						placeholder={saved ? "Alt text" : "Add to a collection to set alt text"}
-						className={FIELD}
+						className={FIELD_CLASS}
 						defaultValue={saved?.photo.alt ?? ""}
 						disabled={!saved}
 						onBlur={(e) => {
 							if (e.target.value !== (saved?.photo.alt ?? ""))
-								updatePhoto.mutate({ set: setPath, alt: e.target.value });
+								updatePhoto.mutate({ set: setPath, alt: e.target.value || null });
 						}}
 					/>
 
-					{writeError && <p className="text-xs text-red-500">{serverErrorMessage(writeError, "Could not save.")}</p>}
+					{writeError && (
+						<StateMessage
+							size="inline"
+							tone="error"
+							icon={LucideAlertTriangle}
+							title="Could not save"
+							message={serverErrorMessage(writeError, "Something went wrong. Try again shortly.")}
+						/>
+					)}
 				</div>
 			)}
 		</div>
