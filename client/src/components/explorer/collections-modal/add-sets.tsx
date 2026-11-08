@@ -1,9 +1,11 @@
 import { useState } from "react";
 
 import { useCollections, useSetMembers } from "@/lib/query";
+import { cn } from "@/lib/utils";
+import { setsNotIn } from "~/shared/collections";
 import type { Collection } from "~/shared/types";
 
-import { serverErrorMessage } from "../utils";
+import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { SetPicker } from "./set-picker";
 
@@ -12,9 +14,9 @@ export const AddSets = ({ collection, onDone }: { collection: Collection; onDone
 	const add = useSetMembers();
 	const [picked, setPicked] = useState<Set<string>>(new Set());
 
+	const sets = setsNotIn(collection, picked);
+
 	const onAdd = () => {
-		const held = new Set(collection.photos.map((p) => p.set));
-		const sets = [...picked].filter((set) => !held.has(set));
 		if (!confirmMove(data, sets, collection.slug)) return;
 
 		add.mutate({ sets, collection: collection.slug }, { onSuccess: onDone });
@@ -27,9 +29,9 @@ export const AddSets = ({ collection, onDone }: { collection: Collection; onDone
 			<div className="flex gap-2">
 				<button
 					type="button"
-					disabled={!picked.size || add.isPending}
+					disabled={!sets.length || add.isPending}
 					onClick={onAdd}
-					className="px-4 py-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-neutral-100 text-sm font-medium rounded-lg"
+					className={cn("px-4 py-2", PRIMARY_BUTTON_CLASS)}
 				>
 					Add to {collection.name}
 				</button>

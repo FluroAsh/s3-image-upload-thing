@@ -10,7 +10,7 @@ import {
 	patchCollection,
 	patchPhoto,
 	postCollection,
-	putOrder,
+	putCollectionOrder,
 	putSetMembers,
 } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
@@ -76,10 +76,9 @@ const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) 
 
 export const useCreateCollection = () => useCollectionsWrite(postCollection);
 
-/** Renames the collection or sets its cover. */
 export const useUpdateCollection = () => useCollectionsWrite(patchCollection);
 
-export const useReorderCollection = () => useCollectionsWrite(putOrder);
+export const useReorderCollection = () => useCollectionsWrite(putCollectionOrder);
 
 export const useDeleteCollection = () => useCollectionsWrite(deleteCollection);
 

@@ -3,8 +3,9 @@ import { useState } from "react";
 import { LucideArrowLeft } from "lucide-react";
 
 import { useCollections, useCreateCollection } from "@/lib/query";
+import { cn } from "@/lib/utils";
 
-import { FIELD_CLASS, serverErrorMessage } from "../utils";
+import { FIELD_CLASS, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { useCollectionsModal } from "./provider";
 import { SetPicker } from "./set-picker";
@@ -48,7 +49,7 @@ export const CreateScreen = () => {
 			<button
 				type="submit"
 				disabled={!name.trim() || !picked.size || create.isPending}
-				className="px-4 py-2 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-neutral-100 text-sm font-medium rounded-lg"
+				className={cn("px-4 py-2", PRIMARY_BUTTON_CLASS)}
 			>
 				Create
 			</button>

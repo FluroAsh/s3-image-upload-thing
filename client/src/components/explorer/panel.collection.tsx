@@ -4,6 +4,7 @@ import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } fr
 import { holdingSet, setsToMove } from "~/shared/collections";
 
 import { StateMessage } from "../ui/state-message";
+import { PhotoTextFields, TEXT_DELETED_NOTE } from "./photo-text-fields";
 import { FIELD_CLASS, serverErrorMessage } from "./utils";
 
 const NONE = "";
@@ -28,7 +29,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 		// Dropping a set from every collection deletes its alt text and caption, and the collection if it was the last set.
 		const prompt =
 			into === null
-				? `Remove this set from "${leaving?.name}"? Its alt text and caption are deleted.`
+				? `Remove this set from "${leaving?.name}"? ${TEXT_DELETED_NOTE}`
 				: `Move this set out of "${leaving?.name}"?`;
 		if (leaving && !window.confirm(prompt)) return;
 
@@ -71,18 +72,11 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 						<option value={NEW}>New collection…</option>
 					</select>
 
-					{/* Keyed on the saved text so a refetch resets what was typed. */}
-					<input
-						key={`${setPath}:${saved?.photo.alt ?? ""}`}
-						aria-label="Alt text"
-						placeholder={saved ? "Alt text" : "Add to a collection to set alt text"}
-						className={FIELD_CLASS}
-						defaultValue={saved?.photo.alt ?? ""}
-						disabled={!saved}
-						onBlur={(e) => {
-							if (e.target.value !== (saved?.photo.alt ?? ""))
-								updatePhoto.mutate({ set: setPath, alt: e.target.value || null });
-						}}
+					<PhotoTextFields
+						set={setPath}
+						photo={saved?.photo}
+						altPlaceholder="Add to a collection to set alt text"
+						onSave={(field, value) => updatePhoto.mutate({ set: setPath, [field]: value })}
 					/>
 
 					{writeError && (

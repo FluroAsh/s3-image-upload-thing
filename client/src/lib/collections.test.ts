@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { holdingSet, setsToMove } from "~/shared/collections";
+import { coverOf, holdingSet, setsNotIn, setsToMove } from "~/shared/collections";
 import type { CollectionsFile } from "~/shared/types";
 
 const photo = { set: "trip/kyoto", alt: null, caption: null, tags: [] };
@@ -30,5 +30,20 @@ describe("setsToMove", () => {
 
 	it("skips sets already in the target", () => {
 		expect(setsToMove(file, ["trip/kyoto"], "japan")).toEqual([]);
+	});
+});
+
+describe("coverOf", () => {
+	it("prefers the chosen cover, else the first photo", () => {
+		const two = { ...file.collections[0], photos: [photo, { ...photo, set: "trip/osaka" }] };
+		expect(coverOf({ ...two, cover: "trip/osaka" })).toBe("trip/osaka");
+		expect(coverOf(two)).toBe("trip/kyoto");
+	});
+});
+
+describe("setsNotIn", () => {
+	it("drops sets the collection already holds", () => {
+		expect(setsNotIn(file.collections[0], ["trip/kyoto", "trip/osaka"])).toEqual(["trip/osaka"]);
+		expect(setsNotIn(file.collections[0], new Set(["trip/kyoto"]))).toEqual([]);
 	});
 });

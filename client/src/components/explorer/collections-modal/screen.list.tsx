@@ -7,40 +7,17 @@ import {
 	LucideTrash2,
 } from "lucide-react";
 
-import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useCollections, useDeleteCollection, useFileTree, usePresignedUrls, useUpdateCollection } from "@/lib/query";
+import { useCollections, useDeleteCollection, useUpdateCollection } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
+import { coverOf } from "~/shared/collections";
+import type { Collection, TreeNode } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
 import { PartialNotice } from "../partial-notice";
-import { collectionsInBucket, formatCount, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage } from "../utils";
+import { collectionsInBucket, formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
 import { useBucketSets } from "./use-bucket-sets";
-
-const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
-
-export const CollectionThumb = ({
-	folder,
-	className = "size-16",
-}: {
-	folder: TreeNode | undefined;
-	className?: string;
-}) => {
-	const { bucketName, bucketRegion } = useExplorer().state;
-	const { childMap } = useFileTree(bucketName, bucketRegion);
-
-	const variants = childMap.get(folder?.id ?? "") ?? [];
-	const variant = pickPreviewVariant(variants, THUMBNAIL_FIRST);
-	const { data } = usePresignedUrls(variant ? [variant.id] : [], bucketName, bucketRegion);
-	const url = variant && data?.[variant.id];
-
-	return (
-		<div className={cn("shrink-0 rounded-md bg-slate-700 overflow-hidden", className)}>
-			{url && <img src={url} alt="" className="size-full object-cover" />}
-		</div>
-	);
-};
 
 const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Map<string, TreeNode> }) => {
 	const rename = useUpdateCollection();
@@ -48,9 +25,7 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	const { setScreen } = useCollectionsModal();
 
 	// The cover can sit in another bucket, which has no thumbnail here.
-	const shown = sets.has(collection.cover ?? "")
-		? collection.cover
-		: collection.photos.find((p) => sets.has(p.set))?.set;
+	const shown = [coverOf(collection), ...collection.photos.map((p) => p.set)].find((set) => set && sets.has(set));
 	const error = rename.error ?? remove.error;
 
 	const onRename = () => {
@@ -59,7 +34,11 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	};
 
 	const onDelete = () => {
-		if (window.confirm(`Delete "${collection.name}"? This removes its photos' alt text and captions.`))
+		if (
+			window.confirm(
+				`Delete "${collection.name}"? This removes its photos' alt text and captions, and any photos from other buckets in it.`,
+			)
+		)
 			remove.mutate(collection.slug);
 	};
 
@@ -102,8 +81,23 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	);
 };
 
-export const ListScreen = () => {
+const NewCollectionButton = ({ disabled = false }: { disabled?: boolean }) => {
 	const { setScreen } = useCollectionsModal();
+
+	return (
+		<button
+			type="button"
+			disabled={disabled}
+			onClick={() => setScreen({ screen: "create" })}
+			className={cn("inline-flex items-center gap-2 px-3 py-1.5", PRIMARY_BUTTON_CLASS)}
+		>
+			<LucidePlus className="size-4" />
+			New collection
+		</button>
+	);
+};
+
+export const ListScreen = () => {
 	const tree = useBucketSets();
 	const collections = useCollections();
 
@@ -113,17 +107,11 @@ export const ListScreen = () => {
 
 	return (
 		<section className="space-y-3" aria-label="Collections">
-			<div className="flex justify-end">
-				<button
-					type="button"
-					disabled={loading || !!error}
-					onClick={() => setScreen({ screen: "create" })}
-					className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-neutral-100 font-medium text-sm rounded-lg"
-				>
-					<LucidePlus className="size-4" />
-					New collection
-				</button>
-			</div>
+			{(loading || error || listed.length > 0) && (
+				<div className="flex justify-end">
+					<NewCollectionButton disabled={loading || !!error} />
+				</div>
+			)}
 
 			{tree.data?.partial && <PartialNotice count={tree.data.tree.length} />}
 
@@ -144,11 +132,10 @@ export const ListScreen = () => {
 						))}
 					</ul>
 				) : (
-					<StateMessage
-						icon={LucideFolderHeart}
-						title="No collections"
-						message="None of this bucket's sets are in a collection yet"
-					/>
+					<div className="flex flex-col items-center">
+						<StateMessage icon={LucideFolderHeart} title="No collections in this bucket yet" />
+						<NewCollectionButton />
+					</div>
 				)}
 			</div>
 		</section>

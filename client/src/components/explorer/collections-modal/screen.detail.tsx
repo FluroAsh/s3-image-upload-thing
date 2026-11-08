@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
 
-import { LucideArrowLeft, LucideImageOff, LucidePlus, LucideStar, LucideTrash2 } from "lucide-react";
+import {
+	LucideAlertTriangle,
+	LucideArrowLeft,
+	LucideImageOff,
+	LucideLoader2,
+	LucidePlus,
+	LucideStar,
+	LucideTrash2,
+} from "lucide-react";
 
 import { useCollections, useReorderCollection, useSetMembers, useUpdateCollection, useUpdatePhoto } from "@/lib/query";
 import { cn } from "@/lib/utils";
+import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
-import { FIELD_CLASS, serverErrorMessage } from "../utils";
-import { coverOf, reorderSets } from "./detail";
+import { StateMessage } from "../../ui/state-message";
+import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
+import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { AddSets } from "./add-sets";
+import { reorderSets } from "./collection-order";
+import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
-import { AddSets } from "./screen.add-sets";
-import { CollectionThumb } from "./screen.list";
 import { useBucketSets } from "./use-bucket-sets";
 
 const PhotoTile = ({
@@ -30,21 +41,27 @@ const PhotoTile = ({
 	const folder = sets.get(photo.set);
 
 	return (
+		// The tile is the drag source itself: Firefox won't start a drag from a <button>.
+		// biome-ignore lint/a11y/useSemanticElements: a <button> can't be dragged in Firefox
 		<div
 			{...dragProps}
 			draggable
+			role="button"
+			tabIndex={0}
+			aria-pressed={selected}
+			aria-label={photo.set}
+			onClick={onSelect}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onSelect();
+				}
+			}}
 			className={cn(
 				"relative size-[120px] cursor-grab rounded-md ring-2",
 				selected ? "ring-sky-500" : "ring-transparent",
 			)}
 		>
-			<button
-				type="button"
-				aria-pressed={selected}
-				aria-label={photo.set}
-				onClick={onSelect}
-				className="absolute inset-0 z-10"
-			/>
 			{folder ? (
 				<CollectionThumb folder={folder} className="size-full" />
 			) : (
@@ -82,35 +99,20 @@ const PhotoEditor = ({
 	const members = useSetMembers();
 	const error = updatePhoto.error ?? update.error ?? members.error;
 
-	const save = (field: "alt" | "caption", value: string) => {
-		if (value !== (photo[field] ?? "")) updatePhoto.mutate({ set: photo.set, [field]: value || null });
-	};
-
 	const onRemove = () => {
-		if (window.confirm("Remove this photo from the collection? Its alt text and caption are deleted."))
+		if (window.confirm(`Remove this photo from the collection? ${TEXT_DELETED_NOTE}`))
 			members.mutate({ sets: [photo.set], collection: null });
 	};
 
-	// Keyed on the saved text so a refetch resets what was typed.
 	return (
 		<div className="space-y-2 rounded-lg border border-slate-600 p-3">
 			<p className="truncate text-xs text-slate-400">{photo.set}</p>
 			<div className="grid grid-cols-2 gap-2">
-				<input
-					key={`alt:${photo.set}:${photo.alt ?? ""}`}
-					aria-label="Alt text"
-					placeholder="Alt text"
-					className={FIELD_CLASS}
-					defaultValue={photo.alt ?? ""}
-					onBlur={(e) => save("alt", e.target.value)}
-				/>
-				<input
-					key={`caption:${photo.set}:${photo.caption ?? ""}`}
-					aria-label="Caption"
-					placeholder="Caption"
-					className={FIELD_CLASS}
-					defaultValue={photo.caption ?? ""}
-					onBlur={(e) => save("caption", e.target.value)}
+				<PhotoTextFields
+					set={photo.set}
+					photo={photo}
+					withCaption
+					onSave={(field, value) => updatePhoto.mutate({ set: photo.set, [field]: value })}
 				/>
 			</div>
 			<div className="flex items-center gap-2">
@@ -132,15 +134,23 @@ const PhotoEditor = ({
 					<LucideTrash2 className="size-4" />
 					Remove
 				</button>
-				{error && <p className="text-xs text-red-500">{serverErrorMessage(error, "Could not save.")}</p>}
 			</div>
+			{error && (
+				<StateMessage
+					size="inline"
+					tone="error"
+					icon={LucideAlertTriangle}
+					title="Could not save"
+					message={serverErrorMessage(error)}
+				/>
+			)}
 		</div>
 	);
 };
 
 export const DetailScreen = ({ slug }: { slug: string }) => {
 	const { setScreen } = useCollectionsModal();
-	const { data } = useCollections();
+	const { data, error } = useCollections();
 	const reorder = useReorderCollection();
 	const [selected, setSelected] = useState<string | null>(null);
 	const [adding, setAdding] = useState(false);
@@ -153,13 +163,23 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 		if (data && !collection) setScreen({ screen: "list" });
 	}, [data, collection, setScreen]);
 
-	if (!collection) return null;
+	if (!collection)
+		return error ? (
+			<StateMessage
+				tone="error"
+				icon={LucideAlertTriangle}
+				title="Failed to load collection"
+				message={serverErrorMessage(error)}
+			/>
+		) : (
+			<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collection..." />
+		);
 
 	// Show the dropped order until the refetch lands.
 	const order = reorder.isPending ? reorder.variables.sets : collection.photos.map((p) => p.set);
-	const byset = new Map(collection.photos.map((p) => [p.set, p]));
+	const bySet = new Map(collection.photos.map((p) => [p.set, p]));
 	const cover = coverOf(collection);
-	const current = byset.get(selected ?? "");
+	const current = bySet.get(selected ?? "");
 
 	const onDrop = (to: number) => {
 		if (dragFrom !== null && dragFrom !== to) reorder.mutate({ slug, sets: reorderSets(order, dragFrom, to) });
@@ -181,7 +201,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 					<button
 						type="button"
 						onClick={() => setAdding(true)}
-						className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-neutral-100 font-medium text-sm rounded-lg"
+						className={cn("inline-flex items-center gap-2 px-3 py-1.5", PRIMARY_BUTTON_CLASS)}
 					>
 						<LucidePlus className="size-4" />
 						Add sets
@@ -200,17 +220,19 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 					<div className="max-h-[280px] overflow-y-auto">
 						<div className="grid grid-cols-[repeat(auto-fill,120px)] gap-3">
 							{order.map((set, i) => {
-								const photo = byset.get(set);
-								if (!photo) return null;
 								return (
 									<PhotoTile
 										key={set}
-										photo={photo}
+										photo={bySet.get(set) as CollectionPhoto}
 										isCover={set === cover}
 										selected={set === selected}
 										onSelect={() => setSelected(set)}
 										dragProps={{
-											onDragStart: () => setDragFrom(i),
+											onDragStart: (e) => {
+												e.dataTransfer.setData("text/plain", set);
+												e.dataTransfer.effectAllowed = "move";
+												setDragFrom(i);
+											},
 											onDragEnd: () => setDragFrom(null),
 											onDragOver: (e) => e.preventDefault(),
 											onDrop: () => onDrop(i),
