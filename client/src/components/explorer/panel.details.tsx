@@ -6,6 +6,7 @@ import type { TreeNode } from "~/shared/types";
 
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
+import { CollectionSection } from "./panel.collection";
 import { getVariantType } from "./utils";
 
 type ActiveVariantProps = {
@@ -38,7 +39,7 @@ const PREVIEW_CONTAINER_SIZE = 600;
 
 export const DetailsPanel = () => {
 	const {
-		activeFile: { remoteURL, fileName, variants },
+		activeFile: { remoteURL, fileName, variants, setPath },
 	} = useExplorer().state;
 
 	const isImage = isImageFile(remoteURL);
@@ -96,6 +97,8 @@ export const DetailsPanel = () => {
 					<LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
 				</a>
 			</div>
+
+			{setPath && <CollectionSection setPath={setPath} />}
 
 			{/* Preview Section */}
 			{(isImage || isVideo) && (

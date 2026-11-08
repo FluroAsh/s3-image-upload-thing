@@ -4,7 +4,7 @@ import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
-import { formatCount, formatSize, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage } from "./utils";
+import { formatCount, formatSize, PREVIEW_ORDER, pickPreviewVariant, serverErrorMessage, setPathOf } from "./utils";
 
 const node = (name: string): TreeNode => ({
 	id: `set/${name}`,
@@ -101,5 +101,12 @@ describe("serverErrorMessage", () => {
 		expect(serverErrorMessage(new Error("[GET] /x: 500") as ApiError, "Something went wrong")).toBe(
 			"Something went wrong",
 		);
+	});
+});
+
+describe("setPathOf", () => {
+	it("joins the CDN prefix to the set folder without its trailing slash", () => {
+		expect(setPathOf("legacy/", "trip/kyoto/")).toBe("legacy/trip/kyoto");
+		expect(setPathOf("", "kyoto/")).toBe("kyoto");
 	});
 });

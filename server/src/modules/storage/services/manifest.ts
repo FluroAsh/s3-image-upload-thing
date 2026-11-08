@@ -100,8 +100,11 @@ export const setKeyPrefix = ({ folder, name }: NestedSetIdentity): string =>
 
 const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_PREFIXES ?? "{}");
 
-/** Turns a set's bucket key into the CDN path collections record; a bucket not in `BUCKET_CDN_PREFIXES` serves from the CDN root. */
-export const cdnPathOf = (bucketName: string, key: string): string => `${CDN_PREFIXES[bucketName] ?? ""}${key}`;
+/** A bucket not in `BUCKET_CDN_PREFIXES` serves from the CDN root. */
+export const cdnPrefixOf = (bucketName: string): string => CDN_PREFIXES[bucketName] ?? "";
+
+/** Turns a set's bucket key into the CDN path collections record. */
+export const cdnPathOf = (bucketName: string, key: string): string => `${cdnPrefixOf(bucketName)}${key}`;
 
 /** The inverse of `cdnPathOf`: a set under a CDN prefix lives in that prefix's bucket, keyed without the prefix; any other set lives in `fallback`; both share its region. */
 export const locateSet = (set: string, fallback: BucketLocation): { location: BucketLocation; key: string } => {

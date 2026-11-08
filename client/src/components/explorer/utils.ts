@@ -48,3 +48,6 @@ export const formatSize = (size: string | undefined, partial: boolean) => qualif
 
 /** The server's own `{ error }` text, which says what went wrong, over ofetch's message, which only names the request. */
 export const serverErrorMessage = (error: ApiError, fallback: string) => error.data?.error ?? fallback;
+
+/** The CDN path collections record for a set: the bucket's CDN prefix plus the set's folder (a tree `parentId`, which ends in a slash). */
+export const setPathOf = (cdnPrefix: string, folderId: string) => `${cdnPrefix}${folderId.replace(/\/$/, "")}`;
