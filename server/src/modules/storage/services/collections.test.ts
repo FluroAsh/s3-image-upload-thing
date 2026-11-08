@@ -62,7 +62,7 @@ describe("readCollections", () => {
 describe("updateCollections", () => {
 	it("creates the file with IfNoneMatch and no history copy when none exists", async () => {
 		answer(null);
-		const written = await updateCollections(add(collection("japan", ["a/b"])), LOCATION);
+		const { after: written } = await updateCollections(add(collection("japan", ["a/b"])), LOCATION);
 
 		expect(commands()).toEqual(["GetObject", "PutObject"]);
 		expect(s3.sent[1].input).toMatchObject({
@@ -110,6 +110,7 @@ describe("updateCollections", () => {
 		["bad slug", [collection("Bad_Slug", [])]],
 		["duplicate slug", [collection("a", []), collection("a", [])]],
 		["set in two collections", [collection("a", ["x/y"]), collection("b", ["x/y"])]],
+		["collection with no photos", [collection("a", [])]],
 		["set twice in one collection", [collection("a", ["x/y", "x/y"])]],
 		["dot segment", [collection("a", ["x/./y"])]],
 		["dot-dot segment", [collection("a", ["x/../y"])]],

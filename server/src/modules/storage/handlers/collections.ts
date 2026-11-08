@@ -5,7 +5,6 @@ import type {
 	Collection,
 	CollectionPhoto,
 	CollectionsFile,
-	CollectionsResponse,
 	CreateCollectionResponse,
 	SetMembersResponse,
 	UpdatePhotoResponse,
@@ -15,49 +14,65 @@ import {
 	CollectionsConflictError,
 	CollectionsValidationError,
 	collectionsLocation,
-	locateSet,
 	readCollections,
 	updateCollections,
 } from "../services/collections";
-import { MANIFEST_FILE_NAME } from "../services/manifest";
+import { locateSet, MANIFEST_FILE_NAME } from "../services/manifest";
 import { objectExists } from "../services/s3-operations";
+import { badRequest, respond } from "./respond";
 
-const badRequest = (message: string) => new HTTPException(400, { message });
+type Moved = SetMembersResponse["moved"];
 
 const isStringArray = (value: unknown): value is string[] =>
 	Array.isArray(value) && value.every((item) => typeof item === "string");
 
+const isText = (value: unknown): value is string | null | undefined =>
+	value === undefined || value === null || typeof value === "string";
+
 const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
 	const body = await ctx.req.json().catch(() => null);
-	if (typeof body !== "object" || body === null || Array.isArray(body)) throw badRequest("Body must be a JSON object");
+	if (typeof body !== "object" || body === null) throw badRequest("Body must be a JSON object");
 	return body;
 };
+
+// biome-ignore lint/complexity/useRegexLiterals: a `u` flag literal fails the type check under the tsconfig target
+const COMBINING_MARKS = new RegExp("\\p{M}", "gu");
 
 const slugOf = (name: string): string =>
 	name
 		.normalize("NFKD")
-		.replace(/[̀-ͯ]/g, "")
+		.replace(COMBINING_MARKS, "")
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/^-|-$/g, "");
 
-const respond = async <Body>(ctx: Context, run: () => Promise<Body>, status: 200 | 201 = 200) => {
-	try {
-		return ctx.json(await run(), status);
-	} catch (error) {
-		if (error instanceof HTTPException) return ctx.json({ error: error.message }, error.status);
-		if (error instanceof CollectionsValidationError) return ctx.json({ error: error.message }, 400);
-		if (error instanceof CollectionsConflictError) return ctx.json({ error: error.message }, 409);
-
-		console.error(error);
-		return ctx.json({ error: error instanceof Error ? error.message : "Collections request failed" }, 500);
-	}
+const uniqueSlug = (base: string, collections: Collection[]): string => {
+	const taken = new Set(collections.map(({ slug }) => slug));
+	let slug = base;
+	for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+	return slug;
 };
 
+const blankPhoto = (set: string): CollectionPhoto => ({ set, alt: null, caption: null, tags: [] });
+
+/** Collections-specific failures carry their own status; everything else goes through the shared handler. */
+const respondCollections = <Body>(ctx: Context, run: () => Promise<Body>, status: 200 | 201 = 200) =>
+	respond(
+		ctx,
+		() =>
+			run().catch((error: unknown) => {
+				if (error instanceof CollectionsValidationError) throw badRequest(error.message);
+				if (error instanceof CollectionsConflictError) throw new HTTPException(409, { message: error.message });
+				throw error;
+			}),
+		status,
+	);
+
 const assertSetsHaveManifests = async (sets: string[]): Promise<void> => {
+	const fallback = collectionsLocation();
 	const found = await Promise.all(
 		sets.map((set) => {
-			const { location, key } = locateSet(set);
+			const { location, key } = locateSet(set, fallback);
 			return objectExists(`${key}/${MANIFEST_FILE_NAME}`, location);
 		}),
 	);
@@ -65,86 +80,117 @@ const assertSetsHaveManifests = async (sets: string[]): Promise<void> => {
 	if (missing.length > 0) throw badRequest(`No manifest for: ${missing.join(", ")}`);
 };
 
+/** Takes `sets` out of every collection except `keep`, returning the photos taken; a collection left with no photos is dropped, as the file may not hold one. */
+const takeOut = (collections: Collection[], sets: string[], keep: string | null) => {
+	const taken = new Map<string, CollectionPhoto>();
+	const remaining = collections.flatMap((collection): Collection[] => {
+		if (collection.slug === keep) return [collection];
+
+		const photos = collection.photos.filter((photo) => {
+			if (!sets.includes(photo.set)) return true;
+			taken.set(photo.set, photo);
+			return false;
+		});
+		if (photos.length === 0) return [];
+
+		const { cover, ...rest } = collection;
+		return [{ ...rest, photos, ...(photos.some(({ set }) => set === cover) && { cover }) }];
+	});
+	return { taken, remaining };
+};
+
+/** Where each set sat before the write, for those the write took from another collection (or out of all of them). */
+const movedFrom = (before: CollectionsFile, sets: string[], into: string | null): Moved =>
+	sets.flatMap((set) => {
+		const from = before.collections.find(({ photos }) => photos.some((photo) => photo.set === set));
+		return from && from.slug !== into ? [{ set, from: from.slug }] : [];
+	});
+
 export const listCollectionsHandler = (ctx: Context) =>
-	respond<CollectionsResponse>(ctx, async () => (await readCollections(collectionsLocation())).file);
+	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(collectionsLocation())).file);
 
 export const createCollectionHandler = (ctx: Context) =>
-	respond<CreateCollectionResponse>(
+	respondCollections<CreateCollectionResponse>(
 		ctx,
 		async () => {
-			const { name } = await readBody(ctx);
+			const { name, sets } = await readBody(ctx);
 			if (typeof name !== "string" || !slugOf(name)) throw badRequest("Name must be text with a letter or digit");
+			if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
+			await assertSetsHaveManifests(sets);
 
 			const base = slugOf(name);
-			let slug = base;
-			const collections = await updateCollections((file) => {
-				const taken = new Set(file.collections.map((collection) => collection.slug));
-				slug = base;
-				for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
-				return { ...file, collections: [...file.collections, { slug, name: name.trim(), photos: [] }] };
+			const { before, after } = await updateCollections((file) => {
+				const { taken, remaining } = takeOut(file.collections, sets, null);
+				const created = {
+					slug: uniqueSlug(base, file.collections),
+					name: name.trim(),
+					photos: sets.map((set) => taken.get(set) ?? blankPhoto(set)),
+				};
+				return { ...file, collections: [...remaining, created] };
 			}, collectionsLocation());
 
-			return { collection: collections.collections.find((collection) => collection.slug === slug) as Collection };
+			const slug = uniqueSlug(base, before.collections);
+			const collection = after.collections.find((candidate) => candidate.slug === slug);
+			if (!collection) throw new Error(`Collection "${slug}" was not written`);
+			return { collection, moved: movedFrom(before, sets, null) };
 		},
 		201,
 	);
 
 export const setMembersHandler = (ctx: Context) =>
-	respond<SetMembersResponse>(ctx, async () => {
+	respondCollections<SetMembersResponse>(ctx, async () => {
 		const { sets, collection } = await readBody(ctx);
 		if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
-		if (new Set(sets).size < sets.length) throw badRequest("A set can only be listed once");
 		if (collection !== null && typeof collection !== "string") throw badRequest("Collection must be a slug or null");
 
 		if (collection !== null) await assertSetsHaveManifests(sets);
 
-		let moved: SetMembersResponse["moved"] = [];
-		const change = (file: CollectionsFile): CollectionsFile => {
-			const target = file.collections.find(({ slug }) => slug === collection);
-			if (collection !== null && !target) throw new HTTPException(404, { message: `No collection "${collection}"` });
-
-			moved = [];
-			const kept = new Map<string, CollectionPhoto>();
-			for (const from of file.collections) {
-				if (from === target) continue;
-				from.photos = from.photos.filter((photo) => {
-					if (!sets.includes(photo.set)) return true;
-					kept.set(photo.set, photo);
-					moved.push({ set: photo.set, from: from.slug });
-					if (from.cover === photo.set) delete from.cover;
-					return false;
-				});
+		const { before, after } = await updateCollections((file) => {
+			if (collection !== null && !file.collections.some(({ slug }) => slug === collection)) {
+				throw new HTTPException(404, { message: `No collection "${collection}"` });
 			}
 
-			const present = new Set(target?.photos.map(({ set }) => set));
-			target?.photos.push(
-				...sets
-					.filter((set) => !present.has(set))
-					.map((set) => kept.get(set) ?? { set, alt: null, caption: null, tags: [] }),
-			);
-			return file;
-		};
+			const { taken, remaining } = takeOut(file.collections, sets, collection);
+			return {
+				...file,
+				collections: remaining.map((candidate) => {
+					if (candidate.slug !== collection) return candidate;
+					const present = new Set(candidate.photos.map(({ set }) => set));
+					const added = sets.filter((set) => !present.has(set)).map((set) => taken.get(set) ?? blankPhoto(set));
+					return { ...candidate, photos: [...candidate.photos, ...added] };
+				}),
+			};
+		}, collectionsLocation());
 
-		return { file: await updateCollections(change, collectionsLocation()), moved };
+		return { file: after, moved: movedFrom(before, sets, collection) };
 	});
 
 export const updatePhotoHandler = (ctx: Context) =>
-	respond<UpdatePhotoResponse>(ctx, async () => {
+	respondCollections<UpdatePhotoResponse>(ctx, async () => {
 		const set = ctx.req.param("set");
 		const { alt, caption, tags } = await readBody(ctx);
-		const isText = (value: unknown) => value === undefined || value === null || typeof value === "string";
 		if (!isText(alt) || !isText(caption)) throw badRequest("Alt and caption must be text or null");
 		if (tags !== undefined && !isStringArray(tags)) throw badRequest("Tags must be a list of text");
 
-		let photo: CollectionPhoto | undefined;
-		await updateCollections((file) => {
-			photo = file.collections.flatMap((collection) => collection.photos).find((p) => p.set === set);
-			if (!photo) throw new HTTPException(404, { message: `Set "${set}" is not in a collection` });
-			if (alt !== undefined) photo.alt = alt;
-			if (caption !== undefined) photo.caption = caption;
-			if (tags !== undefined) photo.tags = tags;
-			return file;
+		const patch = {
+			...(alt !== undefined && { alt }),
+			...(caption !== undefined && { caption }),
+			...(tags !== undefined && { tags }),
+		};
+		const { after } = await updateCollections((file) => {
+			if (!file.collections.some(({ photos }) => photos.some((photo) => photo.set === set))) {
+				throw new HTTPException(404, { message: `Set "${set}" is not in a collection` });
+			}
+			return {
+				...file,
+				collections: file.collections.map((collection) => ({
+					...collection,
+					photos: collection.photos.map((photo) => (photo.set === set ? { ...photo, ...patch } : photo)),
+				})),
+			};
 		}, collectionsLocation());
 
-		return { photo: photo as unknown as CollectionPhoto };
+		const photo = after.collections.flatMap(({ photos }) => photos).find((candidate) => candidate.set === set);
+		if (!photo) throw new Error(`Photo "${set}" was not written`);
+		return { photo };
 	});

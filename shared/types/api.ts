@@ -110,27 +110,29 @@ export type UploadSuccess = {
   files: FileVariant[];
 };
 
-export type CollectionsResponse = CollectionsFile;
-
 export type CreateCollectionRequest = {
   name: string;
+  /** CDN paths of the sets to start with; a collection exists only while it has photos. */
+  sets: string[];
 };
 
 export type CreateCollectionResponse = {
   collection: Collection;
+  /** Sets taken out of another collection, each with the slug it left. */
+  moved: { set: string; from: string }[];
 };
 
 export type SetMembersRequest = {
   /** CDN paths of the sets, each listed once; added to `collection` in this order. */
   sets: string[];
-  /** Slug of the collection to add or move the sets to; `null` takes them out of their collection. */
+  /** Slug of an existing collection to add or move the sets to; `null` takes them out of their collection. */
   collection: string | null;
 };
 
 export type SetMembersResponse = {
   /** The whole document after the change. */
   file: CollectionsFile;
-  /** Sets taken out of another collection, each with the slug it left. */
+  /** Sets taken out of a collection, whether moved to another or cleared, each with the slug it left; a collection left empty is removed. */
   moved: { set: string; from: string }[];
 };
 

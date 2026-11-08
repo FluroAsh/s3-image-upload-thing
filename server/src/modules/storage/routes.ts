@@ -1,6 +1,12 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
+import {
+	createCollectionHandler,
+	listCollectionsHandler,
+	setMembersHandler,
+	updatePhotoHandler,
+} from "./handlers/collections";
 import { getBucketHandler } from "./handlers/get-bucket";
 import { listBucketsHandler } from "./handlers/list-buckets";
 import { presignedUrlsHandler } from "./handlers/presigned-urls";
@@ -22,6 +28,12 @@ storage.post("/upload", uploadImagesHandler);
 storage.get("/buckets", listBucketsHandler);
 storage.get("/buckets/:bucketName", getBucketHandler);
 storage.post("/presigned-urls", presignedUrlsHandler);
+
+storage.get("/collections", listCollectionsHandler);
+storage.post("/collections", createCollectionHandler);
+storage.put("/collections/members", setMembersHandler);
+// A set path holds slashes, so the param takes the rest of the path.
+storage.patch("/collections/members/:set{.+}", updatePhotoHandler);
 
 // -------------------------------------//
 // ---- Single "Bucket" Operations ---- //
