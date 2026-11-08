@@ -28,14 +28,14 @@ const Info = ({ manifest }: { manifest: Manifest }) => {
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 			<span className="flex flex-wrap gap-1">
 				{names.map((name) => {
-					const v = manifest.variants[name];
-					return v ? (
+					const variant = manifest.variants[name];
+					return variant ? (
 						<span
 							key={name}
-							title={`${v.width}×${v.height} · ${formatBytes(v.bytes)} · ${v.format}`}
+							title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}`}
 							className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
 						>
-							{name} {v.width}
+							{name} {variant.width}
 						</span>
 					) : (
 						<span
@@ -47,20 +47,30 @@ const Info = ({ manifest }: { manifest: Manifest }) => {
 						</span>
 					);
 				})}
+				{source ? (
+					<span
+						title={`${source.width}×${source.height} · ${formatBytes(source.bytes)} · ${source.public ? "public" : "private"}`}
+						className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
+					>
+						original {source.width}
+					</span>
+				) : (
+					<span
+						title="Original not kept"
+						className="rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
+					>
+						original
+					</span>
+				)}
 			</span>
 			{placeholder ? (
 				<span className="inline-flex items-center gap-1">
 					<img src={placeholder} alt="" className="size-5 rounded" />
-					Placeholder
+					Inline blur
 				</span>
 			) : (
-				<span className="text-amber-500">No placeholder</span>
+				<span className="text-slate-500">No inline blur</span>
 			)}
-			<span>
-				{source
-					? `Source ${source.width}×${source.height}, ${source.public ? "public" : "private"}`
-					: "Source not kept"}
-			</span>
 			<span>{DATE_FORMAT.format(new Date(manifest.createdAt))}</span>
 		</div>
 	);
@@ -74,8 +84,8 @@ export const SetInfo = ({ set }: { set: string }) => {
 			{isPending ? (
 				"Loading set info..."
 			) : error ? (
-				error.status === 404 ? (
-					<span className="text-amber-500">No manifest</span>
+				error.status === 404 || error.status === 422 ? (
+					<span className="text-slate-500">{error.status === 404 ? "No manifest" : "Unreadable manifest"}</span>
 				) : (
 					<StateMessage
 						size="inline"

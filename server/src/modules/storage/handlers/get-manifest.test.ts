@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { s3 } from "../fake-s3";
+import { jsonBody, s3 } from "../fake-s3";
 import storage from "../routes";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
@@ -21,13 +21,7 @@ beforeEach(() => {
 	s3.respond = async ({ input }) => {
 		const found = objects[`${input.Bucket}/${input.Key}`];
 		if (!found) throw Object.assign(new Error("missing"), { name: "NoSuchKey" });
-		return {
-			ETag: '"v1"',
-			Body: {
-				transformToString: async () => "",
-				transformToByteArray: async () => new Uint8Array(Buffer.from(JSON.stringify(found))),
-			},
-		};
+		return { ETag: '"v1"', Body: jsonBody(found) };
 	};
 });
 
@@ -48,5 +42,13 @@ describe("GET /storage/manifests/:set", () => {
 
 	it("answers 404 when the set has no manifest", async () => {
 		expect((await app.request("/storage/manifests/trip/none")).status).toBe(404);
+	});
+
+	it("answers 422 rather than 500 when the file is not a manifest", async () => {
+		objects["collections-bucket/trip/odd/manifest.json"] = { hello: "world" };
+		const res = await app.request("/storage/manifests/trip/odd");
+
+		expect(res.status).toBe(422);
+		expect(await res.json()).toEqual({ error: "Not a readable manifest" });
 	});
 });

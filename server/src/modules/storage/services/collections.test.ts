@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Collection, CollectionsFile } from "~/shared/types";
 
-import { s3 } from "../fake-s3";
+import { jsonBody, s3 } from "../fake-s3";
 import {
 	COLLECTIONS_KEY,
 	CollectionsConflictError,
@@ -24,11 +24,7 @@ const collection = (slug: string, sets: string[], extra: Partial<Collection> = {
 
 const stored = (file: Partial<CollectionsFile>) => ({
 	ETag: '"v1"',
-	Body: {
-		transformToString: async () => "",
-		transformToByteArray: async () =>
-			new Uint8Array(Buffer.from(JSON.stringify({ schema: 1, updatedAt: "x", collections: [], ...file }))),
-	},
+	Body: jsonBody({ schema: 1, updatedAt: "x", collections: [], ...file }),
 });
 
 const lost = () => Object.assign(new Error("412"), { name: "PreconditionFailed" });
