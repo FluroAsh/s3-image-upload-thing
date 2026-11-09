@@ -6,8 +6,7 @@ import {
 	copyObject,
 	getObject,
 	listPages,
-	MANIFEST_CACHE_CONTROL,
-	putJson,
+	storeManifest,
 } from "@/modules/storage/services/s3-operations";
 import { errorMessage } from "@/shared/utils/helpers";
 
@@ -20,7 +19,7 @@ import { mapLimited, SET_CONCURRENCY } from "./shared/map-limited";
 const USAGE = `Usage: bun --env-file=.env scripts/move-legacy-sets.ts --source <name> --bucket <name> [options]
 Runbook: server/docs/runbooks/move-legacy-sets.md
 
-Dry run by default: lists what would be copied. Copies every object under a top-level folder of the source bucket to
+Dry run by default: lists what would be copied and checks every source manifest. Copies every object under a top-level folder of the source bucket to
 ${LEGACY_PREFIX}/<same key> in the destination bucket, server-side, writing each ${MANIFEST_FILE_NAME} last with its
 folder and keys moved under ${LEGACY_PREFIX}/. Root-level files are skipped. Nothing is changed in the source.
 
@@ -30,15 +29,14 @@ folder and keys moved under ${LEGACY_PREFIX}/. Root-level files are skipped. Not
   --region <region>  Region of both buckets (default: the server default region)
   --write            Copy; without it nothing is written`;
 
-type Outcome = "copied" | "skipped" | "failed";
+const OUTCOMES = ["copied", "skipped", "failed"] as const;
+
+type Outcome = (typeof OUTCOMES)[number];
 
 type Counts = Record<Outcome, { objects: number; bytes: number }>;
 
-const newCounts = (): Counts => ({
-	copied: { objects: 0, bytes: 0 },
-	skipped: { objects: 0, bytes: 0 },
-	failed: { objects: 0, bytes: 0 },
-});
+const newCounts = (): Counts =>
+	Object.fromEntries(OUTCOMES.map((outcome) => [outcome, { objects: 0, bytes: 0 }])) as Counts;
 
 const tally = (counts: Counts, outcome: Outcome, { bytes }: ListedObject): void => {
 	counts[outcome].objects++;
@@ -52,8 +50,8 @@ const main = async (): Promise<void> => {
 	});
 	const fail = usageError(USAGE);
 	const { location: destination, folder, write } = readBucketArgs(values, fail);
-	if (!values.source) fail("--source is required");
-	const source: BucketLocation = { ...destination, bucketName: values.source as string };
+	if (!values.source) return fail("--source is required");
+	const source: BucketLocation = { ...destination, bucketName: values.source };
 	if (source.bucketName === destination.bucketName) fail("--source and --bucket must be different buckets");
 
 	const listed = await listAllObjects(source, folder);
@@ -65,7 +63,7 @@ const main = async (): Promise<void> => {
 		sets.set(set, [...(sets.get(set) ?? []), object]);
 	}
 
-	const destinationPrefix = `${legacyKey(folder ? `${folder}/` : "")}`;
+	const destinationPrefix = legacyKey(folder ? `${folder}/` : "");
 	const present = new Map<string, number>();
 	await listPages(
 		destination,
@@ -98,20 +96,15 @@ const main = async (): Promise<void> => {
 	const moveOneManifest = async (object: ListedObject): Promise<Outcome> => {
 		const target = legacyKey(object.key);
 		if (present.has(target)) return "skipped";
-		if (!write) return "copied";
 
 		const stored: unknown = JSON.parse((await getObject(object.key, source)).body.toString("utf8"));
 		if (!isManifest(stored)) throw new Error("not a set manifest");
 		const moved = moveManifest(stored);
-		if (
-			manifestKey(moved) !== target ||
-			!(moved.folder === LEGACY_PREFIX || moved.folder.startsWith(`${LEGACY_PREFIX}/`))
-		) {
+		if (manifestKey(moved) !== target) {
 			throw new Error(`its folder and name do not match its location, so it would not describe ${target}`);
 		}
-		return (await putJson(target, JSON.stringify(moved), MANIFEST_CACHE_CONTROL, {}, destination))
-			? "copied"
-			: "skipped";
+		if (!write) return "copied";
+		return (await storeManifest(moved, destination)) ? "copied" : "skipped";
 	};
 
 	await mapLimited(Array.from(sets), SET_CONCURRENCY, async ([set, objects]) => {
@@ -135,7 +128,7 @@ const main = async (): Promise<void> => {
 			} else await run(object, moveOneManifest);
 		}
 
-		for (const outcome of ["copied", "skipped", "failed"] as const) {
+		for (const outcome of OUTCOMES) {
 			counts[outcome].objects += setCounts[outcome].objects;
 			counts[outcome].bytes += setCounts[outcome].bytes;
 		}

@@ -1,7 +1,6 @@
 import { MANIFEST_FILE_NAME } from "@/modules/storage/services/manifest";
 import type { Manifest } from "~/shared/types";
 
-/** Key prefix every moved set lives under in the destination bucket. */
 export const LEGACY_PREFIX = "legacy";
 
 export const legacyKey = (key: string): string => `${LEGACY_PREFIX}/${key}`;

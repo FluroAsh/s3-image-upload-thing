@@ -66,7 +66,7 @@ Stop at the first step whose result is not the expected one. Keep the output of 
 
 | Step | Expect | If not |
 |---|---|---|
-| 1. Dry run | `Move dry run: nothing is written to the bucket`, the source key count and root-level files skipped, one `[ok]` line per set, `Failed: 0`, `0 keys already there` on a first run | Read each `[failed]` line before going on |
+| 1. Dry run | `Move dry run: nothing is written to the bucket`, the source key count and root-level files skipped, one `[ok]` line per set (every source manifest is read and validated, nothing is written), `Failed: 0`, `0 keys already there` on a first run | Read each `[failed]` line before going on |
 | 2. Trial | One set `copied`, exit code `0`, `Count check` equal on both sides | Read the `[failed]` lines; undo the trial |
 | 3. Folder | `aws s3 ls s3://<bucket>/legacy/<set>/` lists every object the source folder has | Undo and report it |
 | 3. Manifest | `aws s3 cp s3://<bucket>/legacy/<set>/manifest.json -` has a `folder` starting `legacy` and keys starting `legacy/` | Undo and report it |

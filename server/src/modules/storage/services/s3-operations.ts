@@ -124,7 +124,7 @@ const publicCache = (seconds: number) => `public, max-age=${seconds}`;
 const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
 
 // Short, so a manifest replaced after its first read reaches clients within minutes.
-export const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
+const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
 
 export type BucketLocation = {
 	/** Name of the bucket to read or write. */
