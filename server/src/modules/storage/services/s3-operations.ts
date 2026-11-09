@@ -124,7 +124,7 @@ const publicCache = (seconds: number) => `public, max-age=${seconds}`;
 const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
 
 // Short, so a manifest replaced after its first read reaches clients within minutes.
-const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
+export const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
 
 export type BucketLocation = {
 	/** Name of the bucket to read or write. */
@@ -455,12 +455,13 @@ export const getObjectOrNull = async (
 	}
 };
 
-/** Server-side copy that fails, resolving `false`, if the source's ETag is no longer `ifMatch`. */
+/** Server-side copy that fails, resolving `false`, if the source's ETag is no longer `ifMatch` or the target exists. The source is in the target's bucket unless `sourceBucket` names another. */
 export const copyObject = (
 	fromKey: string,
 	toKey: string,
 	ifMatch: string,
 	{ bucketName, bucketRegion }: BucketLocation,
+	sourceBucket = bucketName,
 ): Promise<boolean> =>
 	unlessTaken(
 		sendWithDeadline(
@@ -468,7 +469,7 @@ export const copyObject = (
 			new CopyObjectCommand({
 				Bucket: bucketName,
 				Key: toKey,
-				CopySource: copySource(bucketName, fromKey),
+				CopySource: copySource(sourceBucket, fromKey),
 				CopySourceIfMatch: ifMatch,
 				IfNoneMatch: "*",
 			}),
