@@ -104,8 +104,6 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 		bucketRegion,
 	);
 
-	const { data: tree } = useFileTree(bucketName, bucketRegion);
-
 	const previewVariant = pickPreviewVariant(variants);
 	const remoteURL = (previewVariant && presignedUrls[previewVariant.id]) ?? "";
 
@@ -124,7 +122,7 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 				setActiveFile({
 					remoteURL,
 					fileName: node.name,
-					setPath: setPathOf(tree?.cdnPrefix ?? "", node.id),
+					setPath: setPathOf(node.id),
 					variants: variants.map((variant) => ({
 						...variant,
 						presignedUrl: presignedUrls[variant.id],

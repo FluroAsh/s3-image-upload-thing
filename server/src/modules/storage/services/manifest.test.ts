@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
 	assertManifestKey,
@@ -138,7 +138,7 @@ describe("classifyKey", () => {
 		]);
 	});
 
-	it("does not skip legacy/, which only uploads refuse", () => {
+	it("classifies keys under legacy/ like any other folder", () => {
 		const keys = ["legacy/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp"];
 
 		expect(classifyAll(keys)).toEqual([{ member: { folder: "legacy", name: "ginsui-sukiyaki-1", variant: "large" } }]);
@@ -192,12 +192,13 @@ describe("isManifest", () => {
 });
 
 describe("hasRefusedUploadPrefix", () => {
-	it.each(["src/a", "legacy/a", "trip/original.v2/", "original.v2/", "a/original.jpg/b/"])("refuses %s", (key) => {
+	it.each(["src/a", "trip/original.v2/", "original.v2/", "a/original.jpg/b/"])("refuses %s", (key) => {
 		expect(hasRefusedUploadPrefix(key)).toBe(true);
 	});
 
 	it.each([
 		"manifests/a",
+		"legacy/a",
 		"trip/src/a",
 		"legacy.png",
 		"trip/original/",
@@ -394,17 +395,5 @@ describe("assertManifestKey", () => {
 		expect(() => assertManifestKey(key)).toThrow(
 			`Refusing to write "${key}": a manifest is only stored as manifest.json inside its set's folder`,
 		);
-	});
-});
-
-describe("cdnPathOf", () => {
-	it("prefixes only buckets named in the setting", async () => {
-		vi.stubEnv("BUCKET_CDN_PREFIXES", JSON.stringify({ "legacy-bucket": "legacy/" }));
-		vi.resetModules();
-		const { cdnPathOf } = await import("./manifest");
-
-		expect(cdnPathOf("legacy-bucket", "a/b")).toBe("legacy/a/b");
-		expect(cdnPathOf("example-bucket", "a/b")).toBe("a/b");
-		vi.unstubAllEnvs();
 	});
 });

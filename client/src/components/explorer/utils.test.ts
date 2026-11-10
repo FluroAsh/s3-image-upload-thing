@@ -116,9 +116,8 @@ describe("serverErrorMessage", () => {
 });
 
 describe("setPathOf", () => {
-	it("joins the CDN prefix to the set folder without its trailing slash", () => {
-		expect(setPathOf("legacy/", "trip/kyoto/")).toBe("legacy/trip/kyoto");
-		expect(setPathOf("", "kyoto/")).toBe("kyoto");
+	it("drops the set folder's trailing slash", () => {
+		expect(setPathOf("trip/kyoto/")).toBe("trip/kyoto");
 	});
 });
 

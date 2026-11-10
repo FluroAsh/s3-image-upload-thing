@@ -9,7 +9,6 @@ import storage from "../routes";
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 vi.hoisted(() => {
 	process.env.COLLECTIONS_BUCKET = "collections-bucket";
-	process.env.BUCKET_CDN_PREFIXES = JSON.stringify({ "legacy-bucket": "legacy/" });
 });
 
 const app = new Hono().route("/storage", storage);
@@ -155,15 +154,6 @@ describe("PUT /storage/collections/members", () => {
 		expect(res.status).toBe(400);
 		expect((await res.json()).error).toContain("trip/nope");
 		expect(s3.sent.some(({ command }) => command === "PutObject")).toBe(false);
-	});
-
-	it("checks a set under a CDN prefix in that prefix's bucket, without the prefix", async () => {
-		current.collections = [collection("tokyo", ["trip/z"])];
-		manifests = new Set(["legacy-bucket/blog/post/manifest.json"]);
-
-		const res = await send("PUT", "/members", { sets: ["legacy/blog/post"], collection: "tokyo" });
-
-		expect(res.status).toBe(200);
 	});
 
 	it("answers 404 for an unknown collection and 400 for a malformed body", async () => {

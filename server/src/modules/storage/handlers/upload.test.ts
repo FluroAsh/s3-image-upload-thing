@@ -81,11 +81,11 @@ describe("uploadImagesHandler", () => {
 	});
 
 	it("maps a 'reserved' refusal to a 400", async () => {
-		vi.mocked(runUploadPipeline).mockResolvedValue({ refused: "reserved", names: ["legacy/"] });
+		vi.mocked(runUploadPipeline).mockResolvedValue({ refused: "reserved", names: ["src/"] });
 
 		const res = await post(validFields);
 
 		expect(res.status).toBe(400);
-		expect(await res.json()).toEqual({ error: 'Path "legacy/" is reserved' });
+		expect(await res.json()).toEqual({ error: 'Path "src/" is reserved' });
 	});
 });
