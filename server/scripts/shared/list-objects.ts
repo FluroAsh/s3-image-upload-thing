@@ -1,4 +1,5 @@
-import { type BucketLocation, listPages } from "@/modules/storage/services/s3-operations";
+import { listPages } from "@/modules/storage/services/s3-operations";
+import type { BucketLocation } from "~/shared/types";
 
 import type { ListedObject } from "./listed";
 
@@ -9,7 +10,7 @@ export const scopeLabel = (bucket: string, folder?: string): string =>
 export const listAllObjects = async (location: BucketLocation, folder?: string): Promise<ListedObject[]> => {
 	const objects: ListedObject[] = [];
 
-	// No overall limit: a run must see every key, and a stalled page still fails on its own deadline.
+	/** No overall limit: a run must see every key, and a stalled page still fails on its own deadline. */
 	await listPages(
 		location,
 		(page) => {
@@ -20,7 +21,7 @@ export const listAllObjects = async (location: BucketLocation, folder?: string):
 		{ prefix: folder ? `${folder}/` : undefined, timeLimitMs: Number.POSITIVE_INFINITY },
 	);
 
-	// An empty listing is a wrong bucket, folder or region far more often than an empty bucket.
+	/** An empty listing is a wrong bucket, folder or region far more often than an empty bucket. */
 	if (!objects.length) throw new Error(`No keys found in ${scopeLabel(location.bucketName, folder)}`);
 
 	return objects;

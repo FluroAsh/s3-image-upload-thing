@@ -60,9 +60,9 @@ describe("GET /storage/collections", () => {
 	});
 
 	it("reads the bucket named in the query", async () => {
-		await send("GET", "", undefined, "bucket=other-bucket&region=us-east-1");
+		await send("GET", "", undefined, "bucket=example-bucket&region=us-east-1");
 
-		expect(s3.sent.at(-1)?.input.Bucket).toBe("other-bucket");
+		expect(s3.sent.at(-1)?.input.Bucket).toBe("example-bucket");
 	});
 
 	it("answers 400 when the bucket or region is missing", async () => {

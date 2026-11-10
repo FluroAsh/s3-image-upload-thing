@@ -7,7 +7,6 @@ const DEPTH_BASE_OFFSET_PX = 8;
 
 export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
 
-// Extracts the string between "_" and "." (ie: "large_filename.jpg" -> "filename")
 export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 
 export const getVariantType = (fileName: string) => {
@@ -33,7 +32,7 @@ const qualify = (text: string | undefined, partial: boolean) =>
 	text === undefined ? "unknown" : partial ? `at least ${text}` : text;
 
 /** A count with the right plural; `undefined` means it was never counted, and `partial` that it is a lower bound. */
-// A fixed locale, so the server render and the browser agree on the separator.
+/** A fixed locale, so the server render and the browser agree on the separator. */
 const COUNT_FORMAT = new Intl.NumberFormat("en");
 
 export const formatCount = (count: number | undefined, noun: string | undefined, partial: boolean) =>

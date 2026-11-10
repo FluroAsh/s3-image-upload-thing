@@ -6,7 +6,6 @@ import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import {
-	type BucketLocation,
 	deleteCollection,
 	getCollections,
 	patchCollection,
@@ -19,6 +18,7 @@ import { postUploadImages } from "@/services/images";
 import { getManifest } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type {
+	BucketLocation,
 	BucketsResponse,
 	CollectionsFile,
 	FileTreeResponse,
@@ -38,6 +38,7 @@ export const useFileTree = (bucketName: string, bucketRegion: string) => {
 	const query = useQuery<FileTreeResponse, ApiError>({
 		queryKey: ["fileTree", bucketName],
 		queryFn: () => getFileTree(bucketName, bucketRegion),
+		enabled: !!bucketName && !!bucketRegion,
 		retry: false,
 	});
 
@@ -71,26 +72,22 @@ export const useMutateUpload = (bucketName: string) => {
 	});
 };
 
-/** The bucket the explorer has open, which every collections call is scoped to. */
-const useBucketLocation = () => {
-	const { bucketName, bucketRegion } = useExplorer().state;
-	return { bucketName, bucketRegion };
-};
-
 export const useCollections = () => {
-	const location = useBucketLocation();
+	const { bucketName, bucketRegion } = useExplorer().state;
 	return useQuery<CollectionsFile, ApiError>({
-		queryKey: ["collections", location.bucketName],
-		queryFn: () => getCollections(location),
+		queryKey: ["collections", bucketName],
+		queryFn: () => getCollections({ bucketName, bucketRegion }),
+		enabled: !!bucketName && !!bucketRegion,
 		retry: false,
 	});
 };
 
 export const useManifest = (set: string) => {
-	const location = useBucketLocation();
+	const { bucketName, bucketRegion } = useExplorer().state;
 	return useQuery<Manifest, ApiError>({
-		queryKey: ["manifest", location.bucketName, set],
-		queryFn: () => getManifest(set, location),
+		queryKey: ["manifest", bucketName, set],
+		queryFn: () => getManifest(set, { bucketName, bucketRegion }),
+		enabled: !!bucketName && !!bucketRegion,
 		retry: false,
 	});
 };
@@ -100,11 +97,11 @@ const useCollectionsWrite = <Response, Variables>(
 	write: (variables: Variables, location: BucketLocation) => Promise<Response>,
 ) => {
 	const qc = useQueryClient();
-	const location = useBucketLocation();
+	const { bucketName, bucketRegion } = useExplorer().state;
 
 	return useMutation<Response, ApiError, Variables>({
-		mutationFn: (variables) => write(variables, location),
-		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections", location.bucketName] }),
+		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections", bucketName] }),
 	});
 };
 

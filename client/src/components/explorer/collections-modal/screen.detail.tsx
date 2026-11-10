@@ -68,7 +68,7 @@ const PhotoTile = ({
 			) : (
 				<div className="grid size-full place-items-center rounded-md bg-slate-700 p-2 text-center text-xs text-slate-400">
 					<LucideImageOff className="size-5" />
-					Other bucket
+					Missing
 				</div>
 			)}
 			{isCover && (

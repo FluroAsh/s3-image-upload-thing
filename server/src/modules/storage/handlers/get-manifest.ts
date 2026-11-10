@@ -5,12 +5,13 @@ import type { Manifest } from "~/shared/types";
 
 import { MANIFEST_FILE_NAME, NotAManifestError, nestedSetOf } from "../services/manifest";
 import { readManifest } from "../services/s3-operations";
-import { bucketOf, respond } from "./respond";
+import { bucketLocationOf } from "./params";
+import { respond } from "./respond";
 
 export const getManifestHandler = (ctx: Context) =>
 	respond<Manifest>(ctx, async () => {
 		const set = ctx.req.param("set");
-		const location = bucketOf(ctx);
+		const location = bucketLocationOf(ctx);
 		const identity = nestedSetOf(`${set}/${MANIFEST_FILE_NAME}`);
 		try {
 			const manifest = identity && (await readManifest(identity, location));

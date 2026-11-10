@@ -20,7 +20,7 @@ import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 import { errorMessage } from "@/shared/utils/helpers";
 import { TIME } from "~/shared/constants/time";
-import type { FileVariant, ImageVariant, Manifest } from "~/shared/types";
+import type { BucketLocation, FileVariant, ImageVariant, Manifest } from "~/shared/types";
 
 import { DEFAULT_MIME_TYPE } from "../processors/variants/config";
 import {
@@ -120,18 +120,11 @@ export const generatePresignedUrl = async (
 
 const publicCache = (seconds: number) => `public, max-age=${seconds}`;
 
-// A day, not a year: keys carry no content hash, so a set deleted and re-uploaded under its name must not stay stale.
+/** A day, not a year: keys carry no content hash, so a set deleted and re-uploaded under its name must not stay stale. */
 const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
 
-// Short, so a manifest replaced after its first read reaches clients within minutes.
+/** Short, so a manifest replaced after its first read reaches clients within minutes. */
 const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
-
-export type BucketLocation = {
-	/** Name of the bucket to read or write. */
-	bucketName: string;
-	/** AWS region the bucket lives in; requests must be sent there. */
-	bucketRegion: string;
-};
 
 export const uploadImages = async (
 	image: ImageVariants,
@@ -173,7 +166,7 @@ export const uploadImages = async (
 		),
 	);
 
-	// Waits for every write's deadline, not the write itself: a timed-out request may still be open when clean-up starts.
+	/** Waits for every write's deadline, not the write itself: a timed-out request may still be open when clean-up starts. */
 	const failure = settled.find((result) => result.status === "rejected");
 	if (failure) throw failure.reason;
 	return settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
@@ -226,7 +219,7 @@ export const listPages = async (
 		onPage(page.Contents ?? []);
 		ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
 
-		// The per-page deadline alone leaves a many-page listing unbounded, and its caller waits on the whole of it.
+		/** The per-page deadline alone leaves a many-page listing unbounded, and its caller waits on the whole of it. */
 		if (ContinuationToken && Date.now() - startedAt >= timeLimitMs) return { partial: true };
 	} while (ContinuationToken);
 
@@ -264,7 +257,7 @@ export const withDeadline = async <Result>(
 	const controller = new AbortController();
 	const timedOut = new Error(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	// Not `AbortSignal.timeout`: Bun exits 0 when nothing keeps the event loop alive, and that timer does not, so a stalled request ended the run silently.
+	/** Not `AbortSignal.timeout`: Bun exits 0 when nothing keeps the event loop alive, and that timer does not, so a stalled request ended the run silently. */
 	const deadline = new Promise<never>((_, reject) => {
 		timer = setTimeout(() => {
 			controller.abort(timedOut);
@@ -393,7 +386,7 @@ export const storeOriginal = async (
 		return true;
 	} catch (error) {
 		if (!isS3Error(error, "PreconditionFailed")) throw error;
-		// S3 answers a changed source and a taken destination the same way, so only the destination tells them apart.
+		/** S3 answers a changed source and a taken destination the same way, so only the destination tells them apart. */
 		const { Contents } = await sendWithDeadline(
 			client,
 			new ListObjectsV2Command({ Bucket: bucketName, Prefix: key, MaxKeys: 1 }),

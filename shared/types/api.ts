@@ -1,6 +1,13 @@
 import type { Collection, CollectionPhoto, CollectionsFile } from "./collections";
 import type { ImageVariant } from "./image";
 
+export type BucketLocation = {
+  /** Name of the bucket to read or write. */
+  bucketName: string;
+  /** AWS region the bucket lives in; requests must be sent there. */
+  bucketRegion: string;
+};
+
 export type TreeNode = {
   /** Full S3 key path, e.g. `"japan-2025/kyoto/kyoto-1.webp"` */
   id: string;

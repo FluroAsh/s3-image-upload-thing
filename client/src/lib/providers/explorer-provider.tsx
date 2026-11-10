@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer } from "react";
+import { createContext, useContext, useReducer, useState } from "react";
 
 import { useQueryStates } from "nuqs";
 
@@ -64,6 +64,13 @@ const ExplorerContext = createContext<{ state: State; actions: Actions } | undef
 export const ExplorerProvider = ({ children }: { children: React.ReactNode }) => {
 	const [state, dispatch] = useReducer(reducer, initialState);
 	const [{ bucket: bucketName, region: bucketRegion }] = useQueryStates(dashboardSearchParams);
+
+	const bucketKey = `${bucketName}/${bucketRegion}`;
+	const [shownBucketKey, setShownBucketKey] = useState(bucketKey);
+	if (shownBucketKey !== bucketKey) {
+		setShownBucketKey(bucketKey);
+		dispatch({ type: "SET_ACTIVE_FILE", payload: initialState.activeFile });
+	}
 
 	const actions: Actions = {
 		setBucketSearchTerm: (searchTerm) =>

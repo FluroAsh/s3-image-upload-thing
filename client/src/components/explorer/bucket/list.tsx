@@ -65,8 +65,7 @@ export const BucketList = ({
 	}
 
 	const handleBucketClick = (name: string, region: string) => {
-		// Nuqs updates (shallow update) query params client-side, avoiding extra server fetches and keeping navigation fast.
-		// SSR is used only on initial load; interactivity stays smooth for switching buckets.
+		/** Nuqs updates the query params client-side, so switching buckets does not refetch the page from the server. */
 		setParams({ bucket: name, region });
 	};
 

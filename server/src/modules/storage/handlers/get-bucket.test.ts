@@ -8,7 +8,9 @@ import { getBucketHandler } from "./get-bucket";
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
 
 const get = () =>
-	new Hono().get("/buckets/:bucketName", getBucketHandler).request("/buckets/example-bucket?region=us-east-1");
+	new Hono()
+		.get("/buckets/:bucketName", getBucketHandler)
+		.request("/buckets/example-bucket?bucket=example-bucket&region=us-east-1");
 
 afterEach(() => vi.useRealTimers());
 
@@ -27,6 +29,13 @@ const respondWithKeys = (keys: string[]) => {
 };
 
 describe("getBucketHandler", () => {
+	it("answers 400 when the bucket or region is missing", async () => {
+		const res = await new Hono().get("/buckets/:bucketName", getBucketHandler).request("/buckets/example-bucket");
+
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ error: "Missing 'bucket' or 'region' query parameter" });
+	});
+
 	it("answers an empty bucket with an empty tree, so the UI can tell it apart from a failed listing", async () => {
 		s3.respond = async () => ({});
 

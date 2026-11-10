@@ -1,6 +1,6 @@
-import { COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
+import { type BucketLocation, COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
 
-import { type BucketLocation, copyObject, getObjectOrNull, putJson } from "./s3-operations";
+import { copyObject, getObjectOrNull, putJson } from "./s3-operations";
 
 export const COLLECTIONS_KEY = "gallery/collections.json";
 const HISTORY_PREFIX = "gallery/history/collections-";
@@ -34,7 +34,7 @@ const validateCollection = ({ slug, cover, photos }: Collection, seenSets: Set<s
 	if (photos.length === 0) throw new CollectionsValidationError(`Collection "${slug}" has no photos`);
 
 	for (const { set } of photos) {
-		// Empty segments cover a leading, trailing or doubled slash.
+		/** Empty segments cover a leading, trailing or doubled slash. */
 		if (set.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
 			throw new CollectionsValidationError(`Invalid set path "${set}"`);
 		}
@@ -76,7 +76,7 @@ export const updateCollections = async (
 		};
 		validateCollections(next);
 
-		// Recorded even if the write then loses the race: an extra history copy is harmless, a missing one is not.
+		/** Recorded even if the write then loses the race: an extra history copy is harmless, a missing one is not. */
 		if (etag && !(await copyObject(COLLECTIONS_KEY, `${HISTORY_PREFIX}${next.updatedAt}.json`, etag, location)))
 			continue;
 		if (await putJson(COLLECTIONS_KEY, JSON.stringify(next), "no-cache", { ifMatch: etag ?? undefined }, location))

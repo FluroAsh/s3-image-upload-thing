@@ -4,7 +4,7 @@ import sharp from "sharp";
 
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 import { errorMessage } from "@/shared/utils/helpers";
-import type { FileVariant, ImageVariant } from "~/shared/types";
+import type { BucketLocation, FileVariant, ImageVariant } from "~/shared/types";
 
 import { ensureBuffer } from "../processors/variants/processor";
 import { createImageVariants, prepareImages } from "./image-processing";
@@ -19,14 +19,7 @@ import {
 	uploadSetIdentity,
 	variantKey,
 } from "./manifest";
-import {
-	type BucketLocation,
-	deleteObjects,
-	imageSetExists,
-	storeManifest,
-	storeOriginal,
-	uploadImages,
-} from "./s3-operations";
+import { deleteObjects, imageSetExists, storeManifest, storeOriginal, uploadImages } from "./s3-operations";
 
 /** Why an upload was turned away: `reserved` for a path the service owns, `exists` for a name already taken. */
 export const UPLOAD_REFUSALS = ["reserved", "exists"] as const;
@@ -83,7 +76,7 @@ const storeImageSet = async (
 	location: BucketLocation,
 ): Promise<FileVariant[] | null> => {
 	const body = ensureBuffer(image.source.buffer);
-	// A name without an extension would give a key the CDN's `original.*` deny rule does not match.
+	/** A name without an extension would give a key the CDN's `original.*` deny rule does not match. */
 	const extension = path.extname(image.fileName).slice(1) || (await sharp(body).metadata()).format;
 	const source = await describeSource(sourceKey(set, extension), body);
 	const { copyOriginalFrom } = image.source;
@@ -105,7 +98,7 @@ const storeImageSet = async (
 
 		return (await storeManifest(manifest, location)) ? stored : null;
 	} catch (error) {
-		// Only keys this upload targeted, and only once its create-only original proved the folder its own.
+		/** Only keys this upload targeted, and only once its create-only original proved the folder its own. */
 		const sizeKeys = Object.keys(image.variations).map((variant) => variantKey(set, variant as ImageVariant));
 		const left = await deleteObjects([source.key, ...sizeKeys], location);
 		if (left.length === 0) throw error;

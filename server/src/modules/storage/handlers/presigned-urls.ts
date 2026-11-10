@@ -1,58 +1,39 @@
 import type { Context } from "hono";
 
-import type { PresignedUrlEntry, PresignedUrlError } from "~/shared/types";
+import type { PresignedUrlEntry, PresignedUrlError, PresignedUrlsResponse } from "~/shared/types";
 
 import { generatePresignedUrl } from "../services/s3-operations";
+import { bucketLocationOf } from "./params";
+import { badRequest, respond } from "./respond";
 
-// NOTE: Not enforcing a hard limit yet, it doesn't make sense to limit this
-// until we have better error handling in the browser
-// const MAX_KEYS_LIMIT = 100;
+/** Uses `Promise.allSettled` so keys that fail come back as `errors` beside the URLs that worked. */
+export const presignedUrlsHandler = (ctx: Context) =>
+	respond<PresignedUrlsResponse>(ctx, async () => {
+		const { bucketName, bucketRegion } = bucketLocationOf(ctx);
+		const body = await ctx.req.json<{ keys: string[] }>();
 
-/**
- * Generates presigned URLs for a batch of S3 object keys.
- * Uses `Promise.allSettled` to return partial results when individual keys fail.
- */
-export const presignedUrlsHandler = async (ctx: Context) => {
-	const bucketName = ctx.req.query("bucket");
-	const bucketRegion = ctx.req.query("region");
+		if (!Array.isArray(body.keys) || body.keys.length === 0) throw badRequest("'keys' must be a non-empty array");
 
-	if (!bucketName || !bucketRegion) {
-		return ctx.json({ error: "Missing expected parameters" }, 400);
-	}
+		const results = await Promise.allSettled(
+			body.keys.map(async (key) => ({
+				key,
+				url: await generatePresignedUrl(bucketName, bucketRegion, key),
+			})),
+		);
 
-	const body = await ctx.req.json<{ keys: string[] }>();
+		const urls: PresignedUrlEntry[] = [];
+		const errors: PresignedUrlError[] = [];
 
-	if (!Array.isArray(body.keys) || body.keys.length === 0) {
-		return ctx.json({ error: "'keys' must be a non-empty array" }, 400);
-	}
+		results.forEach((result, i) => {
+			if (result.status === "fulfilled") {
+				urls.push(result.value);
+			} else {
+				errors.push({
+					key: body.keys[i],
+					error: result.reason instanceof Error ? result.reason.message : "Failed to generate presigned URL",
+				});
+			}
+		});
 
-	// if (body.keys.length > MAX_KEYS_LIMIT) {
-	//   return ctx.json(
-	//     { error: `Maximum of ${MAX_KEYS_LIMIT} keys per request` },
-	//     400,
-	//   );
-	// }
-
-	const results = await Promise.allSettled(
-		body.keys.map(async (key) => ({
-			key,
-			url: await generatePresignedUrl(bucketName, bucketRegion, key),
-		})),
-	);
-
-	const urls: PresignedUrlEntry[] = [];
-	const errors: PresignedUrlError[] = [];
-
-	results.forEach((result, i) => {
-		if (result.status === "fulfilled") {
-			urls.push(result.value);
-		} else {
-			errors.push({
-				key: body.keys[i],
-				error: result.reason instanceof Error ? result.reason.message : "Failed to generate presigned URL",
-			});
-		}
+		return { urls, ...(errors.length > 0 && { errors }) };
 	});
-
-	return ctx.json({ urls, ...(errors.length > 0 && { errors }) });
-};
