@@ -10,6 +10,7 @@ import {
 	updateCollectionHandler,
 	updatePhotoHandler,
 } from "./handlers/collections";
+import { generateSizesHandler } from "./handlers/generate-sizes";
 import { getBucketHandler } from "./handlers/get-bucket";
 import { getManifestHandler } from "./handlers/get-manifest";
 import { listBucketsHandler } from "./handlers/list-buckets";
@@ -35,6 +36,9 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 
 // A set path holds slashes, so the param takes the rest of the path.
 storage.get("/manifests/:set{.+}", getManifestHandler);
+
+// Same set-path shape as the manifest route.
+storage.post("/sizes/:set{.+}", generateSizesHandler);
 
 storage.get("/collections", listCollectionsHandler);
 storage.post("/collections", createCollectionHandler);

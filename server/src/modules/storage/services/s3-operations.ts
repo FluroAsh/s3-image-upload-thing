@@ -126,30 +126,44 @@ const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
 /** Short, so a manifest replaced after its first read reaches clients within minutes. */
 const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
 
+/** Stores one size and resolves its ETag; with `createOnly` a key already taken is left alone and resolves `null`. */
+export const putVariant = async (
+	key: string,
+	body: Buffer,
+	{ bucketName, bucketRegion }: BucketLocation,
+	createOnly = false,
+): Promise<string | null> => {
+	try {
+		const { ETag } = await sendWithDeadline(
+			getRegionalClient(bucketRegion),
+			new PutObjectCommand({
+				Body: body,
+				Bucket: bucketName,
+				Key: key,
+				ContentType: DEFAULT_MIME_TYPE,
+				CacheControl: VARIANT_CACHE_CONTROL,
+				IfNoneMatch: createOnly ? "*" : undefined,
+			}),
+		);
+		if (!ETag) throw new Error(`S3 returned no ETag for "${key}"`);
+		return ETag;
+	} catch (error) {
+		if (createOnly && isS3Error(error, "PreconditionFailed")) return null;
+		throw error;
+	}
+};
+
 export const uploadImages = async (
 	image: ImageVariants,
 	set: SetIdentity,
-	{ bucketName, bucketRegion }: BucketLocation,
+	location: BucketLocation,
 ): Promise<FileVariant[]> => {
 	const settled = await Promise.allSettled(
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
 				const key = variantKey(set, variant);
-
-				const putResponse = await sendWithDeadline(
-					getRegionalClient(bucketRegion),
-					new PutObjectCommand({
-						Body: buffer,
-						Bucket: bucketName,
-						Key: key,
-						ContentType: DEFAULT_MIME_TYPE,
-						CacheControl: VARIANT_CACHE_CONTROL,
-					}),
-				);
-
-				if (!putResponse.ETag) throw new Error(`S3 returned no ETag for "${key}"`);
-
-				const imageURL = await generatePresignedUrl(bucketName, bucketRegion, key);
+				const ETag = (await putVariant(key, buffer, location)) as string;
+				const imageURL = await generatePresignedUrl(location.bucketName, location.bucketRegion, key);
 
 				return {
 					variant,
@@ -160,7 +174,7 @@ export const uploadImages = async (
 					bytes: buffer.length,
 					width,
 					height,
-					ETag: putResponse.ETag,
+					ETag,
 				} satisfies FileVariant;
 			},
 		),

@@ -1,6 +1,6 @@
 import { LucideAlertTriangle } from "lucide-react";
 
-import { useManifest } from "@/lib/query";
+import { useGenerateSizes, useManifest } from "@/lib/query";
 import { sizeStatuses } from "~/shared/image-sizes";
 import type { Manifest } from "~/shared/types";
 
@@ -16,13 +16,16 @@ const formatBytes = (bytes: number): string => {
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
-const Info = ({ manifest }: { manifest: Manifest }) => {
+const Info = ({ manifest, set }: { manifest: Manifest; set: string }) => {
 	const { placeholder, source } = manifest;
+	const statuses = sizeStatuses(manifest);
+	const generate = useGenerateSizes(set);
+	const canGenerate = source && statuses.some(({ state }) => state === "missing");
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 			<span className="flex flex-wrap gap-1">
-				{sizeStatuses(manifest).map(({ name, state, variant, reason }) => {
+				{statuses.map(({ name, state, variant, reason }) => {
 					if (variant) {
 						return (
 							<span
@@ -70,6 +73,17 @@ const Info = ({ manifest }: { manifest: Manifest }) => {
 			) : (
 				<span className="text-slate-500">No inline blur</span>
 			)}
+			{canGenerate && (
+				<button
+					type="button"
+					disabled={generate.isPending}
+					onClick={() => generate.mutate()}
+					className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 disabled:opacity-50"
+				>
+					{generate.isPending ? "Generating..." : "Generate missing sizes"}
+				</button>
+			)}
+			{generate.error && <span className="text-red-400">{serverErrorMessage(generate.error)}</span>}
 			<span>{DATE_FORMAT.format(new Date(manifest.createdAt))}</span>
 		</div>
 	);
@@ -95,7 +109,7 @@ export const SetInfo = ({ set }: { set: string }) => {
 					/>
 				)
 			) : (
-				<Info manifest={data} />
+				<Info manifest={data} set={set} />
 			)}
 		</div>
 	);

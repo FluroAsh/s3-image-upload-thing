@@ -50,3 +50,8 @@ export type Manifest = {
   /** Keyed by the name found in the key, so names outside the current variant table are kept. */
   variants: Record<string, ManifestVariant>;
 };
+
+export type GenerateSizesResponse = {
+  /** Sizes written by the request, smallest first; empty when none was missing. */
+  generated: string[];
+};

@@ -15,13 +15,14 @@ import {
 	putSetMembers,
 } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
-import { getManifest } from "@/services/manifests";
+import { getManifest, postGenerateSizes } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type {
 	BucketLocation,
 	BucketsResponse,
 	CollectionsFile,
 	FileTreeResponse,
+	GenerateSizesResponse,
 	Manifest,
 	TreeNode,
 	UpdatePhotoRequest,
@@ -89,6 +90,17 @@ export const useManifest = (set: string) => {
 		queryFn: () => getManifest(set, { bucketName, bucketRegion }),
 		enabled: !!bucketName && !!bucketRegion,
 		retry: false,
+	});
+};
+
+export const useGenerateSizes = (set: string) => {
+	const qc = useQueryClient();
+	const { bucketName, bucketRegion } = useExplorer().state;
+
+	return useMutation<GenerateSizesResponse, ApiError>({
+		mutationFn: () => postGenerateSizes(set, { bucketName, bucketRegion }),
+		/** Also on failure: a part-way run still stored some sizes. */
+		onSettled: () => qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
 	});
 };
 
