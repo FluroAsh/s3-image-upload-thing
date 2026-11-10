@@ -5,24 +5,9 @@ import { errorMessage } from "@/shared/utils/helpers";
 import { sizeStatuses } from "~/shared/image-sizes";
 import type { BucketLocation, ImageVariant, Manifest, ManifestVariant } from "~/shared/types";
 
-import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 import { encodeVariant } from "../processors/variants/processor";
-import { placeholderDataUri, variantKey } from "./manifest";
+import { buildManifest, placeholderDataUri, variantKey } from "./manifest";
 import { getObject, getObjectOrNull, putVariant, storeManifest } from "./s3-operations";
-
-const describe = (
-	key: string,
-	body: Buffer,
-	size: { width: number; height: number },
-	etag: string,
-): ManifestVariant => ({
-	key,
-	format: DEFAULT_FILE_TYPE,
-	width: size.width,
-	height: size.height,
-	bytes: body.length,
-	etag,
-});
 
 /**
  * Resolves the sizes written, empty when none was missing. Remakes each missing size from the kept original, create-only, and rewrites the manifest last with only what was stored.
@@ -39,16 +24,21 @@ export const generateMissingSizes = async (manifest: Manifest, location: BucketL
 	if (!original) throw new HTTPException(409, { message: "The kept original is missing from the bucket" });
 
 	const settled = await Promise.allSettled(
-		missing.map(async (name): Promise<[ImageVariant, ManifestVariant, Buffer] | null> => {
+		missing.map(async (name): Promise<[ImageVariant, Omit<ManifestVariant, "format">, Buffer] | null> => {
 			const key = variantKey(manifest, name);
 			const made = await encodeVariant(name, original.body);
-			const etag = await putVariant(key, made.data, location, true);
-			if (etag) return [name, describe(key, made.data, made.info, etag), made.data];
+			const etag = await putVariant(key, made.data, location, { createOnly: true });
+			if (etag)
+				return [
+					name,
+					{ key, width: made.info.width, height: made.info.height, bytes: made.data.length, etag },
+					made.data,
+				];
 
 			/** A key left by a run that stored the size but not the manifest; kept as it is and recorded. */
 			const existing = await getObject(key, location);
 			const { width, height } = await sharp(existing.body).metadata();
-			return [name, describe(key, existing.body, { width, height }, existing.etag), existing.body];
+			return [name, { key, width, height, bytes: existing.body.length, etag: existing.etag }, existing.body];
 		}),
 	);
 
@@ -58,11 +48,12 @@ export const generateMissingSizes = async (manifest: Manifest, location: BucketL
 	if (stored.length > 0) {
 		const placeholder = stored.find(([name]) => name === "placeholder")?.[2];
 		await storeManifest(
-			{
-				...manifest,
+			buildManifest({
+				createdAt: manifest.createdAt,
 				placeholder: placeholder ? placeholderDataUri(placeholder) : manifest.placeholder,
-				variants: { ...manifest.variants, ...Object.fromEntries(stored.map(([name, variant]) => [name, variant])) },
-			},
+				source: manifest.source,
+				objects: [...Object.values(manifest.variants), ...stored.map(([, variant]) => variant)],
+			}),
 			location,
 			{ force: true },
 		);

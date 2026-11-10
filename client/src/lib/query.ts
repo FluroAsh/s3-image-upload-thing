@@ -43,8 +43,6 @@ export const useFileTree = (bucketName: string, bucketRegion: string) => {
 		retry: false,
 	});
 
-	// NOTE: This is temporary until we add lazy/progressive loading for the file tree
-	// based on expansion state
 	const childMap = useMemo(() => {
 		const map = new Map<string, TreeNode[]>();
 		query.data?.tree.forEach((node) => {
@@ -100,7 +98,11 @@ export const useGenerateSizes = (set: string) => {
 	return useMutation<GenerateSizesResponse, ApiError>({
 		mutationFn: () => postGenerateSizes(set, { bucketName, bucketRegion }),
 		/** Also on failure: a part-way run still stored some sizes. */
-		onSettled: () => qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
+		onSettled: () =>
+			Promise.all([
+				qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
+				qc.invalidateQueries({ queryKey: ["fileTree", bucketName] }),
+			]),
 	});
 };
 

@@ -39,22 +39,7 @@ if (!process.env.ACCESS_KEY_ID || !process.env.SECRET_ACCESS_KEY) {
 	);
 }
 
-// ---------------------------------------------------------------------------
-// S3 clients
-// - `s3Client` is a fixed-region client for account-level operations (ListBuckets).
-// - Bucket-scoped operations (ListObjectsV2, GetObject, PutObject, presigned URLs)
-//   must target the bucket's actual region. Use `getRegionalClient` to obtain a
-//   lazily-created, cached client for a specific region.
-//
-// IMPORTANT: Do NOT enable `followRegionRedirects` on any shared S3Client instance.
-// The SDK's `regionRedirectMiddleware` permanently mutates the client's internal
-// region resolver after following a 301 redirect. When a single client is reused
-// across requests that touch multiple regions (e.g. getBucketStats for buckets in
-// us-east-1 and ap-southeast-2), the region flips on every redirect, causing
-// subsequent account-level calls like ListBuckets to alternate between endpoints
-// and return inconsistent metadata (e.g. different CreationDate values).
-// ---------------------------------------------------------------------------
-
+/** Never enable `followRegionRedirects` on a shared client: following a 301 permanently changes its region, so account-level calls like ListBuckets start alternating endpoints. */
 const createS3Client = (region: string) =>
 	new S3Client({
 		region,
@@ -126,13 +111,25 @@ const VARIANT_CACHE_CONTROL = publicCache(TIME.seconds.perDay);
 /** Short, so a manifest replaced after its first read reaches clients within minutes. */
 const MANIFEST_CACHE_CONTROL = publicCache(5 * TIME.seconds.perMinute);
 
+type PutVariantOptions = {
+	/** Leaves a key that is already taken alone and resolves `null` instead of replacing it. */
+	createOnly?: boolean;
+};
+
 /** Stores one size and resolves its ETag; with `createOnly` a key already taken is left alone and resolves `null`. */
-export const putVariant = async (
+export async function putVariant(key: string, body: Buffer, location: BucketLocation): Promise<string>;
+export async function putVariant(
+	key: string,
+	body: Buffer,
+	location: BucketLocation,
+	options: PutVariantOptions,
+): Promise<string | null>;
+export async function putVariant(
 	key: string,
 	body: Buffer,
 	{ bucketName, bucketRegion }: BucketLocation,
-	createOnly = false,
-): Promise<string | null> => {
+	{ createOnly = false }: PutVariantOptions = {},
+): Promise<string | null> {
 	try {
 		const { ETag } = await sendWithDeadline(
 			getRegionalClient(bucketRegion),
@@ -151,7 +148,7 @@ export const putVariant = async (
 		if (createOnly && isS3Error(error, "PreconditionFailed")) return null;
 		throw error;
 	}
-};
+}
 
 export const uploadImages = async (
 	image: ImageVariants,
@@ -162,7 +159,7 @@ export const uploadImages = async (
 		(Object.entries(image.variations) as [ImageVariant, VariantOutput][]).map(
 			async ([variant, { buffer, size, width, height }]) => {
 				const key = variantKey(set, variant);
-				const ETag = (await putVariant(key, buffer, location)) as string;
+				const ETag = await putVariant(key, buffer, location);
 				const imageURL = await generatePresignedUrl(location.bucketName, location.bucketRegion, key);
 
 				return {
