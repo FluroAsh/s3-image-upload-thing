@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import { sizeStatuses } from "~/shared/image-sizes";
 import type { Manifest, ManifestVariant } from "~/shared/types";
 
-const file = (edge: number, etag = `etag-${edge}`): ManifestVariant => ({
+const file = (edge: number, etag = `etag-${edge}`, portrait = false): ManifestVariant => ({
 	key: `k-${edge}`,
 	format: "webp",
-	width: edge,
-	height: Math.round(edge / 2),
+	width: portrait ? Math.round(edge / 2) : edge,
+	height: portrait ? edge : Math.round(edge / 2),
 	bytes: edge,
 	etag,
 });
@@ -70,6 +70,51 @@ describe("sizeStatuses", () => {
 			manifest({ small: file(400), medium: file(400, "other"), full: file(3840) }, kept ? 3840 : undefined),
 		);
 		expect(result).toMatchObject({ small: "present", medium: "mismatched", full: "present" });
+	});
+
+	it("measures the longest edge of a portrait set by its height", () => {
+		const result = states(
+			manifest(
+				{ small: file(400, undefined, true), medium: file(800, undefined, true), full: file(900, undefined, true) },
+				900,
+			),
+		);
+		expect(result).toEqual({
+			placeholder: "missing",
+			thumbnail: "missing",
+			small: "present",
+			medium: "present",
+			large: "notApplicable",
+			full: "present",
+		});
+	});
+
+	it("flags stored copies larger than the source size", () => {
+		const result = states(
+			manifest({ small: file(400, "c"), medium: file(400, "c"), large: file(400, "c"), full: file(598) }, 598),
+		);
+		expect(result).toMatchObject({ small: "present", medium: "mismatched", large: "mismatched", full: "present" });
+	});
+
+	it("expects every size when stored sizes exist but there is no source and no full", () => {
+		const result = states(manifest({ thumbnail: file(120), medium: file(800), large: file(1440) }));
+		expect(result).toEqual({
+			placeholder: "missing",
+			thumbnail: "present",
+			small: "missing",
+			medium: "present",
+			large: "present",
+			full: "missing",
+		});
+	});
+
+	it("explains why a size is mismatched", () => {
+		const reasons = Object.fromEntries(
+			sizeStatuses(
+				manifest({ small: file(400, "s"), medium: file(400, "s"), large: file(500), full: file(3840) }, 3840),
+			).map(({ name, reason }) => [name, reason]),
+		);
+		expect(reasons).toMatchObject({ medium: "same file as small", large: "smaller than its 1440px bound" });
 	});
 
 	it("does not flag the widest file for being under its bound", () => {

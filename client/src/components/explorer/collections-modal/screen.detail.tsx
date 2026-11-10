@@ -42,7 +42,6 @@ const PhotoTile = ({
 	const folder = sets.get(photo.set);
 
 	return (
-		// The tile is the drag source itself: Firefox won't start a drag from a <button>.
 		// biome-ignore lint/a11y/useSemanticElements: a <button> can't be dragged in Firefox
 		<div
 			{...dragProps}
@@ -162,7 +161,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 
 	const collection = data?.collections.find((c) => c.slug === slug);
 
-	// Removing the last photo deletes the collection.
+	/** Removing the last photo deletes the collection. */
 	useEffect(() => {
 		if (data && !collection) setScreen({ screen: "list" });
 	}, [data, collection, setScreen]);
@@ -179,7 +178,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 			<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collection..." />
 		);
 
-	// Show the dropped order until the refetch lands.
+	/** Show the dropped order until the refetch lands. */
 	const order = reorder.isPending ? reorder.variables.sets : collection.photos.map((p) => p.set);
 	const bySet = new Map(collection.photos.map((p) => [p.set, p]));
 	const cover = coverOf(collection);

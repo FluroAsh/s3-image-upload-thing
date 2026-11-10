@@ -69,7 +69,6 @@ export const DetailsPanel = () => {
 			className="bg-slate-800 border-l border-slate-700 flex-1 overflow-y-auto overflow-x-hidden"
 			aria-label="File details"
 		>
-			{/* Header - Even lighter for hierarchy */}
 			<div className="border-b border-slate-600 p-6 bg-slate-750">
 				<div className="flex items-center gap-3">
 					<div className="size-10 rounded-lg bg-sky-500/20 flex items-center justify-center">
@@ -82,7 +81,6 @@ export const DetailsPanel = () => {
 				</div>
 			</div>
 
-			{/* Remote URL Section */}
 			<div className="p-6 border-b border-slate-600">
 				<div className="flex items-center gap-2 mb-3">
 					<LucideLink className="size-4 text-sky-400" />
@@ -100,15 +98,15 @@ export const DetailsPanel = () => {
 			</div>
 
 			{setPath && (
-				<div className="p-6 border-b border-slate-600">
-					<h3 className="mb-3 text-sm font-medium text-neutral-100">Sizes</h3>
-					<SetInfo set={setPath} />
-				</div>
+				<>
+					<div className="p-6 border-b border-slate-600">
+						<h3 className="mb-3 text-sm font-medium text-neutral-100">Sizes</h3>
+						<SetInfo set={setPath} />
+					</div>
+					<CollectionSection setPath={setPath} />
+				</>
 			)}
 
-			{setPath && <CollectionSection setPath={setPath} />}
-
-			{/* Preview Section */}
 			{(isImage || isVideo) && (
 				<div className="p-6 border-b border-slate-600">
 					<div className="flex items-center gap-2 mb-4">
@@ -139,7 +137,6 @@ export const DetailsPanel = () => {
 				</div>
 			)}
 
-			{/* Variants Section */}
 			{variants && variants.length > 0 && (
 				<div className="p-6">
 					<div className="flex items-center gap-2 mb-4">

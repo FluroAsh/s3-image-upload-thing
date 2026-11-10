@@ -22,12 +22,12 @@ const Info = ({ manifest }: { manifest: Manifest }) => {
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 			<span className="flex flex-wrap gap-1">
-				{sizeStatuses(manifest).map(({ name, state, variant }) => {
+				{sizeStatuses(manifest).map(({ name, state, variant, reason }) => {
 					if (variant) {
 						return (
 							<span
 								key={name}
-								title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}`}
+								title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}${reason ? ` · ${reason}` : ""}`}
 								className={`rounded px-1.5 py-0.5 ${state === "mismatched" ? "border border-dotted border-amber-700/60 bg-slate-800 text-slate-400" : "bg-slate-700 text-slate-300"}`}
 							>
 								{name} {variant.width}
