@@ -81,7 +81,7 @@ export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
 export const setId = ({ folder, name }: SetIdentity): string => JSON.stringify([folder, name]);
 
-/** Also any folder named `original.…`, since the bucket policy hides every key with `/original.` in it from the CDN, and a set's sizes must stay public. */
+/** Refuses the service prefix and any folder named `original.…`, since the bucket policy hides every key with `/original.` in it from the CDN, and a set's sizes must stay public. */
 export const hasRefusedUploadPrefix = (key: string): boolean =>
 	key.startsWith(SERVICE_PREFIX) || key.split("/").some((segment) => segment.startsWith(SOURCE_FILE_STEM));
 
