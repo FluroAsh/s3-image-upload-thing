@@ -11,6 +11,7 @@ Documentation for the upload server and the scripts that live beside it. Keep it
 ## Runbooks
 
 - [Backfill manifests](runbooks/backfill-manifests.md): write manifests for image sets stored before uploads wrote their own
+- [Move legacy sets](runbooks/move-legacy-sets.md): copy the migrated Strapi sets from the clone bucket into the upload bucket under `legacy/` (one-off)
 - [Migrate flat sets](runbooks/migrate-flat-sets.md): move flat image sets into set folders through the upload pipeline (temporary)
 
 ## Conventions
