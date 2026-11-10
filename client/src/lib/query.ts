@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
+import { useExplorer } from "@/lib/providers/explorer-provider";
 import {
+	type BucketLocation,
 	deleteCollection,
 	getCollections,
 	patchCollection,
@@ -69,19 +71,40 @@ export const useMutateUpload = (bucketName: string) => {
 	});
 };
 
-export const useCollections = () =>
-	useQuery<CollectionsFile, ApiError>({ queryKey: ["collections"], queryFn: getCollections, retry: false });
+/** The bucket the explorer has open, which every collections call is scoped to. */
+const useBucketLocation = () => {
+	const { bucketName, bucketRegion } = useExplorer().state;
+	return { bucketName, bucketRegion };
+};
 
-export const useManifest = (set: string) =>
-	useQuery<Manifest, ApiError>({ queryKey: ["manifest", set], queryFn: () => getManifest(set), retry: false });
+export const useCollections = () => {
+	const location = useBucketLocation();
+	return useQuery<CollectionsFile, ApiError>({
+		queryKey: ["collections", location.bucketName],
+		queryFn: () => getCollections(location),
+		retry: false,
+	});
+};
+
+export const useManifest = (set: string) => {
+	const location = useBucketLocation();
+	return useQuery<Manifest, ApiError>({
+		queryKey: ["manifest", location.bucketName, set],
+		queryFn: () => getManifest(set, location),
+		retry: false,
+	});
+};
 
 /** Refetches collections after a write, so every reader shows what the server saved. */
-const useCollectionsWrite = <Response, Variables>(write: (variables: Variables) => Promise<Response>) => {
+const useCollectionsWrite = <Response, Variables>(
+	write: (variables: Variables, location: BucketLocation) => Promise<Response>,
+) => {
 	const qc = useQueryClient();
+	const location = useBucketLocation();
 
 	return useMutation<Response, ApiError, Variables>({
-		mutationFn: write,
-		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections"] }),
+		mutationFn: (variables) => write(variables, location),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections", location.bucketName] }),
 	});
 };
 
@@ -96,7 +119,9 @@ export const useDeleteCollection = () => useCollectionsWrite(deleteCollection);
 export const useSetMembers = () => useCollectionsWrite(putSetMembers);
 
 export const useUpdatePhoto = () =>
-	useCollectionsWrite(({ set, ...body }: { set: string } & UpdatePhotoRequest) => patchPhoto(set, body));
+	useCollectionsWrite(({ set, ...body }: { set: string } & UpdatePhotoRequest, location) =>
+		patchPhoto(set, body, location),
+	);
 
 const FIFTY_MINUTES_MS = 50 * 60 * 1000;
 const FIVE_MINUTES_MS = 5 * 60 * 1000;

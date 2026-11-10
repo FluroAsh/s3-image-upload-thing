@@ -17,13 +17,12 @@ import type {
 import {
 	CollectionsConflictError,
 	CollectionsValidationError,
-	collectionsLocation,
 	readCollections,
 	updateCollections,
 } from "../services/collections";
 import { MANIFEST_FILE_NAME } from "../services/manifest";
-import { objectExists } from "../services/s3-operations";
-import { badRequest, respond } from "./respond";
+import { type BucketLocation, objectExists } from "../services/s3-operations";
+import { badRequest, bucketOf, respond } from "./respond";
 
 type Moved = SetMembersResponse["moved"];
 
@@ -84,8 +83,7 @@ const respondCollections = <Body>(ctx: Context, run: () => Promise<Body>, status
 		status,
 	);
 
-const assertSetsHaveManifests = async (sets: string[]): Promise<void> => {
-	const location = collectionsLocation();
+const assertSetsHaveManifests = async (sets: string[], location: BucketLocation): Promise<void> => {
 	const found = await Promise.all(sets.map((set) => objectExists(`${set}/${MANIFEST_FILE_NAME}`, location)));
 	const missing = sets.filter((_, index) => !found[index]);
 	if (missing.length > 0) throw badRequest(`No manifest for: ${missing.join(", ")}`);
@@ -114,7 +112,7 @@ const movedFrom = (before: CollectionsFile, sets: string[], into: string | null)
 	setsToMove(before, sets, into).map(({ set, from }) => ({ set, from: from.slug }));
 
 export const listCollectionsHandler = (ctx: Context) =>
-	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(collectionsLocation())).file);
+	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(bucketOf(ctx))).file);
 
 export const createCollectionHandler = (ctx: Context) =>
 	respondCollections<CreateCollectionResponse>(
@@ -124,7 +122,7 @@ export const createCollectionHandler = (ctx: Context) =>
 			const name = requireName(body.name);
 			const { sets } = body;
 			if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
-			await assertSetsHaveManifests(sets);
+			await assertSetsHaveManifests(sets, bucketOf(ctx));
 
 			const base = slugOf(name);
 			const { before, after } = await updateCollections((file) => {
@@ -135,7 +133,7 @@ export const createCollectionHandler = (ctx: Context) =>
 					photos: sets.map((set) => taken.get(set) ?? blankPhoto(set)),
 				};
 				return { ...file, collections: [...remaining, created] };
-			}, collectionsLocation());
+			}, bucketOf(ctx));
 
 			const collection = written(after, uniqueSlug(base, before.collections));
 			return { collection, moved: movedFrom(before, sets, null) };
@@ -149,7 +147,7 @@ export const setMembersHandler = (ctx: Context) =>
 		if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
 		if (collection !== null && typeof collection !== "string") throw badRequest("Collection must be a slug or null");
 
-		if (collection !== null) await assertSetsHaveManifests(sets);
+		if (collection !== null) await assertSetsHaveManifests(sets, bucketOf(ctx));
 
 		const { before, after } = await updateCollections((file) => {
 			if (collection !== null) assertCollection(file, collection);
@@ -164,7 +162,7 @@ export const setMembersHandler = (ctx: Context) =>
 					return { ...candidate, photos: [...candidate.photos, ...added] };
 				}),
 			};
-		}, collectionsLocation());
+		}, bucketOf(ctx));
 
 		return { file: after, moved: movedFrom(before, sets, collection) };
 	});
@@ -192,7 +190,7 @@ export const updatePhotoHandler = (ctx: Context) =>
 					photos: collection.photos.map((photo) => (photo.set === set ? { ...photo, ...patch } : photo)),
 				})),
 			};
-		}, collectionsLocation());
+		}, bucketOf(ctx));
 
 		const photo = holdingSet(after, set)?.photo;
 		if (!photo) throw new Error(`Photo "${set}" was not written`);
@@ -208,7 +206,7 @@ const changeCollection = async (ctx: Context, change: (collection: Collection) =
 			...file,
 			collections: file.collections.map((candidate) => (candidate.slug === slug ? change(candidate) : candidate)),
 		};
-	}, collectionsLocation());
+	}, bucketOf(ctx));
 
 	return { collection: written(after, slug) };
 };
@@ -232,7 +230,7 @@ export const deleteCollectionHandler = (ctx: Context) =>
 		const { after } = await updateCollections((file) => {
 			assertCollection(file, slug);
 			return { ...file, collections: file.collections.filter((candidate) => candidate.slug !== slug) };
-		}, collectionsLocation());
+		}, bucketOf(ctx));
 		return { file: after };
 	});
 

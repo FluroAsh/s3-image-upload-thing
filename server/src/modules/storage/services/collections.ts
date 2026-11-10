@@ -1,6 +1,6 @@
 import { COLLECTIONS_SCHEMA, type Collection, type CollectionsFile } from "~/shared/types";
 
-import { type BucketLocation, copyObject, defaultRegion, getObjectOrNull, putJson } from "./s3-operations";
+import { type BucketLocation, copyObject, getObjectOrNull, putJson } from "./s3-operations";
 
 export const COLLECTIONS_KEY = "gallery/collections.json";
 const HISTORY_PREFIX = "gallery/history/collections-";
@@ -83,11 +83,4 @@ export const updateCollections = async (
 			return { before: file, after: next };
 	}
 	throw new CollectionsConflictError(`"${COLLECTIONS_KEY}" kept changing; gave up after ${MAX_ATTEMPTS} attempts`);
-};
-
-const COLLECTIONS_BUCKET = process.env.COLLECTIONS_BUCKET;
-
-export const collectionsLocation = (): BucketLocation => {
-	if (!COLLECTIONS_BUCKET) throw new Error("COLLECTIONS_BUCKET is not set");
-	return { bucketName: COLLECTIONS_BUCKET, bucketRegion: defaultRegion };
 };

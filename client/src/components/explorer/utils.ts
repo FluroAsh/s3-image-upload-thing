@@ -1,6 +1,6 @@
 import type { ApiError } from "@/lib/ofetch";
 import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
-import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
+import type { ImageVariant, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 24;
 const DEPTH_BASE_OFFSET_PX = 8;
@@ -71,10 +71,6 @@ export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: str
 		if (!node.isFolder) return [];
 		return isSetFolder(node, childMap.get(node.id)) ? [node] : setFoldersUnder(childMap, node.id);
 	});
-
-/** A set belongs to a bucket when its folder is in the bucket's listing: the client knows only this bucket's CDN prefix, which cannot tell an unprefixed bucket's sets from another's. */
-export const collectionsInBucket = (collections: Collection[], bucketSets: ReadonlyMap<string, TreeNode>) =>
-	collections.filter((collection) => collection.photos.some((photo) => bucketSets.has(photo.set)));
 
 /** The sets inside a folder (`""` for the bucket root), found by folder id prefix. */
 export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>

@@ -14,32 +14,49 @@ import type {
 	UpdatePhotoResponse,
 } from "~/shared/types";
 
-export const getCollections = (): Promise<CollectionsFile> => ofetch<CollectionsFile>("/storage/collections", NO_RETRY);
+export type BucketLocation = { bucketName: string; bucketRegion: string };
 
-export const postCollection = (body: CreateCollectionRequest): Promise<CreateCollectionResponse> =>
-	ofetch<CreateCollectionResponse>("/storage/collections", { method: "POST", body });
+export const scoped = ({ bucketName, bucketRegion }: BucketLocation) => ({ bucket: bucketName, region: bucketRegion });
 
-export const putSetMembers = (body: SetMembersRequest): Promise<SetMembersResponse> =>
-	ofetch<SetMembersResponse>("/storage/collections/members", { method: "PUT", body });
+export const getCollections = (location: BucketLocation): Promise<CollectionsFile> =>
+	ofetch<CollectionsFile>("/storage/collections", { ...NO_RETRY, query: scoped(location) });
+
+export const postCollection = (
+	body: CreateCollectionRequest,
+	location: BucketLocation,
+): Promise<CreateCollectionResponse> =>
+	ofetch<CreateCollectionResponse>("/storage/collections", { method: "POST", body, query: scoped(location) });
+
+export const putSetMembers = (body: SetMembersRequest, location: BucketLocation): Promise<SetMembersResponse> =>
+	ofetch<SetMembersResponse>("/storage/collections/members", { method: "PUT", body, query: scoped(location) });
 
 /** `set` goes in the path as it is: the server's route takes the slashes of a set path. */
-export const patchPhoto = (set: string, body: UpdatePhotoRequest): Promise<UpdatePhotoResponse> =>
-	ofetch<UpdatePhotoResponse>(`/storage/collections/members/${set}`, { method: "PATCH", body });
+export const patchPhoto = (
+	set: string,
+	body: UpdatePhotoRequest,
+	location: BucketLocation,
+): Promise<UpdatePhotoResponse> =>
+	ofetch<UpdatePhotoResponse>(`/storage/collections/members/${set}`, {
+		method: "PATCH",
+		body,
+		query: scoped(location),
+	});
 
-export const patchCollection = ({
-	slug,
-	...body
-}: { slug: string } & UpdateCollectionRequest): Promise<UpdateCollectionResponse> =>
-	ofetch<UpdateCollectionResponse>(`/storage/collections/${slug}`, { method: "PATCH", body });
+export const patchCollection = (
+	{ slug, ...body }: { slug: string } & UpdateCollectionRequest,
+	location: BucketLocation,
+): Promise<UpdateCollectionResponse> =>
+	ofetch<UpdateCollectionResponse>(`/storage/collections/${slug}`, { method: "PATCH", body, query: scoped(location) });
 
-export const deleteCollection = (slug: string): Promise<DeleteCollectionResponse> =>
-	ofetch<DeleteCollectionResponse>(`/storage/collections/${slug}`, { method: "DELETE" });
+export const deleteCollection = (slug: string, location: BucketLocation): Promise<DeleteCollectionResponse> =>
+	ofetch<DeleteCollectionResponse>(`/storage/collections/${slug}`, { method: "DELETE", query: scoped(location) });
 
-export const putCollectionOrder = ({
-	slug,
-	sets,
-}: {
-	slug: string;
-	sets: string[];
-}): Promise<ReorderCollectionResponse> =>
-	ofetch<ReorderCollectionResponse>(`/storage/collections/${slug}/order`, { method: "PUT", body: { sets } });
+export const putCollectionOrder = (
+	{ slug, sets }: { slug: string; sets: string[] },
+	location: BucketLocation,
+): Promise<ReorderCollectionResponse> =>
+	ofetch<ReorderCollectionResponse>(`/storage/collections/${slug}/order`, {
+		method: "PUT",
+		body: { sets },
+		query: scoped(location),
+	});

@@ -5,21 +5,18 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections } from "@/lib/query";
 import { cn } from "@/lib/utils";
 
-import { collectionsInBucket } from "../utils";
 import { useCollectionsModal } from "./provider";
 import { CreateScreen } from "./screen.create";
 import { DetailScreen } from "./screen.detail";
 import { ListScreen } from "./screen.list";
-import { useBucketSets } from "./use-bucket-sets";
 
 const DIALOG_CLOSE_DELAY_MS = 500;
 
 export const CollectionsTrigger = () => {
 	const { bucketName } = useExplorer().state;
 	const { screen, resetState } = useCollectionsModal();
-	const { sets } = useBucketSets();
 	const { data } = useCollections();
-	const count = collectionsInBucket(data?.collections ?? [], sets).length;
+	const count = data?.collections.length ?? 0;
 
 	const handleOpenChange = (open: boolean) => {
 		if (!open) {

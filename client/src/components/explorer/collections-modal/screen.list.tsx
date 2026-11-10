@@ -14,7 +14,7 @@ import type { Collection, TreeNode } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
 import { PartialNotice } from "../partial-notice";
-import { collectionsInBucket, formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
 import { useBucketSets } from "./use-bucket-sets";
@@ -103,7 +103,7 @@ export const ListScreen = () => {
 
 	const error = tree.error ?? collections.error;
 	const loading = tree.isLoading || collections.isLoading;
-	const listed = collectionsInBucket(collections.data?.collections ?? [], tree.sets);
+	const listed = collections.data?.collections ?? [];
 
 	return (
 		<section className="space-y-3" aria-label="Collections">
