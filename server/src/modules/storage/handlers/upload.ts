@@ -1,5 +1,4 @@
 import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
 
 import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
@@ -55,17 +54,5 @@ export const uploadImagesHandler = (ctx: Context) =>
 			throw badRequest("No files uploaded");
 		}
 
-		const outcome = await runUploadPipeline({ fileEntries, bucketName, bucketRegion, destination });
-
-		if ("refused" in outcome) {
-			if (outcome.refused === "reserved") {
-				throw badRequest(`Path ${outcome.names.map((name) => `"${name}"`).join(", ")} is reserved`);
-			}
-			throw new HTTPException(409, { message: `An image set already exists for: ${outcome.names.join(", ")}` });
-		}
-
-		return {
-			message: "Successfully uploaded images",
-			files: outcome.files,
-		};
+		return { results: await runUploadPipeline({ fileEntries, bucketName, bucketRegion, destination }) };
 	});

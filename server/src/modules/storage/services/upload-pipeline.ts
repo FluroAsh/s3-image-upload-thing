@@ -4,7 +4,7 @@ import sharp from "sharp";
 
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 import { errorMessage } from "@/shared/utils/helpers";
-import type { BucketLocation, FileVariant, ImageVariant } from "~/shared/types";
+import type { BucketLocation, FileVariant, ImageVariant, UploadFileResult } from "~/shared/types";
 
 import { ensureBuffer } from "../processors/variants/processor";
 import { createImageVariants, prepareImages } from "./image-processing";
@@ -20,23 +20,6 @@ import {
 	variantKey,
 } from "./manifest";
 import { deleteObjects, imageSetExists, storeManifest, storeOriginal, uploadImages } from "./s3-operations";
-
-/** Why an upload was turned away: `reserved` for a path the service owns, `exists` for a name already taken. */
-export const UPLOAD_REFUSALS = ["reserved", "exists"] as const;
-
-export type UploadRefusal = (typeof UPLOAD_REFUSALS)[number];
-
-export type UploadOutcome =
-	| {
-			/** Every variant stored, across all sets of the request. */
-			files: FileVariant[];
-	  }
-	| {
-			/** Why nothing was stored, or why the last set could not be completed. */
-			refused: UploadRefusal;
-			/** The key prefixes (`reserved`) or set names (`exists`) that caused it. */
-			names: string[];
-	  };
 
 export type UploadPipelineParams = BucketLocation & {
 	/** Multipart entries of the request, as field name and value; non-file values are ignored. */
@@ -108,24 +91,44 @@ const storeImageSet = async (
 	}
 };
 
-export const runUploadPipeline = async (params: UploadPipelineParams): Promise<UploadOutcome> => {
+const exists = (name: string) => `An image set named "${name}" already exists`;
+
+const refused = (file: string, reason: string): UploadFileResult => ({ file, status: "refused", reason });
+
+const isImage = (body: Buffer) =>
+	sharp(body)
+		.metadata()
+		.then(
+			() => true,
+			() => false,
+		);
+
+/** One file's whole upload, so a refusal or an error ends only this file and the rest of the batch carries on. */
+const uploadFile = async (
+	image: ProcessedImage,
+	destination: string,
+	location: BucketLocation,
+): Promise<UploadFileResult> => {
+	const file = image.fileName;
+	try {
+		const set = uploadSetIdentity(destination, file);
+		const prefix = setKeyPrefix(set);
+		if (hasRefusedUploadPrefix(prefix)) return refused(file, `Path "${prefix}" is reserved`);
+		if (!(await isImage(ensureBuffer(image.buffer)))) return refused(file, "Not a valid image");
+		if (await imageSetExists(set, location)) return refused(file, exists(set.name));
+
+		const variants = await storeImageSet(await processImage(image), set, location);
+		if (!variants) return refused(file, exists(set.name));
+		return { file, status: "stored", variants };
+	} catch (error) {
+		console.error(error);
+		return { file, status: "failed", reason: errorMessage(error) };
+	}
+};
+
+export const runUploadPipeline = async (params: UploadPipelineParams): Promise<UploadFileResult[]> => {
 	const { fileEntries, destination, ...location } = params;
 
 	const preparedImages = await prepareImages(fileEntries);
-	const sets = preparedImages.map(({ fileName }) => uploadSetIdentity(destination, fileName));
-
-	const reserved = sets.map(setKeyPrefix).filter(hasRefusedUploadPrefix);
-	if (reserved.length > 0) return { refused: "reserved", names: reserved };
-
-	const exists = await Promise.all(sets.map((set) => imageSetExists(set, location)));
-	const taken = sets.filter((_, index) => exists[index]);
-	if (taken.length > 0) return { refused: "exists", names: taken.map(({ name }) => name) };
-
-	const processedImages = await Promise.all(preparedImages.map((image) => processImage(image)));
-	const results = await Promise.all(processedImages.map((image, index) => storeImageSet(image, sets[index], location)));
-
-	const lost = sets.filter((_, index) => results[index] === null);
-	if (lost.length > 0) return { refused: "exists", names: lost.map(({ name }) => name) };
-
-	return { files: results.flatMap((stored) => stored ?? []) };
+	return Promise.all(preparedImages.map((image) => uploadFile(image, destination, location)));
 };

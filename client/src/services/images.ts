@@ -3,7 +3,7 @@ import type * as API from "~/shared/types";
 
 export const postUploadImages = async (formData: FormData) => {
 	try {
-		const response = await ofetch<API.UploadSuccess>("/storage/upload", {
+		const response = await ofetch<API.UploadResponse>("/storage/upload", {
 			method: "POST",
 			body: formData,
 		});

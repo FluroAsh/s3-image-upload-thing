@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { UPLOAD_FIELD } from "~/shared/constants/upload";
+import type { UploadFileResult } from "~/shared/types";
 
 import { runUploadPipeline } from "../services/upload-pipeline";
 import { uploadImagesHandler } from "./upload";
@@ -48,7 +49,7 @@ describe("uploadImagesHandler", () => {
 		["/trip//2025/", "trip/2025"],
 		["", ""],
 	])("cleans destination '%s' to '%s' before the pipeline sees it", async (destination, cleaned) => {
-		vi.mocked(runUploadPipeline).mockResolvedValue({ files: [] });
+		vi.mocked(runUploadPipeline).mockResolvedValue([]);
 
 		const res = await post({ ...validFields, [UPLOAD_FIELD.Destination]: destination });
 
@@ -71,21 +72,16 @@ describe("uploadImagesHandler", () => {
 		expect(runUploadPipeline).not.toHaveBeenCalled();
 	});
 
-	it("maps an 'exists' refusal to a 409", async () => {
-		vi.mocked(runUploadPipeline).mockResolvedValue({ refused: "exists", names: ["a", "b"] });
+	it("answers 200 with every file's result, refused ones included", async () => {
+		const results: UploadFileResult[] = [
+			{ file: "a.png", status: "stored", variants: [] },
+			{ file: "b.png", status: "refused", reason: "Not a valid image" },
+		];
+		vi.mocked(runUploadPipeline).mockResolvedValue(results);
 
 		const res = await post(validFields);
 
-		expect(res.status).toBe(409);
-		expect(await res.json()).toEqual({ error: "An image set already exists for: a, b" });
-	});
-
-	it("maps a 'reserved' refusal to a 400", async () => {
-		vi.mocked(runUploadPipeline).mockResolvedValue({ refused: "reserved", names: ["src/"] });
-
-		const res = await post(validFields);
-
-		expect(res.status).toBe(400);
-		expect(await res.json()).toEqual({ error: 'Path "src/" is reserved' });
+		expect(res.status).toBe(200);
+		expect(await res.json()).toEqual({ results });
 	});
 });

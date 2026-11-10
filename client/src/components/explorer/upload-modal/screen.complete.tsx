@@ -1,28 +1,26 @@
-import type { FileVariant, FileVariants, ImageVariant } from "~/shared/types";
+import type { FileVariant, ImageVariant, UploadFileResult, UploadStatus } from "~/shared/types";
 
 import { useUpload } from "./provider";
 
-const Header = ({ imageCount, groupCount }: { imageCount: number; groupCount: number }) => {
-	return (
-		<p className="text-base text-neutral-300 mt-2 mb-4 font-medium">
-			Successfully uploaded {imageCount} {imageCount === 1 ? "variant" : "variants"} across {groupCount}{" "}
-			{groupCount === 1 ? "image" : "images"}.
-		</p>
-	);
+const STATUS_LABEL: Record<UploadStatus, string> = {
+	stored: "Stored",
+	refused: "Refused",
+	failed: "Failed",
 };
 
-const FileGroup = ({ groups }: { groups: FileVariants[] }) => {
-	return groups.map((fileGroup, i) => (
-		<div key={`group-${fileGroup[0].fileName}`} className="bg-neutral-800 rounded-lg p-3 border border-neutral-700">
-			<h4 className="text-sm font-medium text-neutral-200 mb-2">Group {i + 1}</h4>
+const STATUS_STYLE: Record<UploadStatus, string> = {
+	stored: "bg-green-900 text-green-200",
+	refused: "bg-amber-900 text-amber-200",
+	failed: "bg-red-900 text-red-200",
+};
 
-			<div className="space-y-2">
-				{fileGroup.map((file) => (
-					<FileItem key={`variant-${file.fileName}-${file.variant}`} file={file} />
-				))}
-			</div>
-		</div>
-	));
+const Header = ({ results }: { results: UploadFileResult[] }) => {
+	const stored = results.filter(({ status }) => status === "stored").length;
+	return (
+		<p className="text-base text-neutral-300 mt-2 mb-4 font-medium">
+			Stored {stored} of {results.length} {results.length === 1 ? "image" : "images"}.
+		</p>
+	);
 };
 
 const variantSizeLabel: Record<ImageVariant, string> = {
@@ -53,31 +51,40 @@ const FileItem = ({ file }: { file: FileVariant }) => {
 	);
 };
 
+const FileResult = ({ result }: { result: UploadFileResult }) => (
+	<div className="bg-neutral-800 rounded-lg p-3 border border-neutral-700">
+		<div className="flex items-center justify-between gap-2">
+			<h4 className="text-sm font-medium text-neutral-200 break-all">{result.file}</h4>
+			<span
+				className={`text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wide ${STATUS_STYLE[result.status]}`}
+			>
+				{STATUS_LABEL[result.status]}
+			</span>
+		</div>
+
+		{result.reason && <p className="text-sm text-neutral-400 mt-2">{result.reason}</p>}
+
+		{result.variants && (
+			<div className="space-y-2 mt-2">
+				{result.variants.map((variant) => (
+					<FileItem key={`variant-${variant.fileName}-${variant.variant}`} file={variant} />
+				))}
+			</div>
+		)}
+	</div>
+);
+
 export const CompleteScreen = () => {
 	const { uploadResponse } = useUpload();
-	const files = uploadResponse?.files || [];
-
-	// Group files by fileName (each image has multiple variants)
-	const groupedFiles = files.reduce(
-		(acc, file) => {
-			if (!acc[file.fileName]) {
-				acc[file.fileName] = [];
-			}
-			acc[file.fileName].push(file);
-			return acc;
-		},
-		{} as Record<string, FileVariant[]>,
-	);
-
-	const groups = Object.values(groupedFiles);
-	const groupCount = groups.length;
-	const imageCount = files.length;
+	const results = uploadResponse?.results ?? [];
 
 	return (
 		<div>
-			<Header imageCount={imageCount} groupCount={groupCount} />
+			<Header results={results} />
 			<div className="max-h-[700px] overflow-y-auto space-y-3 pr-2">
-				<FileGroup groups={groups} />
+				{results.map((result) => (
+					<FileResult key={result.file} result={result} />
+				))}
 			</div>
 		</div>
 	);

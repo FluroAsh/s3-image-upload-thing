@@ -22,7 +22,7 @@ const MODAL_SCREENS: Record<UploadState, { title: string; component: React.FC }>
 		component: ErrorScreen,
 	},
 	[EUploadState.Complete]: {
-		title: "Upload Success!",
+		title: "Upload Complete",
 		component: CompleteScreen,
 	},
 };

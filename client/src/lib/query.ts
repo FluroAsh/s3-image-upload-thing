@@ -62,7 +62,8 @@ export const useMutateUpload = (bucketName: string) => {
 
 	return useMutation({
 		mutationFn: (formData: FormData) => postUploadImages(formData),
-		onSuccess: () => {
+		onSuccess: ({ results }) => {
+			if (!results.some(({ status }) => status === "stored")) return;
 			qc.invalidateQueries({
 				exact: false,
 				queryKey: ["fileTree", bucketName],
