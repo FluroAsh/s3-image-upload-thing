@@ -9,7 +9,7 @@ import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/con
 import type { BucketLocation } from "./s3-operations";
 
 /** What makes two keys part of the same image set. */
-export type SetIdentity = Pick<Manifest, "layout" | "folder" | "name">;
+export type SetIdentity = Pick<Manifest, "folder" | "name">;
 
 type ClassifiedKey = SetIdentity & {
 	/** Variant name taken from the key's prefix; `"original"` for an un-prefixed file. */
@@ -17,7 +17,14 @@ type ClassifiedKey = SetIdentity & {
 };
 
 /** Why a bucket key is not part of any image set. */
-export const SKIP_REASONS = ["reserved-prefix", "folder-marker", "set-manifest", "not-webp", "empty-name"] as const;
+export const SKIP_REASONS = [
+	"reserved-prefix",
+	"folder-marker",
+	"set-manifest",
+	"not-webp",
+	"empty-name",
+	"no-set-folder",
+] as const;
 
 type SkipReason = (typeof SKIP_REASONS)[number];
 
@@ -75,28 +82,21 @@ const SOURCE_FILE_STEM = "original.";
 /** File extension of every key the classifier accepts, dot included. */
 export const EXTENSION = `.${DEFAULT_FILE_TYPE}`;
 
-export const setId = ({ layout, folder, name }: SetIdentity): string => JSON.stringify([layout, folder, name]);
+export const setId = ({ folder, name }: SetIdentity): string => JSON.stringify([folder, name]);
 
 /** Also any folder named `original.…`, since the bucket policy hides every key with `/original.` in it from the CDN, and a set's sizes must stay public. */
 export const hasRefusedUploadPrefix = (key: string): boolean =>
 	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
 	key.split("/").some((segment) => segment.startsWith(SOURCE_FILE_STEM));
 
-/** A set in its own folder, which is the only kind that holds a manifest. */
-export type NestedSetIdentity = Omit<SetIdentity, "layout">;
-
-/** Only a nested set has a folder of its own to hold a manifest. */
-export const holdsManifest = ({ layout }: SetIdentity): boolean => layout === "nested";
-
 /** The one place an upload's set identity is derived, so the pre-check, variant keys and manifest agree. */
-export const uploadSetIdentity = (destination: string, fileName: string): NestedSetIdentity => ({
+export const uploadSetIdentity = (destination: string, fileName: string): SetIdentity => ({
 	folder: destination,
 	name: path.parse(fileName).name,
 });
 
 /** The set's own folder as a key prefix: every variant of an uploaded set and its manifest are stored under it. */
-export const setKeyPrefix = ({ folder, name }: NestedSetIdentity): string =>
-	folder ? `${folder}/${name}/` : `${name}/`;
+export const setKeyPrefix = ({ folder, name }: SetIdentity): string => (folder ? `${folder}/${name}/` : `${name}/`);
 
 const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_PREFIXES ?? "{}");
 
@@ -114,7 +114,7 @@ export const locateSet = (set: string, fallback: BucketLocation): { location: Bu
 };
 
 /** The nested set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
-export const nestedSetOf = (key: string): NestedSetIdentity | undefined => {
+export const nestedSetOf = (key: string): SetIdentity | undefined => {
 	const segments = key.split("/");
 	const name = segments[segments.length - 2];
 	return name ? { folder: segments.slice(0, -2).join("/"), name } : undefined;
@@ -151,7 +151,7 @@ export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boole
 	key.endsWith(`/${MANIFEST_FILE_NAME}`) && isInSetFolder(key, siblings);
 
 /** The key an upload stores a set's original under; `extension` is lower-cased so one policy pattern matches every original. */
-export const sourceKey = (set: NestedSetIdentity, extension: string): string =>
+export const sourceKey = (set: SetIdentity, extension: string): string =>
 	`${setKeyPrefix(set)}${SOURCE_FILE_STEM}${extension.toLowerCase()}`;
 
 /** Shared by the upload path and the backfill, so both measure an original the same way: after EXIF rotation, as displayed. */
@@ -169,39 +169,24 @@ export const isSetSource = (key: string, siblings: ReadonlySet<string>): boolean
 };
 
 /** The key an upload stores one variant of a set under; the one place that shape is written. */
-export const variantKey = (location: NestedSetIdentity, variant: ImageVariant): string =>
+export const variantKey = (location: SetIdentity, variant: ImageVariant): string =>
 	`${setKeyPrefix(location)}${variant}_${location.name}${EXTENSION}`;
 
-/**
- * `siblings` is every key that could sit beside it, normally the whole bucket listing.
- * A flat file's text before its first underscore is a variant prefix only if the rest of the name exists beside it.
- */
+/** `siblings` is every key that could sit beside it, normally the whole bucket listing. */
 export const classifyKey = (key: string, siblings: ReadonlySet<string>): ClassifyResult => {
 	if (key.startsWith(SERVICE_PREFIX)) return { skip: "reserved-prefix" };
 	if (key.endsWith("/")) return { skip: "folder-marker" };
 	if (isSetManifest(key, siblings)) return { skip: "set-manifest" };
 	const nestedSet = nestedSetOf(key);
-	if (nestedSet && isSetSource(key, siblings)) return { source: { layout: "nested", ...nestedSet } };
+	if (nestedSet && isSetSource(key, siblings)) return { source: nestedSet };
 	if (!key.endsWith(EXTENSION)) return { skip: "not-webp" };
 
 	const segments = key.split("/");
 	const stem = segments[segments.length - 1].slice(0, -EXTENSION.length);
 	if (!stem) return { skip: "empty-name" };
 
-	const nested = nestedSet && nestedVariant(stem, nestedSet.name);
-	if (nestedSet && nested) return { member: { layout: "nested", ...nestedSet, variant: nested } };
-
-	const folder = segments.slice(0, -1).join("/");
-	const separator = stem.indexOf("_");
-
-	if (separator > 0) {
-		const name = stem.slice(separator + 1);
-		const original = [...segments.slice(0, -1), `${name}${EXTENSION}`].join("/");
-
-		if (siblings.has(original)) return { member: { layout: "flat", folder, name, variant: stem.slice(0, separator) } };
-	}
-
-	return { member: { layout: "flat", folder, name: stem, variant: "original" } };
+	const variant = nestedSet && nestedVariant(stem, nestedSet.name);
+	return nestedSet && variant ? { member: { ...nestedSet, variant } } : { skip: "no-set-folder" };
 };
 
 /** Splits a bucket listing into image sets, in first-seen order, and the keys that belong to none. */
@@ -239,7 +224,7 @@ export const placeholderDataUri = (placeholder: Buffer): string =>
 	`data:${DEFAULT_MIME_TYPE};base64,${placeholder.toString("base64")}`;
 
 /** Beside the set's images, so a consumer finds it from any image URL of the set and deleting the folder removes it too. */
-export const manifestKey = (set: NestedSetIdentity): string => `${setKeyPrefix(set)}${MANIFEST_FILE_NAME}`;
+export const manifestKey = (set: SetIdentity): string => `${setKeyPrefix(set)}${MANIFEST_FILE_NAME}`;
 
 /** A write sees one key, not its siblings, so this is a shape rule: `manifest.json` directly inside a non-empty folder, outside the service prefix. */
 const hasManifestKeyShape = (key: string): boolean => {
@@ -302,8 +287,6 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 	}
 
 	if (!identity) throw new Error("An image set needs at least one object");
-	if (!holdsManifest(identity))
-		throw new Error(`Cannot build a manifest for flat set "${identity.name}": it has no folder of its own`);
 
 	// Only `original.{ext}` inside the set's folder is denied to the CDN, so any other key would make `public: false` untrue.
 	if (source) {
@@ -317,7 +300,6 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 		schema: 1,
 		name: identity.name,
 		folder: identity.folder,
-		layout: identity.layout,
 		status: "ready",
 		createdAt,
 		placeholder,

@@ -27,8 +27,8 @@ import {
 	assertManifestKey,
 	isManifest,
 	manifestKey,
-	type NestedSetIdentity,
 	NotAManifestError,
+	type SetIdentity,
 	setKeyPrefix,
 	variantKey,
 } from "./manifest";
@@ -135,7 +135,7 @@ export type BucketLocation = {
 
 export const uploadImages = async (
 	image: ImageVariants,
-	set: NestedSetIdentity,
+	set: SetIdentity,
 	{ bucketName, bucketRegion }: BucketLocation,
 ): Promise<FileVariant[]> => {
 	const settled = await Promise.allSettled(
@@ -241,7 +241,7 @@ export const listObjects = async (location: BucketLocation): Promise<ObjectListi
 };
 
 /** Anything under the set's folder takes the name, a manifest or not. A failed listing propagates, so it never lets an upload through. */
-export const imageSetExists = async (set: NestedSetIdentity, location: BucketLocation): Promise<boolean> => {
+export const imageSetExists = async (set: SetIdentity, location: BucketLocation): Promise<boolean> => {
 	const { Contents } = await sendWithDeadline(
 		getRegionalClient(location.bucketRegion),
 		new ListObjectsV2Command({ Bucket: location.bucketName, Prefix: setKeyPrefix(set), MaxKeys: 1 }),
@@ -425,7 +425,7 @@ export const getObject = async (key: string, location: BucketLocation): Promise<
 };
 
 /** Reads the manifest stored for a set; `null` only when there is none, so a refused read is never taken for a free name. Throws `NotAManifestError` for any other file at the key. */
-export const readManifest = async (set: NestedSetIdentity, location: BucketLocation): Promise<Manifest | null> => {
+export const readManifest = async (set: SetIdentity, location: BucketLocation): Promise<Manifest | null> => {
 	const key = manifestKey(set);
 	const object = await getObjectOrNull(key, location);
 	if (!object) return null;

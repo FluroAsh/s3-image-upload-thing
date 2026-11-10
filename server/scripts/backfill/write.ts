@@ -6,10 +6,8 @@ import {
 	buildManifest,
 	describeSource,
 	groupImageSets,
-	holdsManifest,
 	type ImageSet,
 	manifestKey,
-	type NestedSetIdentity,
 	NotAManifestError,
 	placeholderDataUri,
 	type SetIdentity,
@@ -20,20 +18,19 @@ import type { Manifest } from "~/shared/types";
 
 import { type ListedObject, setLabel } from "../shared/listed";
 import { mapLimited, SET_CONCURRENCY, type Unfinished } from "../shared/map-limited";
-import { FLAT_SET_NOTE } from "./report";
 
 /** The bucket requests a write run makes, so the run itself can be tested without the network. */
 export type BackfillIo = {
 	/** Downloads one object of the bucket whole. */
 	readObject: (key: string) => Promise<Buffer>;
 	/** Reads the manifest stored in a set's folder; `null` when there is none, and throws `NotAManifestError` for any other file there. */
-	readManifest: (set: NestedSetIdentity) => Promise<Manifest | null>;
+	readManifest: (set: SetIdentity) => Promise<Manifest | null>;
 	/** Stores a manifest in its set's folder; resolves `false`, storing nothing, when one exists and `force` is off. */
 	storeManifest: (manifest: Manifest, options: StoreManifestOptions) => Promise<boolean>;
 };
 
 /** Outcomes that leave a set without a new manifest on purpose. */
-const SKIPPED_OUTCOMES = ["exists", "exists-stale", "flat-set"] as const;
+const SKIPPED_OUTCOMES = ["exists", "exists-stale"] as const;
 
 /** Outcomes that mean a set should have a manifest and has none, which make the run exit non-zero. */
 const FAILED_OUTCOMES = ["unreadable-object", "not-a-manifest", "failed"] as const;
@@ -44,8 +41,8 @@ export const SET_OUTCOMES = ["written", ...SKIPPED_OUTCOMES, ...FAILED_OUTCOMES]
 export type SetOutcome = (typeof SET_OUTCOMES)[number];
 
 export type SetResult = SetIdentity & {
-	/** Key the set's manifest is stored under, or would be; absent for a flat set, which gets none. */
-	manifestKey?: string;
+	/** Key the set's manifest is stored under, or would be. */
+	manifestKey: string;
 	/** What happened to the set. */
 	outcome: SetOutcome;
 	/** Why, in words for the person running it; absent when there is nothing to add. */
@@ -129,8 +126,6 @@ const backfillSet = async (
 	io: BackfillIo,
 	{ force }: StoreManifestOptions,
 ): Promise<OutcomeWithDetail> => {
-	if (!holdsManifest(set)) return { outcome: "flat-set", detail: FLAT_SET_NOTE };
-
 	let existing: Manifest | null;
 	try {
 		existing = await io.readManifest(set);
@@ -190,7 +185,7 @@ export const writeManifests = async (
 			const verdict = await backfillSet(set, listed, io, options).catch(
 				(error: unknown): OutcomeWithDetail => ({ outcome: "failed", detail: errorMessage(error) }),
 			);
-			const result = { ...identity, ...(holdsManifest(set) && { manifestKey: manifestKey(set) }), ...verdict };
+			const result = { ...identity, manifestKey: manifestKey(set), ...verdict };
 			onResult?.(result);
 
 			return result;

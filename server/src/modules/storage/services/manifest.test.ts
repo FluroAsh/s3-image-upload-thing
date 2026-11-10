@@ -20,103 +20,45 @@ const NESTED_KEYS = [
 	"japan-2025/kyoto/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp",
 ];
 
-// The legacy bucket holds these at its root; the name itself contains underscores.
-const FLAT_KEYS = [
-	"DSC_1963_f6f8bf29c4.webp",
-	"thumbnail_DSC_1963_f6f8bf29c4.webp",
-	"small_DSC_1963_f6f8bf29c4.webp",
-	"medium_DSC_1963_f6f8bf29c4.webp",
-	"large_DSC_1963_f6f8bf29c4.webp",
-];
-
-const FLAT_NAME = "DSC_1963_f6f8bf29c4";
-
 const classifyAll = (keys: string[]) => keys.map((key) => classifyKey(key, new Set(keys)));
 
 describe("classifyKey", () => {
-	it("classifies a file inside a folder named after it as a nested set", () => {
+	it("classifies a file inside a folder named after it as a set", () => {
 		expect(classifyAll(NESTED_KEYS)).toEqual([
-			{ member: { layout: "nested", folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "thumbnail" } },
-			{ member: { layout: "nested", folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "medium" } },
-			{ member: { layout: "nested", folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "large" } },
+			{ member: { folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "thumbnail" } },
+			{ member: { folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "medium" } },
+			{ member: { folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "large" } },
 		]);
 	});
 
-	it("keeps underscores in a nested set's name (made-up key: no real nested name has one)", () => {
+	it("keeps underscores in a set's name (made-up key)", () => {
 		const key = "trips/harbour_at_dusk/large_harbour_at_dusk.webp";
 
 		expect(classifyKey(key, new Set([key]))).toEqual({
-			member: { layout: "nested", folder: "trips", name: "harbour_at_dusk", variant: "large" },
+			member: { folder: "trips", name: "harbour_at_dusk", variant: "large" },
 		});
 	});
 
-	it("gives a nested set at the bucket root an empty folder (made-up key)", () => {
+	it("gives a set at the bucket root an empty folder (made-up key)", () => {
 		const key = "buff-rick/large_buff-rick.webp";
 
 		expect(classifyKey(key, new Set([key]))).toMatchObject({
-			member: { layout: "nested", folder: "", name: "buff-rick" },
+			member: { folder: "", name: "buff-rick" },
 		});
 	});
 
-	it("treats an un-prefixed file named after its folder as the nested original (made-up key)", () => {
+	it("treats an un-prefixed file named after its folder as the original (made-up key)", () => {
 		const key = "japan-2025/kyoto/ginsui-sukiyaki-1/ginsui-sukiyaki-1.webp";
 
 		expect(classifyKey(key, new Set([key]))).toEqual({
-			member: { layout: "nested", folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "original" },
+			member: { folder: "japan-2025/kyoto", name: "ginsui-sukiyaki-1", variant: "original" },
 		});
 	});
 
-	it("classifies a flat set at the bucket root with an empty folder", () => {
-		const member = { layout: "flat", folder: "", name: FLAT_NAME };
+	it("skips an image that is not inside a folder named after it, since only a set folder holds a set", () => {
+		const keys = ["photo.webp", "trip/photo.webp", "trip/photo/small_other.webp", "trip/original.webp"];
 
-		expect(classifyAll(FLAT_KEYS)).toEqual([
-			{ member: { ...member, variant: "original" } },
-			{ member: { ...member, variant: "thumbnail" } },
-			{ member: { ...member, variant: "small" } },
-			{ member: { ...member, variant: "medium" } },
-			{ member: { ...member, variant: "large" } },
-		]);
-	});
-
-	it("uses the parent path as a flat set's folder (made-up keys: real flat sets sit at the root)", () => {
-		const keys = ["images/spiderman_train_hold_bdcd1aab3b.webp", "images/small_spiderman_train_hold_bdcd1aab3b.webp"];
-
-		expect(classifyAll(keys)).toEqual([
-			{ member: { layout: "flat", folder: "images", name: "spiderman_train_hold_bdcd1aab3b", variant: "original" } },
-			{ member: { layout: "flat", folder: "images", name: "spiderman_train_hold_bdcd1aab3b", variant: "small" } },
-		]);
-	});
-
-	it("treats any text before the first underscore as a variant when the rest exists beside it (made-up prefix)", () => {
-		const keys = [`${FLAT_NAME}.webp`, `xlarge_${FLAT_NAME}.webp`];
-
-		expect(classifyKey(keys[1], new Set(keys))).toEqual({
-			member: { layout: "flat", folder: "", name: FLAT_NAME, variant: "xlarge" },
-		});
-	});
-
-	it("classifies an un-prefixed file with no variants as a flat set holding only the original", () => {
-		const key = `${FLAT_NAME}.webp`;
-
-		expect(classifyKey(key, new Set([key]))).toEqual({
-			member: { layout: "flat", folder: "", name: FLAT_NAME, variant: "original" },
-		});
-	});
-
-	it("makes small_talk.webp its own flat set unless talk.webp exists (made-up keys)", () => {
-		expect(classifyKey("small_talk.webp", new Set(["small_talk.webp"]))).toEqual({
-			member: { layout: "flat", folder: "", name: "small_talk", variant: "original" },
-		});
-
-		expect(classifyKey("small_talk.webp", new Set(["small_talk.webp", "talk.webp"]))).toEqual({
-			member: { layout: "flat", folder: "", name: "talk", variant: "small" },
-		});
-	});
-
-	it("only accepts a sibling from the same folder (made-up keys)", () => {
-		expect(classifyKey("a/small_talk.webp", new Set(["a/small_talk.webp", "b/talk.webp", "talk.webp"]))).toEqual({
-			member: { layout: "flat", folder: "a", name: "small_talk", variant: "original" },
-		});
+		expect(classifyAll(keys)).toEqual(keys.map(() => ({ skip: "no-set-folder" })));
 	});
 
 	it("skips keys that are not webp, such as a video or a PNG", () => {
@@ -144,17 +86,11 @@ describe("classifyKey", () => {
 	});
 
 	it("treats manifest.json as any other non-image when no image of its folder's set sits beside it", () => {
-		const keys = [
-			"data/manifest.json",
-			"data/large_other.webp",
-			"trip/manifest.json",
-			"trip/beach.webp",
-			"trip/small_beach.webp",
-		];
+		const keys = ["data/manifest.json", "data/large_other.webp", "trip/manifest.json", "trip/trip.webp"];
 
-		expect(classifyAll(keys).filter((result) => "skip" in result)).toEqual([
+		expect(classifyAll(keys).filter((_, index) => keys[index].endsWith("manifest.json"))).toEqual([
 			{ skip: "not-webp" },
-			{ skip: "not-webp" },
+			{ skip: "set-manifest" },
 		]);
 	});
 
@@ -165,13 +101,13 @@ describe("classifyKey", () => {
 			"buff-rick/original.jpg",
 			"buff-rick/buff-rick.webp",
 		];
-		const trip = { layout: "nested", folder: "trip", name: "photo" };
+		const trip = { folder: "trip", name: "photo" };
 
 		expect(classifyAll(keys)).toEqual([
 			{ member: { ...trip, variant: "full" } },
 			{ source: trip },
-			{ source: { layout: "nested", folder: "", name: "buff-rick" } },
-			{ member: { layout: "nested", folder: "", name: "buff-rick", variant: "original" } },
+			{ source: { folder: "", name: "buff-rick" } },
+			{ member: { folder: "", name: "buff-rick", variant: "original" } },
 		]);
 	});
 
@@ -179,10 +115,10 @@ describe("classifyKey", () => {
 		const keys = ["trip/original.webp", "data/original.jpg", "data/large_other.webp", "original.webp"];
 
 		expect(classifyAll(keys)).toEqual([
-			{ member: { layout: "flat", folder: "trip", name: "original", variant: "original" } },
+			{ skip: "no-set-folder" },
 			{ skip: "not-webp" },
-			{ member: { layout: "flat", folder: "data", name: "large_other", variant: "original" } },
-			{ member: { layout: "flat", folder: "", name: "original", variant: "original" } },
+			{ skip: "no-set-folder" },
+			{ skip: "no-set-folder" },
 		]);
 	});
 
@@ -198,16 +134,14 @@ describe("classifyKey", () => {
 
 	it("classifies keys under manifests/ like any other folder", () => {
 		expect(classifyAll(["manifests/trip/large_trip.webp"])).toEqual([
-			{ member: { layout: "nested", folder: "manifests", name: "trip", variant: "large" } },
+			{ member: { folder: "manifests", name: "trip", variant: "large" } },
 		]);
 	});
 
 	it("does not skip legacy/, which only uploads refuse", () => {
 		const keys = ["legacy/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp"];
 
-		expect(classifyAll(keys)).toEqual([
-			{ member: { layout: "nested", folder: "legacy", name: "ginsui-sukiyaki-1", variant: "large" } },
-		]);
+		expect(classifyAll(keys)).toEqual([{ member: { folder: "legacy", name: "ginsui-sukiyaki-1", variant: "large" } }]);
 	});
 });
 
@@ -239,6 +173,10 @@ describe("isManifest", () => {
 				}),
 			),
 		).toBe(true);
+	});
+
+	it("accepts a stored manifest that still carries the retired layout field", () => {
+		expect(isManifest({ schema: 1, name: "a", folder: "", layout: "nested", variants: {} })).toBe(true);
 	});
 
 	it.each([
@@ -289,23 +227,10 @@ describe("groupImageSets", () => {
 
 		const manifest = "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json";
 
-		const { sets, skipped } = groupImageSets([...FLAT_KEYS, ...NESTED_KEYS, manifest, skippedKey, "japan-2025/"]);
+		const { sets, skipped } = groupImageSets([...NESTED_KEYS, manifest, skippedKey, "japan-2025/", "photo.webp"]);
 
 		expect(sets).toEqual([
 			{
-				layout: "flat",
-				folder: "",
-				name: FLAT_NAME,
-				members: [
-					{ key: FLAT_KEYS[0], variant: "original" },
-					{ key: FLAT_KEYS[1], variant: "thumbnail" },
-					{ key: FLAT_KEYS[2], variant: "small" },
-					{ key: FLAT_KEYS[3], variant: "medium" },
-					{ key: FLAT_KEYS[4], variant: "large" },
-				],
-			},
-			{
-				layout: "nested",
 				folder: "japan-2025/kyoto",
 				name: "ginsui-sukiyaki-1",
 				members: [
@@ -319,6 +244,7 @@ describe("groupImageSets", () => {
 			{ key: manifest, reason: "set-manifest" },
 			{ key: skippedKey, reason: "not-webp" },
 			{ key: "japan-2025/", reason: "folder-marker" },
+			{ key: "photo.webp", reason: "no-set-folder" },
 		]);
 	});
 
@@ -327,7 +253,6 @@ describe("groupImageSets", () => {
 
 		expect(sets).toEqual([
 			{
-				layout: "nested",
 				folder: "trip",
 				name: "photo",
 				source: "trip/photo/original.webp",
@@ -337,13 +262,13 @@ describe("groupImageSets", () => {
 		expect(skipped).toEqual([]);
 	});
 
-	it("keeps an unprefixed nested original in the nested set rather than a flat one (made-up key)", () => {
+	it("keeps an unprefixed original in its set (made-up key)", () => {
 		const original = "a/pier/pier.webp";
 
 		const { sets } = groupImageSets([original, "a/pier/small_pier.webp"]);
 
 		expect(sets).toHaveLength(1);
-		expect(sets[0]).toMatchObject({ layout: "nested", folder: "a", name: "pier" });
+		expect(sets[0]).toMatchObject({ folder: "a", name: "pier" });
 	});
 });
 
@@ -385,12 +310,11 @@ describe("buildManifest", () => {
 			...overrides,
 		});
 
-	it("records every variant of a nested set under the name its key uses", () => {
+	it("records every variant of a set under the name its key uses", () => {
 		expect(build(NESTED_KEYS)).toEqual({
 			schema: 1,
 			name: "ginsui-sukiyaki-1",
 			folder: "japan-2025/kyoto",
-			layout: "nested",
 			status: "ready",
 			createdAt: "2026-10-10T03:12:45Z",
 			placeholder: null,
@@ -431,10 +355,6 @@ describe("buildManifest", () => {
 		const source = { key, public: false, sha256: "", bytes: 1, width: 1, height: 1 };
 
 		expect(() => build(NESTED_KEYS, { source })).toThrow(`"${key}" is not the source file of`);
-	});
-
-	it("refuses a flat set, which has no folder to hold a manifest", () => {
-		expect(() => build(FLAT_KEYS)).toThrow(`Cannot build a manifest for flat set "${FLAT_NAME}"`);
 	});
 
 	it("refuses objects that do not form exactly one image set", () => {

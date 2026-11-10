@@ -23,7 +23,7 @@ const inBun = (body: string) =>
 describe("guardStall", () => {
 	it("exits non-zero naming the sets left unfinished, and calls onStopped, when the run stops on work that never settles", () => {
 		const run = inBun(`
-			const sets = ["a", "b", "c"].map((name) => ({ layout: "nested", folder: "", name }));
+			const sets = ["a", "b", "c"].map((name) => ({ folder: "", name }));
 			const main = async () => {
 				await guardStall(
 					(unfinished) => mapLimited(sets, 2, (set) => (set.name === "b" ? new Promise(() => {}) : Promise.resolve(set)), unfinished),
@@ -36,14 +36,14 @@ describe("guardStall", () => {
 		expect(run.stdout).toContain("stopped hook");
 		expect(run.stdout).not.toContain("totals");
 		expect(run.stderr).toContain("The run stopped with 1 of 3 unfinished:");
-		expect(run.stderr).toContain("nested b");
-		expect(run.stderr).not.toMatch(/nested [ac]/);
+		expect(run.stderr).toContain("  b");
+		expect(run.stderr).not.toMatch(/ {2}[ac]$/m);
 		expect(run.status).toBe(1);
 	});
 
 	it("lists sets that never started when every worker is stalled", () => {
 		const run = inBun(`
-			const sets = Array.from({ length: SET_CONCURRENCY + 2 }, (_, n) => ({ layout: "nested", folder: "", name: "s" + n }));
+			const sets = Array.from({ length: SET_CONCURRENCY + 2 }, (_, n) => ({ folder: "", name: "s" + n }));
 			guardStall((unfinished) => mapLimited(sets, SET_CONCURRENCY, () => new Promise(() => {}), unfinished));`);
 
 		expect(run.stderr).toContain(`${SET_CONCURRENCY + 2} of ${SET_CONCURRENCY + 2} unfinished`);

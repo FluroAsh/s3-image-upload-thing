@@ -12,8 +12,8 @@ import {
 	buildManifest,
 	describeSource,
 	hasRefusedUploadPrefix,
-	type NestedSetIdentity,
 	placeholderDataUri,
+	type SetIdentity,
 	setKeyPrefix,
 	sourceKey,
 	uploadSetIdentity,
@@ -79,7 +79,7 @@ const processImage = async (sourceImage: ProcessedImage): Promise<ImageVariants>
  */
 const storeImageSet = async (
 	image: ImageVariants,
-	set: NestedSetIdentity,
+	set: SetIdentity,
 	location: BucketLocation,
 ): Promise<FileVariant[] | null> => {
 	const body = ensureBuffer(image.source.buffer);
