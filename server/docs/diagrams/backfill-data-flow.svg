@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">What the backfill script reads and writes</title>
-  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A set's original.{ext}, the file its sizes were made from, is read and recorded in the manifest as its private source, never as a size. The CDN serves a set's images and its manifest but is denied every original.{ext} by the bucket policy.</desc>
+  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set, it writes one manifest.json into the set's own folder, beside the images it describes, in the same bucket. It never writes to an image key. A set's original.{ext}, the file its sizes were made from, is read and recorded in the manifest as its private source, never as a size. The CDN serves a set's images and its manifest but is denied every original.{ext} by the bucket policy.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }

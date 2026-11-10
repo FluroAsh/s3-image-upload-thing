@@ -113,7 +113,7 @@ export const locateSet = (set: string, fallback: BucketLocation): { location: Bu
 	return { location: { ...fallback, bucketName: match[0] }, key: set.slice(match[1].length) };
 };
 
-/** The nested set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
+/** The set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
 export const nestedSetOf = (key: string): SetIdentity | undefined => {
 	const segments = key.split("/");
 	const name = segments[segments.length - 2];

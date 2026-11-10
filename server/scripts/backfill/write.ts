@@ -200,7 +200,7 @@ const countOutcomes = (results: readonly SetResult[], outcomes: readonly SetOutc
 export const countFailed = (results: readonly SetResult[]): number => countOutcomes(results, FAILED_OUTCOMES);
 
 export const formatSetResult = ({ outcome, detail, manifestKey: target, ...identity }: SetResult): string =>
-	`[${outcome}] ${setLabel(identity)}${detail ? `: ${detail}` : ""}${target ? ` -> ${target}` : ""}`;
+	`[${outcome}] ${setLabel(identity)}${detail ? `: ${detail}` : ""} -> ${target}`;
 
 export const formatWriteTotals = (results: readonly SetResult[]): string => {
 	const perOutcome = (outcomes: readonly SetOutcome[]) =>
