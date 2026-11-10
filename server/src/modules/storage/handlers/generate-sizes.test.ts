@@ -135,8 +135,28 @@ describe("POST /storage/sizes/:set", () => {
 		expect(puts()).toHaveLength(0);
 	});
 
-	it("records only the sizes that were stored when one write fails", async () => {
+	it("records a size left behind by an earlier run instead of failing on it", async () => {
+		const left = await makeJpeg({ width: 120, height: 120 });
+		s3.respond = ((previous) => async (sent: Parameters<typeof previous>[0]) => {
+			if (sent.command === "GetObject" && sent.input.Key === "trip/a/thumbnail_a.webp") {
+				return { ETag: '"left"', Body: { transformToString: async () => "", transformToByteArray: async () => left } };
+			}
+			return previous(sent);
+		})(s3.respond);
 		taken.add("trip/a/thumbnail_a.webp");
+		const res = await app.request(`/storage/sizes/trip/a${SCOPE}`, { method: "POST" });
+
+		expect(res.status).toBe(200);
+		const written = JSON.parse(String(manifestPuts()[0].input.Body)) as Manifest;
+		expect(written.variants.thumbnail).toMatchObject({ etag: '"left"', width: 120 });
+	});
+
+	it("records only the sizes that were stored when one write fails", async () => {
+		const respond = s3.respond;
+		s3.respond = async (sent) => {
+			if (sent.command === "PutObject" && sent.input.Key === "trip/a/thumbnail_a.webp") throw new Error("boom");
+			return respond(sent);
+		};
 		const res = await app.request(`/storage/sizes/trip/a${SCOPE}`, { method: "POST" });
 
 		expect(res.status).toBe(500);

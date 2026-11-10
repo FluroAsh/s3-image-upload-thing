@@ -1,4 +1,5 @@
 import { HTTPException } from "hono/http-exception";
+import sharp from "sharp";
 
 import { errorMessage } from "@/shared/utils/helpers";
 import { sizeStatuses } from "~/shared/image-sizes";
@@ -7,7 +8,21 @@ import type { BucketLocation, ImageVariant, Manifest, ManifestVariant } from "~/
 import { DEFAULT_FILE_TYPE } from "../processors/variants/config";
 import { encodeVariant } from "../processors/variants/processor";
 import { placeholderDataUri, variantKey } from "./manifest";
-import { getObjectOrNull, putVariant, storeManifest } from "./s3-operations";
+import { getObject, getObjectOrNull, putVariant, storeManifest } from "./s3-operations";
+
+const describe = (
+	key: string,
+	body: Buffer,
+	size: { width: number; height: number },
+	etag: string,
+): ManifestVariant => ({
+	key,
+	format: DEFAULT_FILE_TYPE,
+	width: size.width,
+	height: size.height,
+	bytes: body.length,
+	etag,
+});
 
 /**
  * Resolves the sizes written, empty when none was missing. Remakes each missing size from the kept original, create-only, and rewrites the manifest last with only what was stored.
@@ -25,15 +40,15 @@ export const generateMissingSizes = async (manifest: Manifest, location: BucketL
 
 	const settled = await Promise.allSettled(
 		missing.map(async (name): Promise<[ImageVariant, ManifestVariant, Buffer] | null> => {
-			const { data, info } = await encodeVariant(name, original.body);
 			const key = variantKey(manifest, name);
-			const etag = await putVariant(key, data, location, true);
-			if (!etag) throw new Error(`"${key}" already exists, so it was not replaced`);
-			return [
-				name,
-				{ key, format: DEFAULT_FILE_TYPE, width: info.width, height: info.height, bytes: data.length, etag },
-				data,
-			];
+			const made = await encodeVariant(name, original.body);
+			const etag = await putVariant(key, made.data, location, true);
+			if (etag) return [name, describe(key, made.data, made.info, etag), made.data];
+
+			/** A key left by a run that stored the size but not the manifest; kept as it is and recorded. */
+			const existing = await getObject(key, location);
+			const { width, height } = await sharp(existing.body).metadata();
+			return [name, describe(key, existing.body, { width, height }, existing.etag), existing.body];
 		}),
 	);
 
