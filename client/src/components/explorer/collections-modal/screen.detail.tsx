@@ -17,12 +17,12 @@ import type { Collection, CollectionPhoto } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
+import { SetInfo } from "../set-info";
 import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
-import { SetInfo } from "./set-info";
 import { useBucketSets } from "./use-bucket-sets";
 
 const PhotoTile = ({
@@ -145,7 +145,9 @@ const PhotoEditor = ({
 					message={serverErrorMessage(error)}
 				/>
 			)}
-			<SetInfo set={photo.set} />
+			<div className="border-t border-slate-700 pt-2">
+				<SetInfo set={photo.set} />
+			</div>
 		</div>
 	);
 };

@@ -7,6 +7,7 @@ import type { TreeNode } from "~/shared/types";
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
 import { CollectionSection } from "./panel.collection";
+import { SetInfo } from "./set-info";
 import { getVariantType } from "./utils";
 
 type ActiveVariantProps = {
@@ -97,6 +98,13 @@ export const DetailsPanel = () => {
 					<LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
 				</a>
 			</div>
+
+			{setPath && (
+				<div className="p-6 border-b border-slate-600">
+					<h3 className="mb-3 text-sm font-medium text-neutral-100">Sizes</h3>
+					<SetInfo set={setPath} />
+				</div>
+			)}
 
 			{setPath && <CollectionSection setPath={setPath} />}
 

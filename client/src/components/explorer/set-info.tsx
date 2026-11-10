@@ -1,11 +1,11 @@
 import { LucideAlertTriangle } from "lucide-react";
 
 import { useManifest } from "@/lib/query";
-import { IMAGE_VARIANTS, planVariants } from "~/shared/constants/image-variants";
+import { sizeStatuses } from "~/shared/image-sizes";
 import type { Manifest } from "~/shared/types";
 
-import { StateMessage } from "../../ui/state-message";
-import { serverErrorMessage } from "../utils";
+import { StateMessage } from "../ui/state-message";
+import { serverErrorMessage } from "./utils";
 
 const BYTE_UNITS = ["B", "kB", "MB", "GB"];
 
@@ -18,24 +18,25 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 const Info = ({ manifest }: { manifest: Manifest }) => {
 	const { placeholder, source } = manifest;
-	const { full } = manifest.variants;
-	// An upload skips sizes above the source's, so `full` (stored at the source's size) says which were expected; legacy sets without it expect them all.
-	const names = full ? planVariants(Math.max(full.width, full.height)) : IMAGE_VARIANTS;
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 			<span className="flex flex-wrap gap-1">
-				{names.map((name) => {
-					const variant = manifest.variants[name];
-					return variant ? (
-						<span
-							key={name}
-							title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}`}
-							className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
-						>
-							{name} {variant.width}
-						</span>
-					) : (
+				{sizeStatuses(manifest).map(({ name, state, variant }) => {
+					if (variant) {
+						return (
+							<span
+								key={name}
+								title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}`}
+								className={`rounded px-1.5 py-0.5 ${state === "mismatched" ? "border border-dotted border-amber-700/60 bg-slate-800 text-slate-400" : "bg-slate-700 text-slate-300"}`}
+							>
+								{name} {variant.width}
+								{state === "mismatched" && " (mismatched)"}
+							</span>
+						);
+					}
+					if (state === "notApplicable") return null;
+					return (
 						<span
 							key={name}
 							title="This size is missing"
@@ -78,7 +79,7 @@ export const SetInfo = ({ set }: { set: string }) => {
 	const { data, error, isPending } = useManifest(set);
 
 	return (
-		<div className="border-t border-slate-700 pt-2 text-xs text-slate-400">
+		<div className="text-xs text-slate-400">
 			{isPending ? (
 				"Loading set info..."
 			) : error ? (
