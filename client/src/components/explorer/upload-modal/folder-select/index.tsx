@@ -62,9 +62,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 		};
 
 		qc.setQueryData<FileTreeResponse>(["fileTree", activeBucketName], (oldData) =>
-			oldData
-				? { ...oldData, tree: [...oldData.tree, newFolder] }
-				: { tree: [newFolder], partial: false, cdnPrefix: "" },
+			oldData ? { ...oldData, tree: [...oldData.tree, newFolder] } : { tree: [newFolder], partial: false },
 		);
 
 		setFolderStack((prev) => [...prev, newFolder]);

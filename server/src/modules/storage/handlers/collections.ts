@@ -21,7 +21,7 @@ import {
 	readCollections,
 	updateCollections,
 } from "../services/collections";
-import { locateSet, MANIFEST_FILE_NAME } from "../services/manifest";
+import { MANIFEST_FILE_NAME } from "../services/manifest";
 import { objectExists } from "../services/s3-operations";
 import { badRequest, respond } from "./respond";
 
@@ -85,13 +85,8 @@ const respondCollections = <Body>(ctx: Context, run: () => Promise<Body>, status
 	);
 
 const assertSetsHaveManifests = async (sets: string[]): Promise<void> => {
-	const fallback = collectionsLocation();
-	const found = await Promise.all(
-		sets.map((set) => {
-			const { location, key } = locateSet(set, fallback);
-			return objectExists(`${key}/${MANIFEST_FILE_NAME}`, location);
-		}),
-	);
+	const location = collectionsLocation();
+	const found = await Promise.all(sets.map((set) => objectExists(`${set}/${MANIFEST_FILE_NAME}`, location)));
 	const missing = sets.filter((_, index) => !found[index]);
 	if (missing.length > 0) throw badRequest(`No manifest for: ${missing.join(", ")}`);
 };

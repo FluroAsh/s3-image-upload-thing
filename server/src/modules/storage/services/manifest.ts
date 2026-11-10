@@ -6,7 +6,6 @@ import sharp from "sharp";
 import type { ImageVariant, Manifest, ManifestSource, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
-import type { BucketLocation } from "./s3-operations";
 
 /** What makes two keys part of the same image set. */
 export type SetIdentity = Pick<Manifest, "folder" | "name">;
@@ -75,8 +74,6 @@ type BuildManifestParams = Pick<Manifest, "createdAt" | "placeholder" | "source"
 export const MANIFEST_FILE_NAME = "manifest.json";
 /** Where only the service writes, so the classifier never mistakes its objects for image sets. */
 const SERVICE_PREFIX = "src/";
-/** The service prefix plus `legacy/`, which the CDN routes elsewhere, so an upload there would not be reachable at its own URL. */
-const REFUSED_UPLOAD_PREFIXES = [SERVICE_PREFIX, "legacy/"] as const;
 /** Start of a set's source file name, `original.{ext}`, which the bucket policy keeps from the CDN. */
 const SOURCE_FILE_STEM = "original.";
 /** File extension of every key the classifier accepts, dot included. */
@@ -86,8 +83,7 @@ export const setId = ({ folder, name }: SetIdentity): string => JSON.stringify([
 
 /** Also any folder named `original.…`, since the bucket policy hides every key with `/original.` in it from the CDN, and a set's sizes must stay public. */
 export const hasRefusedUploadPrefix = (key: string): boolean =>
-	REFUSED_UPLOAD_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
-	key.split("/").some((segment) => segment.startsWith(SOURCE_FILE_STEM));
+	key.startsWith(SERVICE_PREFIX) || key.split("/").some((segment) => segment.startsWith(SOURCE_FILE_STEM));
 
 /** The one place an upload's set identity is derived, so the pre-check, variant keys and manifest agree. */
 export const uploadSetIdentity = (destination: string, fileName: string): SetIdentity => ({
@@ -97,21 +93,6 @@ export const uploadSetIdentity = (destination: string, fileName: string): SetIde
 
 /** The set's own folder as a key prefix: every variant of an uploaded set and its manifest are stored under it. */
 export const setKeyPrefix = ({ folder, name }: SetIdentity): string => (folder ? `${folder}/${name}/` : `${name}/`);
-
-const CDN_PREFIXES: Record<string, string> = JSON.parse(process.env.BUCKET_CDN_PREFIXES ?? "{}");
-
-/** A bucket not in `BUCKET_CDN_PREFIXES` serves from the CDN root. */
-export const cdnPrefixOf = (bucketName: string): string => CDN_PREFIXES[bucketName] ?? "";
-
-/** Turns a set's bucket key into the CDN path collections record. */
-export const cdnPathOf = (bucketName: string, key: string): string => `${cdnPrefixOf(bucketName)}${key}`;
-
-/** The inverse of `cdnPathOf`: a set under a CDN prefix lives in that prefix's bucket, keyed without the prefix; any other set lives in `fallback`; both share its region. */
-export const locateSet = (set: string, fallback: BucketLocation): { location: BucketLocation; key: string } => {
-	const match = Object.entries(CDN_PREFIXES).find(([, prefix]) => prefix && set.startsWith(prefix));
-	if (!match) return { location: fallback, key: set };
-	return { location: { ...fallback, bucketName: match[0] }, key: set.slice(match[1].length) };
-};
 
 /** The set a key inside a set folder (`{folder}/{name}/{file}`) would belong to; `undefined` when its parent folder has no name. */
 export const nestedSetOf = (key: string): SetIdentity | undefined => {

@@ -13,12 +13,9 @@ export const useBucketSets = () => {
 	const sets = useMemo(
 		() =>
 			new Map<string, TreeNode>(
-				setFoldersUnder(tree.childMap, "").map((folder): [string, TreeNode] => [
-					setPathOf(tree.data?.cdnPrefix ?? "", folder.id),
-					folder,
-				]),
+				setFoldersUnder(tree.childMap, "").map((folder): [string, TreeNode] => [setPathOf(folder.id), folder]),
 			),
-		[tree.childMap, tree.data?.cdnPrefix],
+		[tree.childMap],
 	);
 
 	return { ...tree, sets };

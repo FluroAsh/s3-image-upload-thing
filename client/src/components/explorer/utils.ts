@@ -58,8 +58,8 @@ export const PRIMARY_BUTTON_CLASS =
 
 export const FIELD_CLASS = "w-full rounded-lg bg-slate-700/60 border border-slate-600 p-2 text-sm text-neutral-100";
 
-/** The CDN path collections record for a set: the bucket's CDN prefix plus the set's folder (a tree `parentId`, which ends in a slash). */
-export const setPathOf = (cdnPrefix: string, folderId: string) => `${cdnPrefix}${folderId.replace(/\/$/, "")}`;
+/** The path collections record for a set: its folder (a tree `parentId`, which ends in a slash) without the slash. */
+export const setPathOf = (folderId: string) => folderId.replace(/\/$/, "");
 
 /** A folder is an image set when every child is a variant file named after it. */
 export const isSetFolder = (node: TreeNode, children: TreeNode[] = []) =>

@@ -323,9 +323,7 @@ describe("runUploadPipeline", () => {
 	});
 
 	it.each([
-		["legacy.png", ""],
 		["src.png", ""],
-		["photo.png", "legacy"],
 		["photo.png", "src/trip"],
 		["original.v2.png", "trip"],
 		["photo.png", "trip/original.v2"],
@@ -340,6 +338,8 @@ describe("runUploadPipeline", () => {
 		["manifests.jpg", ""],
 		["photo.jpg", "manifests/trip"],
 		["original.jpg", "trip"],
+		["legacy.png", ""],
+		["photo.png", "legacy"],
 	])("accepts %s into destination '%s': only the start of a key is reserved", async (fileName, destination) => {
 		await expect(upload(fileName, destination)).resolves.toHaveProperty("files");
 	});
