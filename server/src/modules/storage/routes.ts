@@ -49,22 +49,4 @@ storage.patch("/collections/:slug", updateCollectionHandler);
 storage.delete("/collections/:slug", deleteCollectionHandler);
 storage.put("/collections/:slug/order", reorderCollectionHandler);
 
-storage.post("/bucket/:bucketName", async (_ctx) => {});
-
-storage.put("/bucket/:bucketName", async (_ctx) => {});
-
-storage.delete("/bucket/:bucketName", async (_ctx) => {});
-storage.get("/bucket/:bucketName/object/:name", async (ctx) => {
-	const bucketName = ctx.req.param("bucketName");
-	const objectKey = ctx.req.param("name");
-
-	console.log(`Getting object: ${objectKey} from bucket: ${bucketName}`);
-
-	return ctx.json({ url: "https://via.placeholder.com/150" });
-});
-
-storage.delete("/bucket/:bucketName/object/:name", async (_ctx) => {});
-
-storage.put("/bucket/:bucketName/object/:name", async (_ctx) => {});
-
 export default storage;
