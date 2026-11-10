@@ -14,7 +14,7 @@ import type { Collection, TreeNode } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
 import { PartialNotice } from "../partial-notice";
-import { collectionsInBucket, formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
 import { useBucketSets } from "./use-bucket-sets";
@@ -24,7 +24,7 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	const remove = useDeleteCollection();
 	const { setScreen } = useCollectionsModal();
 
-	// The cover can sit in another bucket, which has no thumbnail here.
+	/** A set missing from this bucket has no thumbnail, so the card shows the first one that has. */
 	const shown = [coverOf(collection), ...collection.photos.map((p) => p.set)].find((set) => set && sets.has(set));
 	const error = rename.error ?? remove.error;
 
@@ -34,16 +34,12 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 	};
 
 	const onDelete = () => {
-		if (
-			window.confirm(
-				`Delete "${collection.name}"? This removes its photos' alt text and captions, and any photos from other buckets in it.`,
-			)
-		)
+		if (window.confirm(`Delete "${collection.name}"? This removes its photos' alt text and captions.`))
 			remove.mutate(collection.slug);
 	};
 
 	return (
-		// The open button stretches over the whole row; the actions sit above it.
+		/** The open button stretches over the whole row; the actions sit above it. */
 		<li className="relative flex cursor-pointer items-center gap-4 rounded-lg border border-slate-600 bg-slate-800 p-3 hover:bg-slate-700/60">
 			<button
 				type="button"
@@ -103,7 +99,7 @@ export const ListScreen = () => {
 
 	const error = tree.error ?? collections.error;
 	const loading = tree.isLoading || collections.isLoading;
-	const listed = collectionsInBucket(collections.data?.collections ?? [], tree.sets);
+	const listed = collections.data?.collections ?? [];
 
 	return (
 		<section className="space-y-3" aria-label="Collections">

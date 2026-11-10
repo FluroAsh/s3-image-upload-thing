@@ -1,8 +1,14 @@
 import ofetch from "@/lib/ofetch";
-import type { BucketsResponse, FileTreeResponse } from "~/shared/types";
+import type { BucketLocation, BucketsResponse, FileTreeResponse } from "~/shared/types";
 
 /** The server answers a stalled listing with a 500 after its own deadline, so a retry would only multiply the wait. */
 export const NO_RETRY = { retry: 0 } as const;
+
+/** The query string every bucket-scoped route reads its bucket and region from. */
+export const bucketQuery = ({ bucketName, bucketRegion }: BucketLocation) => ({
+	bucket: bucketName,
+	region: bucketRegion,
+});
 
 export const getBuckets = async (): Promise<BucketsResponse> => {
 	const data = await ofetch<BucketsResponse>("/storage/buckets", NO_RETRY);
@@ -10,4 +16,7 @@ export const getBuckets = async (): Promise<BucketsResponse> => {
 };
 
 export const getFileTree = (bucketName: string, bucketRegion: string): Promise<FileTreeResponse> =>
-	ofetch<FileTreeResponse>(`/storage/buckets/${bucketName}?region=${bucketRegion}`, NO_RETRY);
+	ofetch<FileTreeResponse>(`/storage/buckets/${bucketName}`, {
+		...NO_RETRY,
+		query: bucketQuery({ bucketName, bucketRegion }),
+	});

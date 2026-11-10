@@ -1,13 +1,12 @@
 import type { ApiError } from "@/lib/ofetch";
 import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
-import type { Collection, ImageVariant, TreeNode } from "~/shared/types";
+import type { ImageVariant, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 24;
 const DEPTH_BASE_OFFSET_PX = 8;
 
 export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
 
-// Extracts the string between "_" and "." (ie: "large_filename.jpg" -> "filename")
 export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 
 export const getVariantType = (fileName: string) => {
@@ -33,7 +32,7 @@ const qualify = (text: string | undefined, partial: boolean) =>
 	text === undefined ? "unknown" : partial ? `at least ${text}` : text;
 
 /** A count with the right plural; `undefined` means it was never counted, and `partial` that it is a lower bound. */
-// A fixed locale, so the server render and the browser agree on the separator.
+/** A fixed locale, so the server render and the browser agree on the separator. */
 const COUNT_FORMAT = new Intl.NumberFormat("en");
 
 export const formatCount = (count: number | undefined, noun: string | undefined, partial: boolean) =>
@@ -71,10 +70,6 @@ export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: str
 		if (!node.isFolder) return [];
 		return isSetFolder(node, childMap.get(node.id)) ? [node] : setFoldersUnder(childMap, node.id);
 	});
-
-/** A set belongs to a bucket when its folder is in the bucket's listing: the client knows only this bucket's CDN prefix, which cannot tell an unprefixed bucket's sets from another's. */
-export const collectionsInBucket = (collections: Collection[], bucketSets: ReadonlyMap<string, TreeNode>) =>
-	collections.filter((collection) => collection.photos.some((photo) => bucketSets.has(photo.set)));
 
 /** The sets inside a folder (`""` for the bucket root), found by folder id prefix. */
 export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>

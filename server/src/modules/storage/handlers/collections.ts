@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 
 import { holdingSet, setsToMove } from "~/shared/collections";
 import type {
+	BucketLocation,
 	Collection,
 	CollectionPhoto,
 	CollectionsFile,
@@ -17,12 +18,12 @@ import type {
 import {
 	CollectionsConflictError,
 	CollectionsValidationError,
-	collectionsLocation,
 	readCollections,
 	updateCollections,
 } from "../services/collections";
 import { MANIFEST_FILE_NAME } from "../services/manifest";
 import { objectExists } from "../services/s3-operations";
+import { bucketLocationOf } from "./params";
 import { badRequest, respond } from "./respond";
 
 type Moved = SetMembersResponse["moved"];
@@ -58,7 +59,6 @@ const assertCollection = (file: CollectionsFile, slug: string): void => {
 	}
 };
 
-// The file was just written and validated, so the collection is there.
 const written = (file: CollectionsFile, slug: string): Collection =>
 	file.collections.find((candidate) => candidate.slug === slug) as Collection;
 
@@ -84,8 +84,7 @@ const respondCollections = <Body>(ctx: Context, run: () => Promise<Body>, status
 		status,
 	);
 
-const assertSetsHaveManifests = async (sets: string[]): Promise<void> => {
-	const location = collectionsLocation();
+const assertSetsHaveManifests = async (sets: string[], location: BucketLocation): Promise<void> => {
 	const found = await Promise.all(sets.map((set) => objectExists(`${set}/${MANIFEST_FILE_NAME}`, location)));
 	const missing = sets.filter((_, index) => !found[index]);
 	if (missing.length > 0) throw badRequest(`No manifest for: ${missing.join(", ")}`);
@@ -114,7 +113,7 @@ const movedFrom = (before: CollectionsFile, sets: string[], into: string | null)
 	setsToMove(before, sets, into).map(({ set, from }) => ({ set, from: from.slug }));
 
 export const listCollectionsHandler = (ctx: Context) =>
-	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(collectionsLocation())).file);
+	respondCollections<CollectionsFile>(ctx, async () => (await readCollections(bucketLocationOf(ctx))).file);
 
 export const createCollectionHandler = (ctx: Context) =>
 	respondCollections<CreateCollectionResponse>(
@@ -124,7 +123,7 @@ export const createCollectionHandler = (ctx: Context) =>
 			const name = requireName(body.name);
 			const { sets } = body;
 			if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
-			await assertSetsHaveManifests(sets);
+			await assertSetsHaveManifests(sets, bucketLocationOf(ctx));
 
 			const base = slugOf(name);
 			const { before, after } = await updateCollections((file) => {
@@ -135,7 +134,7 @@ export const createCollectionHandler = (ctx: Context) =>
 					photos: sets.map((set) => taken.get(set) ?? blankPhoto(set)),
 				};
 				return { ...file, collections: [...remaining, created] };
-			}, collectionsLocation());
+			}, bucketLocationOf(ctx));
 
 			const collection = written(after, uniqueSlug(base, before.collections));
 			return { collection, moved: movedFrom(before, sets, null) };
@@ -149,7 +148,7 @@ export const setMembersHandler = (ctx: Context) =>
 		if (!isStringArray(sets) || sets.length === 0) throw badRequest("Sets must be a non-empty list of set paths");
 		if (collection !== null && typeof collection !== "string") throw badRequest("Collection must be a slug or null");
 
-		if (collection !== null) await assertSetsHaveManifests(sets);
+		if (collection !== null) await assertSetsHaveManifests(sets, bucketLocationOf(ctx));
 
 		const { before, after } = await updateCollections((file) => {
 			if (collection !== null) assertCollection(file, collection);
@@ -164,7 +163,7 @@ export const setMembersHandler = (ctx: Context) =>
 					return { ...candidate, photos: [...candidate.photos, ...added] };
 				}),
 			};
-		}, collectionsLocation());
+		}, bucketLocationOf(ctx));
 
 		return { file: after, moved: movedFrom(before, sets, collection) };
 	});
@@ -192,7 +191,7 @@ export const updatePhotoHandler = (ctx: Context) =>
 					photos: collection.photos.map((photo) => (photo.set === set ? { ...photo, ...patch } : photo)),
 				})),
 			};
-		}, collectionsLocation());
+		}, bucketLocationOf(ctx));
 
 		const photo = holdingSet(after, set)?.photo;
 		if (!photo) throw new Error(`Photo "${set}" was not written`);
@@ -208,7 +207,7 @@ const changeCollection = async (ctx: Context, change: (collection: Collection) =
 			...file,
 			collections: file.collections.map((candidate) => (candidate.slug === slug ? change(candidate) : candidate)),
 		};
-	}, collectionsLocation());
+	}, bucketLocationOf(ctx));
 
 	return { collection: written(after, slug) };
 };
@@ -220,7 +219,7 @@ export const updateCollectionHandler = (ctx: Context) =>
 		if (!isText(cover)) throw badRequest("Cover must be a set path or null");
 
 		return changeCollection(ctx, ({ cover: current, ...rest }) => {
-			// The validator rejects a cover outside the collection, which answers 400.
+			/** The validator rejects a cover outside the collection, which answers 400. */
 			const next = cover === undefined ? current : cover;
 			return { ...rest, ...(newName !== undefined && { name: newName }), ...(next != null && { cover: next }) };
 		});
@@ -232,7 +231,7 @@ export const deleteCollectionHandler = (ctx: Context) =>
 		const { after } = await updateCollections((file) => {
 			assertCollection(file, slug);
 			return { ...file, collections: file.collections.filter((candidate) => candidate.slug !== slug) };
-		}, collectionsLocation());
+		}, bucketLocationOf(ctx));
 		return { file: after };
 	});
 

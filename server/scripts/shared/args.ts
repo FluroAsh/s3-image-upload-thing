@@ -1,4 +1,5 @@
-import { type BucketLocation, defaultRegion } from "@/modules/storage/services/s3-operations";
+import { defaultRegion } from "@/modules/storage/services/s3-operations";
+import type { BucketLocation } from "~/shared/types";
 
 /** Options every bucket script takes, for `parseArgs`. */
 export const BUCKET_OPTIONS = {
@@ -38,7 +39,7 @@ export const readBucketArgs = (values: BucketValues, fail: (problem: string) => 
 	const folder = values.prefix?.replace(/\/+$/, "");
 
 	if (!bucket) return fail("--bucket is required");
-	// Keys never start with "/", so such a filter lists nothing and the run would look like a clean one.
+	/** Keys never start with "/", so such a filter lists nothing and the run would look like a clean one. */
 	if (folder === "" || folder?.startsWith("/")) {
 		fail('--prefix must name a folder without a leading "/", e.g. japan-2025; omit it to run the whole bucket');
 	}

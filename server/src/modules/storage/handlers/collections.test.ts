@@ -7,9 +7,6 @@ import { jsonBody, s3 } from "../fake-s3";
 import storage from "../routes";
 
 vi.mock("@aws-sdk/client-s3", async () => (await import("../fake-s3")).s3.sdk);
-vi.hoisted(() => {
-	process.env.COLLECTIONS_BUCKET = "collections-bucket";
-});
 
 const app = new Hono().route("/storage", storage);
 
@@ -23,8 +20,10 @@ const collection = (slug: string, sets: string[], extra: Partial<Collection> = {
 let current: CollectionsFile;
 let manifests: Set<string>;
 
-const send = (method: string, path: string, body?: unknown) =>
-	app.request(`/storage/collections${path}`, {
+const SCOPE = "bucket=collections-bucket&region=ap-southeast-2";
+
+const send = (method: string, path: string, body?: unknown, scope = SCOPE) =>
+	app.request(`/storage/collections${path}?${scope}`, {
 		method,
 		headers: { "Content-Type": "application/json" },
 		body: body === undefined ? undefined : JSON.stringify(body),
@@ -58,6 +57,31 @@ describe("GET /storage/collections", () => {
 
 		expect(res.status).toBe(200);
 		expect(await res.json()).toEqual(current);
+	});
+
+	it("reads the bucket named in the query", async () => {
+		await send("GET", "", undefined, "bucket=example-bucket&region=us-east-1");
+
+		expect(s3.sent.at(-1)?.input.Bucket).toBe("example-bucket");
+	});
+
+	it("answers 400 when the bucket or region is missing", async () => {
+		expect((await send("GET", "", undefined, "bucket=collections-bucket")).status).toBe(400);
+	});
+
+	it("lists none for a bucket with no collections file, and the first create makes it", async () => {
+		const missing = Object.assign(new Error("missing"), { name: "NoSuchKey" });
+		const respond = s3.respond;
+		s3.respond = async (call) => {
+			if (call.command === "GetObject") throw missing;
+			return respond(call);
+		};
+		manifests = new Set(["collections-bucket/trip/a/manifest.json"]);
+
+		expect((await (await send("GET", "")).json()).collections).toEqual([]);
+		expect((await send("POST", "", { name: "Tokyo", sets: ["trip/a"] })).status).toBe(201);
+		const put = s3.sent.filter(({ command }) => command === "PutObject").at(-1);
+		expect(put?.input.IfNoneMatch).toBe("*");
 	});
 });
 

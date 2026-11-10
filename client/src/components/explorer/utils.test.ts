@@ -5,7 +5,6 @@ import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
 import {
-	collectionsInBucket,
 	formatCount,
 	formatSize,
 	PREVIEW_ORDER,
@@ -171,15 +170,5 @@ describe("set picker selection", () => {
 		const whole = toggleSets(new Set(["cdn/trip/kyoto"]), group);
 		expect([...whole]).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
 		expect(toggleSets(whole, group).size).toBe(0);
-	});
-});
-
-describe("collectionsInBucket", () => {
-	it("keeps collections holding at least one set of the bucket", () => {
-		const photo = (set: string) => ({ set, alt: null, caption: null, tags: [] });
-		const mixed = { slug: "mixed", name: "Mixed", photos: [photo("other/x"), photo("trip/kyoto")] };
-		const away = { slug: "away", name: "Away", photos: [photo("other/x")] };
-		const bucketSets = new Map([["trip/kyoto", tree[1]]]);
-		expect(collectionsInBucket([mixed, away], bucketSets)).toEqual([mixed]);
 	});
 });
