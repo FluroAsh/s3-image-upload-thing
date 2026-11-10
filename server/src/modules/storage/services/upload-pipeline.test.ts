@@ -144,7 +144,7 @@ describe("runUploadPipeline", () => {
 		});
 	});
 
-	it("answers 409 and stores nothing more when another upload stored the original first", async () => {
+	it("refuses and stores nothing more when another upload stored the original first", async () => {
 		s3.respond = async (sent) => {
 			if (sent.command === "PutObject" && sent.input.Key.endsWith("/original.jpg")) {
 				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
@@ -363,7 +363,7 @@ describe("runUploadPipeline", () => {
 		await expect(upload(fileName, destination)).resolves.toMatchObject({ status: "stored" });
 	});
 
-	it("answers 409 when another upload stores the manifest first, never replacing it", async () => {
+	it("refuses when another upload stores the manifest first, never replacing it", async () => {
 		s3.respond = async (sent) => {
 			if (sent.command === "PutObject" && sent.input.Key.endsWith("/manifest.json")) {
 				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
@@ -404,5 +404,29 @@ describe("runUploadPipeline", () => {
 		]);
 		expect(bucket.keys()).toContain("trip/fresh/manifest.json");
 		expect(bucket.keys().some((key) => key.startsWith("trip/broken/"))).toBe(false);
+	});
+
+	it("refuses each repeat of a name within one batch and still stores the first", async () => {
+		const bucket = fakeBucket({});
+		const jpeg = new Uint8Array(await makeJpeg({ width: 300, height: 150 }));
+
+		const results = await runUploadPipeline({
+			fileEntries: [
+				["0", new File([jpeg], "dup.jpg", { type: "image/jpeg" })],
+				["1", new File([jpeg], "dup.png", { type: "image/jpeg" })],
+				["2", new File([jpeg], "other.jpg", { type: "image/jpeg" })],
+			],
+			bucketName: "example-bucket",
+			bucketRegion: "us-east-1",
+			destination: "trip",
+		});
+
+		expect(results.map(({ file, status, reason }) => ({ file, status, reason }))).toEqual([
+			{ file: "dup.jpg", status: "stored", reason: undefined },
+			{ file: "dup.png", status: "refused", reason: "duplicate name in this upload" },
+			{ file: "other.jpg", status: "stored", reason: undefined },
+		]);
+		expect(bucket.keys()).toContain("trip/dup/manifest.json");
+		expect(bucket.keys()).toContain("trip/other/manifest.json");
 	});
 });

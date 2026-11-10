@@ -64,14 +64,6 @@ describe("uploadImagesHandler", () => {
 		expect(runUploadPipeline).not.toHaveBeenCalled();
 	});
 
-	it("rejects two files that would share one set name with a 400 before the pipeline runs", async () => {
-		const res = await post({ ...validFields, images: [new File(["x"], "a.png"), new File(["y"], "a.jpg")] });
-
-		expect(res.status).toBe(400);
-		expect(await res.json()).toEqual({ error: "Two files in one upload cannot share a name" });
-		expect(runUploadPipeline).not.toHaveBeenCalled();
-	});
-
 	it("answers 200 with every file's result, refused ones included", async () => {
 		const results: UploadFileResult[] = [
 			{ file: "a.png", status: "stored", variants: [] },

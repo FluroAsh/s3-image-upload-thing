@@ -111,8 +111,6 @@ export type FileVariant = {
   ETag: string;
 };
 
-export type FileVariants = FileVariant[];
-
 export type UploadStatus = (typeof UPLOAD_STATUSES)[number];
 
 export type UploadFileResult = {

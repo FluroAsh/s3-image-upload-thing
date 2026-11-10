@@ -91,7 +91,7 @@ const storeImageSet = async (
 	}
 };
 
-const exists = (name: string) => `An image set named "${name}" already exists`;
+const existsReason = (name: string) => `An image set named "${name}" already exists`;
 
 const refused = (file: string, reason: string): UploadFileResult => ({ file, status: "refused", reason });
 
@@ -106,19 +106,18 @@ const isImage = (body: Buffer) =>
 /** One file's whole upload, so a refusal or an error ends only this file and the rest of the batch carries on. */
 const uploadFile = async (
 	image: ProcessedImage,
-	destination: string,
+	set: SetIdentity,
 	location: BucketLocation,
 ): Promise<UploadFileResult> => {
 	const file = image.fileName;
 	try {
-		const set = uploadSetIdentity(destination, file);
 		const prefix = setKeyPrefix(set);
 		if (hasRefusedUploadPrefix(prefix)) return refused(file, `Path "${prefix}" is reserved`);
 		if (!(await isImage(ensureBuffer(image.buffer)))) return refused(file, "Not a valid image");
-		if (await imageSetExists(set, location)) return refused(file, exists(set.name));
+		if (await imageSetExists(set, location)) return refused(file, existsReason(set.name));
 
 		const variants = await storeImageSet(await processImage(image), set, location);
-		if (!variants) return refused(file, exists(set.name));
+		if (!variants) return refused(file, existsReason(set.name));
 		return { file, status: "stored", variants };
 	} catch (error) {
 		console.error(error);
@@ -130,5 +129,14 @@ export const runUploadPipeline = async (params: UploadPipelineParams): Promise<U
 	const { fileEntries, destination, ...location } = params;
 
 	const preparedImages = await prepareImages(fileEntries);
-	return Promise.all(preparedImages.map((image) => uploadFile(image, destination, location)));
+	const seen = new Set<string>();
+	return Promise.all(
+		preparedImages.map((image) => {
+			const set = uploadSetIdentity(destination, image.fileName);
+			/** Two files of one batch would race for the same set, so only the first gets to try. */
+			if (seen.has(set.name)) return refused(image.fileName, "duplicate name in this upload");
+			seen.add(set.name);
+			return uploadFile(image, set, location);
+		}),
+	);
 };

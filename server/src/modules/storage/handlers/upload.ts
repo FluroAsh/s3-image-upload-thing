@@ -2,7 +2,6 @@ import type { Context } from "hono";
 
 import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
-import { uploadSetIdentity } from "../services/manifest";
 import { runUploadPipeline } from "../services/upload-pipeline";
 import { badRequest, respond } from "./respond";
 
@@ -32,11 +31,6 @@ const parseUploadRequest = async (ctx: Context) => {
 
 	const imageArray = Array.isArray(images) ? images : [images];
 	const fileEntries = Object.entries(imageArray);
-
-	const names = imageArray.flatMap((image) =>
-		image instanceof File ? [uploadSetIdentity(destination, image.name).name] : [],
-	);
-	if (new Set(names).size < names.length) throw badRequest("Two files in one upload cannot share a name");
 
 	return {
 		bucketName,

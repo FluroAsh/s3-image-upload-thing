@@ -2,12 +2,6 @@ import type { FileVariant, ImageVariant, UploadFileResult, UploadStatus } from "
 
 import { useUpload } from "./provider";
 
-const STATUS_LABEL: Record<UploadStatus, string> = {
-	stored: "Stored",
-	refused: "Refused",
-	failed: "Failed",
-};
-
 const STATUS_STYLE: Record<UploadStatus, string> = {
 	stored: "bg-green-900 text-green-200",
 	refused: "bg-amber-900 text-amber-200",
@@ -58,7 +52,7 @@ const FileResult = ({ result }: { result: UploadFileResult }) => (
 			<span
 				className={`text-xs font-semibold px-2 py-1 rounded-full uppercase tracking-wide ${STATUS_STYLE[result.status]}`}
 			>
-				{STATUS_LABEL[result.status]}
+				{result.status}
 			</span>
 		</div>
 
