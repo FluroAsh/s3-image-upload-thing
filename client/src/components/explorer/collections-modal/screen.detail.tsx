@@ -17,12 +17,12 @@ import type { Collection, CollectionPhoto } from "~/shared/types";
 
 import { StateMessage } from "../../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
+import { SetInfo } from "../set-info";
 import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
-import { SetInfo } from "./set-info";
 import { useBucketSets } from "./use-bucket-sets";
 
 const PhotoTile = ({
@@ -42,7 +42,6 @@ const PhotoTile = ({
 	const folder = sets.get(photo.set);
 
 	return (
-		// The tile is the drag source itself: Firefox won't start a drag from a <button>.
 		// biome-ignore lint/a11y/useSemanticElements: a <button> can't be dragged in Firefox
 		<div
 			{...dragProps}
@@ -145,7 +144,9 @@ const PhotoEditor = ({
 					message={serverErrorMessage(error)}
 				/>
 			)}
-			<SetInfo set={photo.set} />
+			<div className="border-t border-slate-700 pt-2">
+				<SetInfo set={photo.set} />
+			</div>
 		</div>
 	);
 };
@@ -160,7 +161,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 
 	const collection = data?.collections.find((c) => c.slug === slug);
 
-	// Removing the last photo deletes the collection.
+	/** Removing the last photo deletes the collection. */
 	useEffect(() => {
 		if (data && !collection) setScreen({ screen: "list" });
 	}, [data, collection, setScreen]);
@@ -177,7 +178,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 			<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collection..." />
 		);
 
-	// Show the dropped order until the refetch lands.
+	/** Show the dropped order until the refetch lands. */
 	const order = reorder.isPending ? reorder.variables.sets : collection.photos.map((p) => p.set);
 	const bySet = new Map(collection.photos.map((p) => [p.set, p]));
 	const cover = coverOf(collection);

@@ -1,7 +1,7 @@
 /** Every size a stored image set can hold, smallest first, full size last; the kept original sits outside this table. */
 export const IMAGE_VARIANTS = ["placeholder", "thumbnail", "small", "medium", "large", "full"] as const;
 
-type Variant = (typeof IMAGE_VARIANTS)[number];
+export type Variant = (typeof IMAGE_VARIANTS)[number];
 
 /** Bound in pixels on the longest edge, keeping the aspect ratio; a smaller source is never upscaled. */
 export const VARIANT_LONGEST_EDGE = {
