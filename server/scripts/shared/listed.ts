@@ -12,5 +12,4 @@ export type ListedObject = BucketObject & {
 	bytes: number;
 };
 
-export const setLabel = ({ layout, folder, name }: SetIdentity): string =>
-	`${layout} ${folder ? `${folder}/` : ""}${name}`;
+export const setLabel = ({ folder, name }: SetIdentity): string => `${folder ? `${folder}/` : ""}${name}`;

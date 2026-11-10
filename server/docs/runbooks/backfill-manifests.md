@@ -9,13 +9,13 @@ Writes a manifest for every image set that was stored before uploads started wri
 
 ## What it touches
 
-![The script lists and downloads a bucket's image sets and writes one manifest.json into each set's own folder in that same bucket; flat sets, in any folder, are reported and never written](../diagrams/backfill-data-flow.svg)
+![The script lists and downloads a bucket's image sets and writes one manifest.json into each set's own folder in that same bucket](../diagrams/backfill-data-flow.svg)
 
 A set's manifest is `<folder>/<name>/manifest.json`, or `<name>/manifest.json` for a set at the bucket root: always beside the images it describes. A `manifest.json` counts as a set's manifest only when an image of that set (`{variant}_{name}.webp` or `{name}.webp`) sits in the same folder; any other `manifest.json`, such as a web app's `data/manifest.json`, is an ordinary file the script ignores. The script never writes to an image key; the one function that stores a manifest refuses any key that is not `manifest.json` directly inside a non-empty folder, outside `src/`.
 
-A set's **original** is `<folder>/<name>/original.<ext>` (`<name>/original.<ext>` at the bucket root): the file its sizes were made from, stored unchanged by an upload or copied in by the migration. It counts only when an image of that set sits beside it, like a manifest, and it is never a size or a set of its own. The script reads it and records it as the manifest's `source`: its key, SHA-256, byte count, width and height after EXIF rotation, and `public: false`. Uploads and the migration already write `source`; the backfill fills it in for a set whose manifest lacks it. The CDN must not serve originals, which keep camera metadata such as GPS location; see [Keeping originals private](#keeping-originals-private).
+A set's **original** is `<folder>/<name>/original.<ext>` (`<name>/original.<ext>` at the bucket root): the file its sizes were made from, stored unchanged by an upload. It counts only when an image of that set sits beside it, like a manifest, and it is never a size or a set of its own. The script reads it and records it as the manifest's `source`: its key, SHA-256, byte count, width and height after EXIF rotation, and `public: false`. Uploads already write `source`; the backfill fills it in for a set whose manifest lacks it. The CDN must not serve originals, which keep camera metadata such as GPS location; see [Keeping originals private](#keeping-originals-private).
 
-**Flat sets** (an un-prefixed file with prefixed copies beside it, in the bucket root or any folder, and no folder of their own) have nowhere to hold a manifest. The dry run counts and describes them so a bucket can be assessed; a write run reports each one as `flat-set` and writes nothing for it. They are moved into set folders by a separate one-off migration.
+An image that is not inside a folder named after it, such as a loose `photo.webp` in the bucket root, belongs to no set and is listed as `no-set-folder`.
 
 ### How a consumer uses a manifest
 
@@ -59,8 +59,8 @@ bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> [--prefix <f
 | Line in the report | Expect | If not |
 |---|---|---|
 | `Keys listed` | Matches `aws s3 ls s3://<bucket>/<folder>/ --recursive \| wc -l` | The listing is incomplete; check credentials and region |
-| `Sets by layout` | Nested sets only. A `flat` count above zero is followed by a note that each needs migrating | Flat sets get no manifest. Migrate them into set folders first, or accept that a write run skips them |
-| `Skipped keys` | Files that are not images, folder markers, anything under `src/`, and one `set-manifest` line per set that already has a manifest. A set's `original.<ext>` is not listed here: it belongs to its set as the source. A `manifest.json` with no image of its set beside it is listed as `not-webp`, like any other file | An image you expected to see is listed here with the reason it was skipped |
+| `Sets found` | The number of set folders you expect | A set is missing: its images are not in a folder named after them |
+| `Skipped keys` | Files that are not images, folder markers, anything under `src/`, images outside a set folder (`no-set-folder`), and one `set-manifest` line per set that already has a manifest. A set's `original.<ext>` is not listed here: it belongs to its set as the source. A `manifest.json` with no image of its set beside it is listed as `not-webp`, like any other file | An image you expected to see is listed here with the reason it was skipped |
 | `Sets where two variant names share an ETag` | Informational. Older uploads stored one file under several names | Nothing to do; the manifest records what is there |
 | `Sets missing medium or large` | Zero, or sets you know are small | Those sets get a manifest without those sizes |
 | `Sets with jpg/jpeg/png members` | Informational. They are not WebP, so they get no manifest | Nothing to do |
@@ -74,14 +74,13 @@ bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> --prefix <fo
 Keep the log: its `[written]` lines are what the undo deletes. `tee` hides the script's exit code, so read `Failed` in the totals; a log that ends without totals is a run that did not finish. Expect one line per set as it finishes, then totals:
 
 ```
-[written] nested trip/photo -> trip/photo/manifest.json
+[written] trip/photo -> trip/photo/manifest.json
 ...
 Sets found: 12
 Written: 12
 Skipped: 0
   exists: 0
   exists-stale: 0
-  flat-set: 0
 Failed: 0
   unreadable-object: 0
   not-a-manifest: 0
@@ -105,7 +104,7 @@ Failed: 0
 bun --env-file=.env scripts/backfill-manifests.ts --bucket <bucket> --write 2>&1 | tee write-all.log
 ```
 
-The folder from step 2 shows as `exists`. `Failed: 0` and exit code `0` mean every set that can have a manifest has one.
+The folder from step 2 shows as `exists`. `Failed: 0` and exit code `0` mean every set has one.
 
 ## Arguments the script refuses
 
@@ -129,21 +128,20 @@ Each of these exits with code `1` before any request is made.
 
 ## What can happen to one set
 
-![Decision flow: a flat set is skipped as flat-set; otherwise what is at the manifest key is checked, leading to written, not-a-manifest, exists, exists-stale, unreadable-object or failed](../diagrams/backfill-set-outcomes.svg)
+![Decision flow: what is at the manifest key is checked, leading to written, not-a-manifest, exists, exists-stale, unreadable-object or failed](../diagrams/backfill-set-outcomes.svg)
 
 | Outcome | Counts as | What it means | What to do |
 |---|---|---|---|
 | `written` | Written | The manifest was stored in the set's folder. A detail such as `full holds jpeg, not webp` means a file's bytes do not match its name; the manifest records the real format | Nothing |
 | `exists` | Skipped | The set already has a manifest listing exactly its current files | Nothing |
 | `exists-stale` | Skipped | The set has a manifest, but a size has been added or removed since, or its folder's `original.<ext>` is not the `source` it records (`its source is <key>, recorded as none` for a manifest written before originals were kept). The line says which | Re-run with `--force` to refresh it |
-| `flat-set` | Skipped | The set has no folder of its own, so there is nowhere to store a manifest. The line says it needs migrating into a set folder | Migrate it, then run the backfill again; until then it has no manifest |
 | `not-a-manifest` | Failed | The manifest key holds a file this service did not write: not JSON, no `schema: 1`, or `variants` that is not an object. It is read first even with `--force`, and never replaced | Look at the file. Move or delete it yourself if it is not wanted, then re-run |
 | `unreadable-object` | Failed | An object could not be downloaded or is not an image, or its size differs from the listing | Check the key named in the line; re-run once it is fixed or removed |
 | `failed` | Failed | Any other error for that set, including a request that timed out after 60 seconds | Read the message; re-run |
 
-Any `Failed` count above zero makes the exit code `1`. Skips do not, so a bucket of only flat sets exits `0` having written nothing.
+Any `Failed` count above zero makes the exit code `1`. Skips do not.
 
-With `--force`, every nested set whose manifest is ours is measured and its manifest replaced. Its recorded `source` is kept while that key is still the set's `original.<ext>`; otherwise the original is read and measured, or `source` becomes `null` when the folder holds none. A file that is not a manifest is still left alone.
+With `--force`, every set whose manifest is ours is measured and its manifest replaced. Its recorded `source` is kept while that key is still the set's `original.<ext>`; otherwise the original is read and measured, or `source` becomes `null` when the folder holds none. A file that is not a manifest is still left alone.
 
 ## Keeping originals private
 
@@ -184,11 +182,10 @@ To undo, put back the saved `policy.json` with the same `put-bucket-policy` comm
 | `exists-stale` on sets you did not touch | Files were added or removed in the bucket after the manifest was written | Re-run with `--force` |
 | A manifest is wrong | The set changed, or it was written by an older version | Re-run with `--force` and `--prefix <folder>` |
 | The CDN still serves an old manifest | Manifests are cached for five minutes | Wait, or invalidate `/<folder>/*/manifest.json` on the CDN |
-| Every set is `flat-set` | The bucket has not been migrated into set folders | Nothing was written. Migrate first |
 
 ## Undo
 
-Undoing a run is deleting exactly the keys it wrote. Each `[written]` line of a write run's log ends in the manifest key it stored (`[written] nested trip/photo -> trip/photo/manifest.json`), so the log is the list. Nothing else was written. Do not delete by pattern such as `*/manifest.json`: that matches at any depth, and so also hits unrelated `manifest.json` files and manifests written by uploads.
+Undoing a run is deleting exactly the keys it wrote. Each `[written]` line of a write run's log ends in the manifest key it stored (`[written] trip/photo -> trip/photo/manifest.json`), so the log is the list. Nothing else was written. Do not delete by pattern such as `*/manifest.json`: that matches at any depth, and so also hits unrelated `manifest.json` files and manifests written by uploads.
 
 Extract the keys from each write run's log and read them:
 
@@ -214,4 +211,3 @@ Removing a manifest is safe for images: nothing but the manifest is deleted, and
 
 - Every object is downloaded whole, four sets at a time. This suits buckets of a few thousand images; a much larger bucket needs ranged reads first.
 - Only `.webp` files are grouped into sets. A set whose original is a `.jpg` or `.png` gets no manifest.
-- Flat sets get no manifest until they are migrated into set folders.

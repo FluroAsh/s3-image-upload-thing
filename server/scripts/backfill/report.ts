@@ -5,7 +5,7 @@ import {
 	SKIP_REASONS,
 	type SkippedKey,
 } from "@/modules/storage/services/manifest";
-import type { ImageVariant, Manifest } from "~/shared/types";
+import type { ImageVariant } from "~/shared/types";
 
 import { type BucketObject, setLabel } from "../shared/listed";
 import { findNonWebpSets, NON_WEBP_EXTENSIONS, type NonWebpSet } from "../shared/non-webp-sets";
@@ -18,12 +18,8 @@ type BackfillReport = {
 	keyCount: number;
 	/** Every image set found, in first-seen order. */
 	sets: ImageSet[];
-	/** Number of image sets of each layout. */
-	setsByLayout: Record<Manifest["layout"], number>;
-	/** Each distinct mix of variant names within a layout, in first-seen order. */
+	/** Each distinct mix of variant names, in first-seen order. */
 	variantCombinations: {
-		/** Layout of the sets counted here. */
-		layout: Manifest["layout"];
 		/** Variant names the sets hold, sorted alphabetically; `"original"` is an un-prefixed file. */
 		variants: string[];
 		/** Number of sets holding exactly these names. */
@@ -51,7 +47,6 @@ type BackfillReport = {
 export const buildBackfillReport = (objects: readonly BucketObject[]): BackfillReport => {
 	const keys = objects.map(({ key }) => key);
 	const { sets, skipped } = groupImageSets(keys);
-	const setsByLayout: BackfillReport["setsByLayout"] = { nested: 0, flat: 0 };
 	const combinations = new Map<string, BackfillReport["variantCombinations"][number]>();
 
 	const missingRequired: BackfillReport["missingRequired"] = [];
@@ -59,9 +54,6 @@ export const buildBackfillReport = (objects: readonly BucketObject[]): BackfillR
 	const etags = new Map(objects.map(({ key, etag }) => [key, etag]));
 
 	for (const { members, ...identity } of sets) {
-		const { layout } = identity;
-		setsByLayout[layout] += 1;
-
 		const missing = REQUIRED_VARIANTS.filter((required) => !members.some(({ variant }) => variant === required));
 		if (missing.length) missingRequired.push({ ...identity, missing });
 
@@ -76,8 +68,8 @@ export const buildBackfillReport = (objects: readonly BucketObject[]): BackfillR
 		}
 
 		const variants = members.map(({ variant }) => variant).sort();
-		const id = JSON.stringify([layout, variants]);
-		const combination = combinations.get(id) ?? { layout, variants, count: 0 };
+		const id = variants.join("+");
+		const combination = combinations.get(id) ?? { variants, count: 0 };
 		combination.count += 1;
 		combinations.set(id, combination);
 	}
@@ -85,7 +77,6 @@ export const buildBackfillReport = (objects: readonly BucketObject[]): BackfillR
 	return {
 		keyCount: objects.length,
 		sets,
-		setsByLayout,
 		variantCombinations: Array.from(combinations.values()),
 		skipped,
 		missingRequired,
@@ -103,9 +94,6 @@ export const assertImageSets = ({ sets, keyCount }: BackfillReport, scope: strin
 	}
 };
 
-/** Said wherever a flat set is reported: it has no folder of its own to hold a manifest. */
-export const FLAT_SET_NOTE = "needs migrating into a set folder before it can have a manifest";
-
 export const formatBackfillReport = (report: BackfillReport): string => {
 	const { skipped, sharedEtags, missingRequired, nonWebpSets } = report;
 	const webpSiblingCount = nonWebpSets.reduce((count, { webpSiblings }) => count + webpSiblings.length, 0);
@@ -113,12 +101,10 @@ export const formatBackfillReport = (report: BackfillReport): string => {
 	return [
 		`Keys listed: ${report.keyCount}`,
 		"",
-		"Sets by layout",
-		`  nested: ${report.setsByLayout.nested}`,
-		`  flat: ${report.setsByLayout.flat}${report.setsByLayout.flat ? ` (each ${FLAT_SET_NOTE})` : ""}`,
+		`Sets found: ${report.sets.length}`,
 		"",
 		"Sets by variant names",
-		...report.variantCombinations.map(({ layout, variants, count }) => `  ${layout} ${variants.join("+")}: ${count}`),
+		...report.variantCombinations.map(({ variants, count }) => `  ${variants.join("+")}: ${count}`),
 		"",
 		`Skipped keys: ${skipped.length}`,
 		...SKIP_REASONS.map((reason) => `  ${reason}: ${skipped.filter((key) => key.reason === reason).length}`),

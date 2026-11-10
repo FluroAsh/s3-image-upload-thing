@@ -12,20 +12,17 @@ const NESTED_KEYS = [
 	"japan-2025/kyoto/ginsui-sukiyaki-1/large_ginsui-sukiyaki-1.webp",
 ];
 
-const FLAT_KEYS = [
-	"DSC_1963_f6f8bf29c4.webp",
-	"thumbnail_DSC_1963_f6f8bf29c4.webp",
-	"small_DSC_1963_f6f8bf29c4.webp",
-	"medium_DSC_1963_f6f8bf29c4.webp",
-	"large_DSC_1963_f6f8bf29c4.webp",
+const HARBOUR_KEYS = [
+	"trips/harbour/medium_harbour.webp",
+	"trips/harbour/large_harbour.webp",
+	"trips/harbour/harbour.webp",
 ];
 
 describe("buildBackfillReport", () => {
-	it("counts the keys it was given and the image sets by layout", () => {
-		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS]));
+	it("counts the keys it was given", () => {
+		const report = buildBackfillReport(objects([...NESTED_KEYS, "notes.txt"]));
 
-		expect(report.keyCount).toBe(8);
-		expect(report.setsByLayout).toEqual({ nested: 1, flat: 1 });
+		expect(report.keyCount).toBe(4);
 	});
 
 	it("returns the sets it counted, with their members", () => {
@@ -33,7 +30,6 @@ describe("buildBackfillReport", () => {
 
 		expect(report.sets).toEqual([
 			{
-				layout: "nested",
 				folder: "japan-2025/kyoto",
 				name: "ginsui-sukiyaki-1",
 				members: NESTED_KEYS.map((key) => ({ key, variant: key.split("/").pop()?.split("_")[0] })),
@@ -41,18 +37,18 @@ describe("buildBackfillReport", () => {
 		]);
 	});
 
-	it("counts sets by layout and the variant names they hold, whatever order the keys were listed in", () => {
+	it("counts sets by the variant names they hold, whatever order the keys were listed in", () => {
 		const secondNested = [
 			"japan-2025/kyoto/ginsui-sukiyaki-2/large_ginsui-sukiyaki-2.webp",
 			"japan-2025/kyoto/ginsui-sukiyaki-2/thumbnail_ginsui-sukiyaki-2.webp",
 			"japan-2025/kyoto/ginsui-sukiyaki-2/medium_ginsui-sukiyaki-2.webp",
 		];
 
-		const report = buildBackfillReport(objects([...NESTED_KEYS, ...FLAT_KEYS, ...secondNested]));
+		const report = buildBackfillReport(objects([...NESTED_KEYS, ...HARBOUR_KEYS, ...secondNested]));
 
 		expect(report.variantCombinations).toEqual([
-			{ layout: "nested", variants: ["large", "medium", "thumbnail"], count: 2 },
-			{ layout: "flat", variants: ["large", "medium", "original", "small", "thumbnail"], count: 1 },
+			{ variants: ["large", "medium", "thumbnail"], count: 2 },
+			{ variants: ["large", "medium", "original"], count: 1 },
 		]);
 	});
 
@@ -64,6 +60,7 @@ describe("buildBackfillReport", () => {
 				"japan-2025/raw-video/clip-1.mp4",
 				"japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
 				"src/japan-2025/a.jpg",
+				"photo.webp",
 			]),
 		);
 
@@ -72,20 +69,21 @@ describe("buildBackfillReport", () => {
 			{ key: "japan-2025/raw-video/clip-1.mp4", reason: "not-webp" },
 			{ key: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json", reason: "set-manifest" },
 			{ key: "src/japan-2025/a.jpg", reason: "reserved-prefix" },
+			{ key: "photo.webp", reason: "no-set-folder" },
 		]);
 		expect(report.sets).toHaveLength(1);
 		expect(report.sets[0].members.map(({ key }) => key)).toEqual(NESTED_KEYS);
 	});
 
 	it("lists the sets that lack a medium or a large variant, with the names they lack", () => {
-		const noLarge = FLAT_KEYS.filter((key) => !key.startsWith("large_"));
-		const loneFile = "DSC_2007_10e10829a9.webp";
+		const noLarge = HARBOUR_KEYS.filter((key) => !key.includes("/large_"));
+		const loneFile = "trips/lone/lone.webp";
 
 		const report = buildBackfillReport(objects([...NESTED_KEYS, ...noLarge, loneFile]));
 
 		expect(report.missingRequired).toEqual([
-			{ layout: "flat", folder: "", name: "DSC_1963_f6f8bf29c4", missing: ["large"] },
-			{ layout: "flat", folder: "", name: "DSC_2007_10e10829a9", missing: ["medium", "large"] },
+			{ folder: "trips", name: "harbour", missing: ["large"] },
+			{ folder: "trips", name: "lone", missing: ["medium", "large"] },
 		]);
 	});
 
@@ -93,7 +91,7 @@ describe("buildBackfillReport", () => {
 		const [thumbnail, medium, large] = NESTED_KEYS;
 
 		const report = buildBackfillReport(
-			objects([...NESTED_KEYS, ...FLAT_KEYS], {
+			objects([...NESTED_KEYS, ...HARBOUR_KEYS], {
 				[medium]: '"same-file"',
 				[large]: '"same-file"',
 				[thumbnail]: '"other"',
@@ -102,7 +100,6 @@ describe("buildBackfillReport", () => {
 
 		expect(report.sharedEtags).toEqual([
 			{
-				layout: "nested",
 				folder: "japan-2025/kyoto",
 				name: "ginsui-sukiyaki-1",
 				etag: '"same-file"',
@@ -121,7 +118,7 @@ describe("buildBackfillReport", () => {
 
 	it("does not report an ETag shared by two different sets", () => {
 		const report = buildBackfillReport(
-			objects([...NESTED_KEYS, ...FLAT_KEYS], { [NESTED_KEYS[0]]: '"same-file"', [FLAT_KEYS[0]]: '"same-file"' }),
+			objects([...NESTED_KEYS, ...HARBOUR_KEYS], { [NESTED_KEYS[0]]: '"same-file"', [HARBOUR_KEYS[0]]: '"same-file"' }),
 		);
 
 		expect(report.sharedEtags).toEqual([]);
@@ -130,28 +127,27 @@ describe("buildBackfillReport", () => {
 	it("lists sets with jpg, jpeg or png members apart, with how the classifier placed any webp beside them", () => {
 		const report = buildBackfillReport(
 			objects([
-				...FLAT_KEYS,
-				"DSC_2361_91d38a3053.jpg",
-				"thumbnail_DSC_2361_91d38a3053.jpg",
-				"large_DSC_2361_91d38a3053.webp",
+				...HARBOUR_KEYS,
+				"trips/dusk/dusk.jpg",
+				"trips/dusk/thumbnail_dusk.jpg",
+				"trips/dusk/large_dusk.webp",
 				"backups/db.tar.gz",
 			]),
 		);
 
 		expect(report.nonWebpSets).toEqual([
 			{
-				layout: "flat",
-				folder: "",
-				name: "DSC_2361_91d38a3053",
+				folder: "trips",
+				name: "dusk",
 				members: [
-					{ key: "DSC_2361_91d38a3053.jpg", variant: "original" },
-					{ key: "thumbnail_DSC_2361_91d38a3053.jpg", variant: "thumbnail" },
+					{ key: "trips/dusk/dusk.jpg", variant: "original" },
+					{ key: "trips/dusk/thumbnail_dusk.jpg", variant: "thumbnail" },
 				],
 				webpSiblings: [
 					{
-						key: "large_DSC_2361_91d38a3053.webp",
+						key: "trips/dusk/large_dusk.webp",
 						variant: "large",
-						classifiedAs: { name: "large_DSC_2361_91d38a3053", variant: "original" },
+						classifiedAs: { name: "dusk", variant: "large" },
 					},
 				],
 			},
@@ -167,13 +163,13 @@ describe("formatBackfillReport", () => {
 				[
 					...NESTED_KEYS,
 					"japan-2025/",
-					"trips/harbour.webp",
 					"trips/harbour/medium_harbour.webp",
 					"trips/harbour/large_harbour.webp",
-					"DSC_2361_91d38a3053.jpg",
-					"thumbnail_DSC_2361_91d38a3053.jpg",
-					"large_DSC_2361_91d38a3053.webp",
+					"trips/dusk/dusk.jpg",
+					"trips/dusk/thumbnail_dusk.jpg",
+					"trips/dusk/large_dusk.webp",
 					"trips/harbour/manifest.json",
+					"photo.webp",
 				],
 				{ [thumbnail]: '"t"', [medium]: '"same-file"', [large]: '"same-file"' },
 			),
@@ -183,36 +179,35 @@ describe("formatBackfillReport", () => {
 			[
 				"Keys listed: 11",
 				"",
-				"Sets by layout",
-				"  nested: 2",
-				"  flat: 2 (each needs migrating into a set folder before it can have a manifest)",
+				"Sets found: 3",
 				"",
 				"Sets by variant names",
-				"  nested large+medium+thumbnail: 1",
-				"  flat original: 2",
-				"  nested large+medium: 1",
+				"  large+medium+thumbnail: 1",
+				"  large+medium: 1",
+				"  large: 1",
 				"",
-				"Skipped keys: 4",
+				"Skipped keys: 5",
 				"  reserved-prefix: 0",
 				"  folder-marker: 1",
 				"  set-manifest: 1",
 				"  not-webp: 2",
 				"  empty-name: 0",
+				"  no-set-folder: 1",
 				"  [folder-marker] japan-2025/",
-				"  [not-webp] DSC_2361_91d38a3053.jpg",
-				"  [not-webp] thumbnail_DSC_2361_91d38a3053.jpg",
+				"  [not-webp] trips/dusk/dusk.jpg",
+				"  [not-webp] trips/dusk/thumbnail_dusk.jpg",
 				"  [set-manifest] trips/harbour/manifest.json",
+				"  [no-set-folder] photo.webp",
 				"",
 				"Sets where two variant names share an ETag: 1",
-				'  nested japan-2025/kyoto/ginsui-sukiyaki-1: medium = large ("same-file")',
+				'  japan-2025/kyoto/ginsui-sukiyaki-1: medium = large ("same-file")',
 				"",
-				"Sets missing medium or large: 2",
-				"  flat trips/harbour: medium, large",
-				"  flat large_DSC_2361_91d38a3053: medium, large",
+				"Sets missing medium or large: 1",
+				"  trips/dusk: medium",
 				"",
 				"Sets with jpg/jpeg/png members: 1 (webp keys beside them: 1)",
-				"  flat DSC_2361_91d38a3053: original, thumbnail",
-				'    large_DSC_2361_91d38a3053.webp is classified as original of "large_DSC_2361_91d38a3053"',
+				"  trips/dusk: original, thumbnail",
+				'    trips/dusk/large_dusk.webp is classified as large of "dusk"',
 			].join("\n"),
 		);
 	});

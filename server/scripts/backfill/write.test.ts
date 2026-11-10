@@ -56,7 +56,7 @@ const nestedSet = async () => ({
 });
 
 describe("writeManifests", () => {
-	it("stores a manifest for a nested set with each object's measured size, listed bytes and ETag", async () => {
+	it("stores a manifest for a set with each object's measured size, listed bytes and ETag", async () => {
 		const files = await nestedSet();
 		const { io, objects, stored } = buckets(files);
 
@@ -64,7 +64,6 @@ describe("writeManifests", () => {
 
 		expect(results).toEqual([
 			{
-				layout: "nested",
 				folder: "japan-2025/kyoto",
 				name: "ginsui-sukiyaki-1",
 				manifestKey: "japan-2025/kyoto/ginsui-sukiyaki-1/manifest.json",
@@ -75,7 +74,6 @@ describe("writeManifests", () => {
 			schema: 1,
 			name: "ginsui-sukiyaki-1",
 			folder: "japan-2025/kyoto",
-			layout: "nested",
 			source: null,
 			variants: {
 				medium: {
@@ -89,31 +87,6 @@ describe("writeManifests", () => {
 				large: { width: 144, height: 72 },
 			},
 		});
-	});
-
-	it("skips a flat set, which has no folder to hold a manifest, saying it needs migrating and reading none of it", async () => {
-		const { io, objects, stored, read } = buckets({
-			"DSC_1963_f6f8bf29c4.webp": await webp(200, 100),
-			"thumbnail_DSC_1963_f6f8bf29c4.webp": await webp(40, 20),
-		});
-
-		const results = await writeManifests(objects, io, { force: true });
-
-		expect(results).toEqual([
-			{
-				layout: "flat",
-				folder: "",
-				name: "DSC_1963_f6f8bf29c4",
-				outcome: "flat-set",
-				detail: "needs migrating into a set folder before it can have a manifest",
-			},
-		]);
-		expect(formatSetResult(results[0])).toBe(
-			"[flat-set] flat DSC_1963_f6f8bf29c4: needs migrating into a set folder before it can have a manifest",
-		);
-		expect(countFailed(results)).toBe(0);
-		expect(stored.size).toBe(0);
-		expect(read).toEqual([]);
 	});
 
 	it("uses the set's own placeholder variant as the manifest's blur, byte for byte", async () => {
@@ -427,19 +400,18 @@ describe("writeManifests progress", () => {
 
 describe("formatSetResult", () => {
 	it("puts the outcome, the set and its detail on one line, ending in the manifest key", () => {
-		const set = { layout: "nested", folder: "trip", name: "a", manifestKey: "trip/a/manifest.json" } as const;
+		const set = { folder: "trip", name: "a", manifestKey: "trip/a/manifest.json" } as const;
 
-		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] nested trip/a -> trip/a/manifest.json");
+		expect(formatSetResult({ ...set, outcome: "written" })).toBe("[written] trip/a -> trip/a/manifest.json");
 		expect(formatSetResult({ ...set, outcome: "exists-stale", detail: "--force will refresh it" })).toBe(
-			"[exists-stale] nested trip/a: --force will refresh it -> trip/a/manifest.json",
+			"[exists-stale] trip/a: --force will refresh it -> trip/a/manifest.json",
 		);
 	});
 });
 
 describe("formatWriteTotals", () => {
 	it("counts the sets by outcome, skipped and failed separately", () => {
-		const set = (name: string): Pick<SetResult, "layout" | "folder" | "name" | "manifestKey"> => ({
-			layout: "nested",
+		const set = (name: string): Pick<SetResult, "folder" | "name" | "manifestKey"> => ({
 			folder: "trip",
 			name,
 			manifestKey: `trip/${name}/manifest.json`,
@@ -452,17 +424,15 @@ describe("formatWriteTotals", () => {
 			{ ...set("d"), outcome: "exists-stale", detail: "--force will refresh it" },
 			{ ...set("e"), outcome: "unreadable-object", detail: '"trip/e/medium_e.webp": Access Denied' },
 			{ ...set("g"), outcome: "not-a-manifest" },
-			{ layout: "flat", folder: "", name: "f", outcome: "flat-set" },
 		]);
 
 		expect(report).toBe(
 			[
-				"Sets found: 7",
+				"Sets found: 6",
 				"Written: 2",
-				"Skipped: 3",
+				"Skipped: 2",
 				"  exists: 1",
 				"  exists-stale: 1",
-				"  flat-set: 1",
 				"Failed: 2",
 				"  unreadable-object: 1",
 				"  not-a-manifest: 1",

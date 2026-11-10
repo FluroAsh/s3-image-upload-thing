@@ -39,8 +39,6 @@ export type Manifest = {
   name: string;
   /** Bucket folder the set lives in, without a trailing slash; `""` for the bucket root. */
   folder: string;
-  /** Always `nested` in a stored manifest: the variants are `{folder}/{name}/{variant}_{name}.webp`. `flat` sets are only ever found by the classifier. */
-  layout: "nested" | "flat";
   /** Always `"ready"`: a manifest is written only after every variant is stored. */
   status: "ready";
   /** ISO 8601 time the manifest was built. */

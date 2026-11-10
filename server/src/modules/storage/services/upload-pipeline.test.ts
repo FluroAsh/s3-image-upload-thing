@@ -170,7 +170,6 @@ describe("runUploadPipeline", () => {
 			schema: 1,
 			name: "photo",
 			folder: "trip",
-			layout: "nested",
 		});
 		expect(manifest.variants).toEqual({
 			placeholder: {

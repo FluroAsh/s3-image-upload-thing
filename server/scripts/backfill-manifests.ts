@@ -16,7 +16,7 @@ const main = async (): Promise<void> => {
 
 	const report = buildBackfillReport(objects);
 	assertImageSets(report, scope);
-	const destination = `each nested set's own folder, as ${MANIFEST_FILE_NAME}`;
+	const destination = `each set's own folder, as ${MANIFEST_FILE_NAME}`;
 
 	if (!write) {
 		console.log(

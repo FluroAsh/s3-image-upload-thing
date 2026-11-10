@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 470" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" role="img" aria-labelledby="t d" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
   <title id="t">What the backfill script reads and writes</title>
-  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set that has a folder of its own, it writes one manifest.json into that same folder, beside the images it describes, in the same bucket. It never writes to an image key. A set's original.{ext}, the file its sizes were made from, is read and recorded in the manifest as its private source, never as a size. The CDN serves a set's images and its manifest but is denied every original.{ext} by the bucket policy. A flat set, whose files sit directly in a folder (the bucket root or any other) with no folder of their own, is listed and reported but never given a manifest. The CDN serves them from the same folder to the site that displays them.</desc>
+  <desc id="d">The script lists and downloads the image objects of one bucket. For each image set, it writes one manifest.json into the set's own folder, beside the images it describes, in the same bucket. It never writes to an image key. A set's original.{ext}, the file its sizes were made from, is read and recorded in the manifest as its private source, never as a size. The CDN serves a set's images and its manifest but is denied every original.{ext} by the bucket policy.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f4f4f5; stroke: #a1a1aa; stroke-width: 1.5; }
@@ -11,11 +11,8 @@
     .read { stroke: #52525b; stroke-width: 1.5; fill: none; }
     .wr { stroke: #059669; stroke-width: 2; fill: none; }
     .set { fill: none; stroke: #a1a1aa; stroke-width: 1.5; }
-    .flat { fill: none; stroke: #a1a1aa; stroke-width: 1.5; stroke-dasharray: 5 4; }
-    .no { stroke: #dc2626; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
     .lr { font-size: 12px; fill: #52525b; }
     .lw { font-size: 12px; fill: #047857; font-weight: 600; }
-    .ln { font-size: 12px; fill: #b91c1c; font-weight: 600; }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #18181b; }
       .box { fill: #27272a; stroke: #71717a; }
@@ -23,24 +20,21 @@
       .write { fill: #052e2b; stroke: #34d399; }
       .h { fill: #f4f4f5; }
       .p { fill: #d4d4d8; }
-      .set, .flat { stroke: #71717a; }
+      .set { stroke: #71717a; }
       .read { stroke: #a1a1aa; }
       .wr { stroke: #34d399; }
-      .no { stroke: #f87171; }
       .lr { fill: #a1a1aa; }
       .lw { fill: #6ee7b7; }
-      .ln { fill: #fca5a5; }
     }
   </style>
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#71717a"/></marker>
     <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#059669"/></marker>
-    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#dc2626"/></marker>
   </defs>
 
-  <rect class="bg" width="920" height="470"/>
+  <rect class="bg" width="920" height="320"/>
 
-  <rect class="box" x="24" y="32" width="310" height="406" rx="8"/>
+  <rect class="box" x="24" y="32" width="310" height="260" rx="8"/>
   <text class="h" x="40" y="58">Bucket</text>
 
   <rect class="set" x="40" y="74" width="278" height="186" rx="6"/>
@@ -51,13 +45,6 @@
   <rect class="write" x="52" y="178" width="254" height="66" rx="6"/>
   <text class="h" x="64" y="202" font-size="13">manifest.json</text>
   <text class="p" x="64" y="224">one per set, beside its images</text>
-
-  <rect class="flat" x="40" y="282" width="278" height="140" rx="6"/>
-  <text class="h" x="52" y="306" font-size="13">Flat set, in any folder</text>
-  <text class="p" x="52" y="330">photo_ab12.webp</text>
-  <text class="p" x="52" y="350">large_photo_ab12.webp</text>
-  <text class="p" x="52" y="382">No folder of its own, so</text>
-  <text class="p" x="52" y="402">nowhere to hold a manifest</text>
 
   <rect class="script" x="440" y="150" width="200" height="120" rx="8"/>
   <text class="h" x="456" y="178">Backfill script</text>
@@ -78,9 +65,6 @@
 
   <path class="wr" d="M440 228 C380 228 380 211 306 211" marker-end="url(#g)"/>
   <text class="lw" x="366" y="250">write</text>
-
-  <path class="no" d="M540 270 C540 360 420 360 318 360" marker-end="url(#r)"/>
-  <text class="ln" x="356" y="386">reported, never written</text>
 
   <path class="read" d="M334 56 C560 30 760 70 804 150" marker-end="url(#a)"/>
   <text class="lr" x="560" y="42">served as /trip/photo/…</text>
