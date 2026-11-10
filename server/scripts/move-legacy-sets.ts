@@ -1,11 +1,11 @@
 import { parseArgs } from "node:util";
 
-import { isManifest, MANIFEST_FILE_NAME, manifestKey } from "@/modules/storage/services/manifest";
+import { MANIFEST_FILE_NAME, manifestKey, NotAManifestError, nestedSetOf } from "@/modules/storage/services/manifest";
 import {
 	type BucketLocation,
 	copyObject,
-	getObject,
 	listPages,
+	readManifest,
 	storeManifest,
 } from "@/modules/storage/services/s3-operations";
 import { errorMessage } from "@/shared/utils/helpers";
@@ -97,8 +97,15 @@ const main = async (): Promise<void> => {
 		const target = legacyKey(object.key);
 		if (present.has(target)) return "skipped";
 
-		const stored: unknown = JSON.parse((await getObject(object.key, source)).body.toString("utf8"));
-		if (!isManifest(stored)) throw new Error("not a set manifest");
+		const set = nestedSetOf(object.key);
+		const stored =
+			set &&
+			(await readManifest(set, source).catch((error: unknown) => {
+				if (error instanceof NotAManifestError) return null;
+				throw error;
+			}));
+		// A file that is only named manifest.json describes no set, so it is copied unchanged like any other object.
+		if (!stored) return copyOne(object);
 		const moved = moveManifest(stored);
 		if (manifestKey(moved) !== target) {
 			throw new Error(`its folder and name do not match its location, so it would not describe ${target}`);

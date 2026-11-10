@@ -3,7 +3,7 @@
 Copies every set folder of the clone bucket (the migrated Strapi sets) into the upload bucket under the `legacy/` key prefix. The upload bucket is the CDN root, so every site path stays the same, and the clone bucket and its bucket-to-CDN-prefix mapping can then be retired. Run by hand from a checkout; it is not part of the deployed server.
 
 - **Script:** `server/scripts/move-legacy-sets.ts`, with the manifest rewrite in `server/scripts/legacy/manifest.ts`
-- **Reads:** a listing of the source bucket and, with `--write`, each set's `manifest.json`; a listing of the destination under `legacy/`
+- **Reads:** a listing of the source bucket and each set's `manifest.json`; a listing of the destination under `legacy/`
 - **Writes:** only with `--write`, only into the destination under `legacy/`: a server-side copy of every object, then each rewritten `manifest.json`
 - **Never:** changes the source bucket, or writes outside `legacy/` in the destination
 - **Safe to re-run:** yes. An object already in the destination with the same size, and a manifest already there, are skipped
@@ -14,7 +14,7 @@ Copies every set folder of the clone bucket (the migrated Strapi sets) into the 
 
 A **set** is a top-level folder of the source bucket: every object under it is copied to `legacy/<same key>` using S3's `CopyObject`, so the bytes never leave S3. Each copy is create-only and only of the version that was listed (its ETag). Files at the bucket root are not part of any set and are skipped, and counted in the report.
 
-A set's `manifest.json` is written after the rest of its folder. It records the set's `folder` and the key of every image, so the copy moves them under `legacy/`: a root-level set's `folder` becomes `legacy` and a set inside `static-assets/` gets `legacy/static-assets`. The script refuses a manifest that is not one, or whose folder and name do not point at its new location. If any other object of its set failed, the manifest is not written.
+A set's `manifest.json` is written after the rest of its folder. It records the set's `folder` and the key of every image, so the copy moves them under `legacy/`: a root-level set's `folder` becomes `legacy` and a set inside `static-assets/` gets `legacy/static-assets`. A file named `manifest.json` that is not a set manifest is copied unchanged, like any other object. The script refuses a set manifest whose folder and name do not point at its new location. If any other object of its set failed, the manifest is not written.
 
 ## Before you start
 
