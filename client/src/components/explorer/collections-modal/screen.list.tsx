@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import {
 	LucideAlertTriangle,
 	LucideFolderHeart,
@@ -8,11 +10,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useDeleteCollection, useUpdateCollection } from "@/lib/query";
 import { coverOf } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
+import { DeleteCollectionDialog } from "../collection-dialogs";
 import { PartialNotice } from "../partial-notice";
 import { formatCount, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
@@ -26,17 +30,14 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 
 	/** A set missing from this bucket has no thumbnail, so the card shows the first one that has. */
 	const shown = [coverOf(collection), ...collection.photos.map((p) => p.set)].find((set) => set && sets.has(set));
-	const error = rename.error ?? remove.error;
+	const [dialog, setDialog] = useState<"rename" | "delete">();
 
-	const onRename = () => {
-		const name = window.prompt("Rename collection", collection.name)?.trim();
-		if (name && name !== collection.name) rename.mutate({ slug: collection.slug, name });
+	const show = (next?: "rename" | "delete") => {
+		rename.reset();
+		remove.reset();
+		setDialog(next);
 	};
-
-	const onDelete = () => {
-		if (window.confirm(`Delete "${collection.name}"? This removes its photos' alt text and captions.`))
-			remove.mutate(collection.slug);
-	};
+	const close = () => show();
 
 	return (
 		/** The open button stretches over the whole row; the actions sit above it. */
@@ -52,14 +53,12 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 					<p className="truncate text-secondary text-fg-1">
 						{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
 					</p>
-					{error && <p className="text-secondary text-err">{serverErrorMessage(error)}</p>}
 				</div>
 			</button>
 			<Button
 				variant="icon"
 				aria-label={`Rename ${collection.name}`}
-				disabled={rename.isPending}
-				onClick={onRename}
+				onClick={() => show("rename")}
 				className="relative z-10"
 			>
 				<LucidePencil className="size-4" />
@@ -68,12 +67,34 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 				variant="icon"
 				danger
 				aria-label={`Delete ${collection.name}`}
-				disabled={remove.isPending}
-				onClick={onDelete}
+				onClick={() => show("delete")}
 				className="relative z-10"
 			>
 				<LucideTrash2 className="size-4" />
 			</Button>
+			<PromptDialog
+				open={dialog === "rename"}
+				onOpenChange={(open) => !open && close()}
+				title="Rename collection"
+				label="Name"
+				initialValue={collection.name}
+				confirmLabel="Rename"
+				pendingLabel="Renaming..."
+				pending={rename.isPending}
+				error={rename.error ? serverErrorMessage(rename.error) : undefined}
+				onSubmit={(name) =>
+					name === collection.name ? close() : rename.mutate({ slug: collection.slug, name }, { onSuccess: close })
+				}
+			/>
+			<DeleteCollectionDialog
+				open={dialog === "delete"}
+				onOpenChange={(open) => !open && close()}
+				name={collection.name}
+				photoCount={collection.photos.length}
+				pending={remove.isPending}
+				error={remove.error}
+				onConfirm={() => remove.mutate(collection.slug, { onSuccess: close })}
+			/>
 		</li>
 	);
 };

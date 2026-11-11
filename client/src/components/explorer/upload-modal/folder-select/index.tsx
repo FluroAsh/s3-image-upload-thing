@@ -6,10 +6,12 @@ import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "l
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
+import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 import type { FileTreeResponse, TreeNode } from "~/shared/types";
 
+import { setPathOf } from "../../utils";
 import { Folder } from "./folder";
 
 const isFolder = (node: TreeNode) => node.isFolder;
@@ -26,6 +28,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 	const { childMap } = useFileTree(activeBucketName, bucketRegion);
 
 	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [naming, setNaming] = useState(false);
 	const [folderStack, setFolderStack] = useState<TreeNode[]>([]);
 
 	const activeFolder = folderStack[folderStack.length - 1] || undefined;
@@ -49,10 +52,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 		});
 	};
 
-	const handleCreateFolder = () => {
-		const newFolderName = prompt("Enter new folder name:");
-		if (!newFolderName) return;
-
+	const handleCreateFolder = (newFolderName: string) => {
 		const newFolder: TreeNode = {
 			id: activeNodeId ? `${activeNodeId}/${newFolderName}` : `${newFolderName}/`,
 			parentId: activeNodeId,
@@ -70,6 +70,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 
 		setFolderStack((prev) => [...prev, newFolder]);
 		folderPathRef.current = [...folderStack.map((n) => n.name), newFolderName].join("/");
+		setNaming(false);
 	};
 
 	return (
@@ -79,7 +80,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 					<Chip>{activeNodeId ? activeNodeId : activeBucketName}</Chip>
 				</div>
 
-				<Button onClick={handleCreateFolder}>
+				<Button onClick={() => setNaming(true)}>
 					<LucideFolderPlus className="size-4" />
 					New Folder
 				</Button>
@@ -127,6 +128,17 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 					</div>
 				</div>
 			)}
+			<PromptDialog
+				open={naming}
+				onOpenChange={setNaming}
+				title="New folder"
+				subtitle={`in ${setPathOf(activeNodeId) || activeBucketName}`}
+				label="Name"
+				hint="Created on first upload"
+				confirmLabel="Create"
+				validate={(name) => (name.includes("/") ? 'A folder name can\'t contain "/".' : undefined)}
+				onSubmit={handleCreateFolder}
+			/>
 		</div>
 	);
 };
