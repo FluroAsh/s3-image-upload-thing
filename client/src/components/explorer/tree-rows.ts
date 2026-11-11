@@ -19,53 +19,58 @@ export type TreeRowData = {
 	count: number;
 };
 
-type Visit = { rows: TreeRowData[]; hits: number };
-
-const NONE: Visit = { rows: [], hits: 0 };
-
-/** Flattens the loaded tree into the visible rows; a filter keeps matches and opens their ancestors, and a matching folder lists all its contents. */
+/** Flattens the loaded tree into the visible rows; a filter keeps matches and opens the folders above them, and a matching folder still lists all its contents. */
 export const buildRows = (childMap: Map<string, TreeNode[]>, expanded: Record<string, boolean>, query: string) => {
 	const needle = query.trim().toLowerCase();
 	const filtering = needle !== "";
+	const isHit = (node: TreeNode) => filtering && node.name.toLowerCase().includes(needle);
 
-	const visit = (node: TreeNode, inMatch: boolean): Visit => {
-		const hit = filtering && node.name.toLowerCase().includes(needle) ? 1 : 0;
+	const isLeaf = (node: TreeNode, children: TreeNode[]) => !node.isFolder || isSetFolder(node, children);
+
+	const hitsIn = (nodes: TreeNode[]): number =>
+		nodes.reduce((sum, node) => {
+			const children = childMap.get(node.id) ?? [];
+			return sum + (isHit(node) ? 1 : 0) + (isLeaf(node, children) ? 0 : hitsIn(children));
+		}, 0);
+
+	const visit = (node: TreeNode, inMatch: boolean): TreeRowData[] => {
 		const children = childMap.get(node.id) ?? [];
-		const filtered = filtering && !inMatch;
+		const hit = isHit(node);
+		const filtered = filtering && !inMatch && !hit;
 
-		if (!node.isFolder || isSetFolder(node, children)) {
-			if (filtered && !hit) return NONE;
+		if (isLeaf(node, children)) {
+			if (filtered) return [];
 			const isSet = node.isFolder;
-			const row: TreeRowData = {
-				node,
-				kind: isSet ? "set" : "file",
-				variants: isSet ? children : [],
-				expanded: false,
-				locked: false,
-				count: children.length,
-			};
-			return { rows: [row], hits: hit };
+			return [
+				{
+					node,
+					kind: isSet ? "set" : "file",
+					variants: isSet ? children : [],
+					expanded: false,
+					locked: false,
+					count: children.length,
+				},
+			];
 		}
 
-		const locked = filtered && !hit;
-		const open = locked || !!expanded[node.id];
-		const below = open ? children.map((child) => visit(child, !filtered || !!hit)) : [];
-		const hitsBelow = below.reduce((sum, child) => sum + child.hits, 0);
-		if (locked && !hitsBelow) return NONE;
+		const hitsBelow = hitsIn(children);
+		if (filtered && !hitsBelow) return [];
 
+		const locked = hitsBelow > 0;
+		const open = locked || !!expanded[node.id];
 		const row: TreeRowData = {
 			node,
 			kind: "folder",
 			variants: [],
 			expanded: open,
 			locked,
-			count: locked ? hitsBelow : node.childCount,
+			count: filtered ? hitsBelow : node.childCount,
 		};
-		return { rows: [row, ...below.flatMap((child) => child.rows)], hits: hit + hitsBelow };
+		return [row, ...(open ? children.flatMap((child) => visit(child, inMatch || hit)) : [])];
 	};
 
-	const roots = (childMap.get("") ?? []).map((root) => visit(root, false));
-	return { rows: roots.flatMap((root) => root.rows), matches: roots.reduce((sum, root) => sum + root.hits, 0) };
+	const roots = childMap.get("") ?? [];
+	return { rows: roots.flatMap((root) => visit(root, false)), matches: hitsIn(roots) };
 };
 
 export const TREE_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"] as const;
