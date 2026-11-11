@@ -135,6 +135,10 @@ export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boole
 export const sourceKey = (set: SetIdentity, extension: string): string =>
 	`${setKeyPrefix(set)}${SOURCE_FILE_STEM}${extension.toLowerCase()}`;
 
+/** A name without an extension would give a key the CDN's `original.*` deny rule does not match, so the image's own format stands in. */
+export const originalExtension = async (fileName: string, body: Buffer): Promise<string> =>
+	path.extname(fileName).slice(1) || (await sharp(body).metadata()).format;
+
 /** Shared by the upload path and the backfill, so both measure an original the same way: after EXIF rotation, as displayed. */
 export const describeSource = async (key: string, body: Buffer): Promise<ManifestSource> => {
 	const { autoOrient } = await sharp(body).metadata();

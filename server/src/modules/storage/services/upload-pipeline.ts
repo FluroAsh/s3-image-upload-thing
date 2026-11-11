@@ -1,5 +1,3 @@
-import * as path from "node:path";
-
 import sharp from "sharp";
 
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
@@ -12,6 +10,7 @@ import {
 	buildManifest,
 	describeSource,
 	hasRefusedUploadPrefix,
+	originalExtension,
 	placeholderDataUri,
 	type SetIdentity,
 	setKeyPrefix,
@@ -59,8 +58,7 @@ const storeImageSet = async (
 	location: BucketLocation,
 ): Promise<FileVariant[] | null> => {
 	const body = ensureBuffer(image.source.buffer);
-	/** A name without an extension would give a key the CDN's `original.*` deny rule does not match. */
-	const extension = path.extname(image.fileName).slice(1) || (await sharp(body).metadata()).format;
+	const extension = await originalExtension(image.fileName, body);
 	const source = await describeSource(sourceKey(set, extension), body);
 	const { copyOriginalFrom } = image.source;
 	const original = copyOriginalFrom

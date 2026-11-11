@@ -101,7 +101,7 @@ export const DetailsPanel = () => {
 				<>
 					<div className="p-6 border-b border-slate-600">
 						<h3 className="mb-3 text-sm font-medium text-neutral-100">Sizes</h3>
-						<SetInfo key={setPath} set={setPath} />
+						<SetInfo key={setPath} set={setPath} imageUrl={remoteURL} />
 					</div>
 					<CollectionSection setPath={setPath} />
 				</>

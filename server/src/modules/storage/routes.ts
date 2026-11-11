@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
+import { attachOriginalHandler } from "./handlers/attach-original";
 import {
 	createCollectionHandler,
 	deleteCollectionHandler,
@@ -38,6 +39,7 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 storage.get("/manifests/:set{.+}", getManifestHandler);
 
 storage.post("/sizes/:set{.+}", generateSizesHandler);
+storage.post("/original/:set{.+}", attachOriginalHandler);
 
 storage.get("/collections", listCollectionsHandler);
 storage.post("/collections", createCollectionHandler);
