@@ -1,5 +1,6 @@
 import type { UPLOAD_STATUSES } from "../constants/upload";
 import type { Collection, CollectionPhoto, CollectionsFile } from "./collections";
+import type { SizeStatus } from "../image-sizes";
 import type { ImageVariant } from "./image";
 
 export type BucketLocation = {
@@ -182,4 +183,31 @@ export type UpdatePhotoRequest = Partial<Pick<CollectionPhoto, "alt" | "caption"
 
 export type UpdatePhotoResponse = {
   photo: CollectionPhoto;
+};
+
+/** What a set's `manifest.json` gave: `none` when it has no manifest, `notAManifest` when the file there is not one. */
+export const MANIFEST_STATES = ["present", "none", "notAManifest"] as const;
+export type ManifestState = (typeof MANIFEST_STATES)[number];
+
+export type SetAttention = {
+  /** Base name of the set. */
+  name: string;
+  /** Path of the set folder without a trailing slash, as the manifest route takes it. */
+  set: string;
+  manifest: ManifestState;
+  /** Whether an original is held in the set folder. */
+  hasOriginal: boolean;
+  /** Only the sizes that are missing or mismatched; empty when the manifest is not readable. */
+  problems: Pick<SizeStatus, "name" | "state" | "reason">[];
+};
+
+export type AttentionResponse = {
+  /** The next sets of the folder in name order; only those needing attention unless `all` was asked for. */
+  sets: SetAttention[];
+  /** Pass as `cursor` for the next page; `null` when the folder has no more sets to check. */
+  nextCursor: string | null;
+  /** Sets in the folder, those needing attention or not. */
+  total: number;
+  /** `true` when the folder listing passed its time limit, so sets may be missing. */
+  partial: boolean;
 };

@@ -7,6 +7,7 @@ import { useFileTree } from "@/lib/query";
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
 import { FileTree } from "./index";
+import { AttentionPanel } from "./panel.attention";
 import { PartialNotice } from "./partial-notice";
 import { serverErrorMessage } from "./utils";
 
@@ -24,7 +25,7 @@ const BucketHeader = ({ bucketName }: { bucketName: string }) => (
 );
 
 export const BrowserPanel = () => {
-	const { bucketName, bucketRegion } = useExplorer().state;
+	const { bucketName, bucketRegion, attentionFolder } = useExplorer().state;
 	const { data, isLoading, error } = useFileTree(bucketName, bucketRegion);
 	const hasMounted = useHasMounted();
 
@@ -44,6 +45,8 @@ export const BrowserPanel = () => {
 						title="Failed to load files"
 						message={serverErrorMessage(error)}
 					/>
+				) : attentionFolder !== null ? (
+					<AttentionPanel key={attentionFolder} folder={attentionFolder} />
 				) : data?.tree.length ? (
 					<ScrollArea>
 						{data.partial && <PartialNotice count={data.tree.length} />}

@@ -1,7 +1,7 @@
 import ofetch from "@/lib/ofetch";
 import { bucketQuery, NO_RETRY } from "@/services/s3";
 import { ORIGINAL_FIELD } from "~/shared/constants/upload";
-import type { BucketLocation, GenerateSizesResponse, Manifest } from "~/shared/types";
+import type { AttentionResponse, BucketLocation, GenerateSizesResponse, Manifest } from "~/shared/types";
 
 /** `set` goes in the path as it is: the server's route takes the slashes of a set path. */
 export const getManifest = (set: string, location: BucketLocation): Promise<Manifest> =>
@@ -20,3 +20,13 @@ export const postOriginal = (set: string, file: File, location: BucketLocation):
 		query: bucketQuery(location),
 	});
 };
+
+export const getAttention = (
+	folder: string,
+	{ all, cursor }: { all: boolean; cursor?: string },
+	location: BucketLocation,
+): Promise<AttentionResponse> =>
+	ofetch<AttentionResponse>("/storage/attention", {
+		...NO_RETRY,
+		query: { ...bucketQuery(location), folder, cursor, all: all || undefined },
+	});
