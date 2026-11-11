@@ -185,8 +185,9 @@ export type UpdatePhotoResponse = {
   photo: CollectionPhoto;
 };
 
-/** What a set's `manifest.json` gave: `none` when it has no manifest, `unreadable` when the file there is not one. */
-export type ManifestState = "present" | "none" | "unreadable";
+/** What a set's `manifest.json` gave: `none` when it has no manifest, `notAManifest` when the file there is not one. */
+export const MANIFEST_STATES = ["present", "none", "notAManifest"] as const;
+export type ManifestState = (typeof MANIFEST_STATES)[number];
 
 export type SetAttention = {
   /** Base name of the set. */

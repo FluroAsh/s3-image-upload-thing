@@ -2,23 +2,23 @@ import { useState } from "react";
 
 import { LucideAlertTriangle, LucideArrowLeft, LucideCheck, LucideLoader2 } from "lucide-react";
 
+import { useSetSelection } from "@/hooks/useSetSelection";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useAttention, useFileTree } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import type { SetAttention, TreeNode } from "~/shared/types";
+import type { SetAttention } from "~/shared/types";
 
 import { StateMessage } from "../ui/state-message";
-import { useSetSelection } from "./index";
+import { PartialNotice } from "./partial-notice";
 import { serverErrorMessage } from "./utils";
 
-const MANIFEST_NOTE = { none: "No manifest", unreadable: "Unreadable manifest" } as const;
+const MANIFEST_NOTE = { none: "No manifest", notAManifest: "Not a manifest" } as const;
 
 const Row = ({ row }: { row: SetAttention }) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { childMap } = useFileTree(bucketName, bucketRegion);
 	const id = `${row.set}/`;
-	const node: TreeNode = { id, parentId: "", name: row.name, depth: 0, isFolder: true, childCount: 0 };
-	const { remoteURL, activeFile, select } = useSetSelection(node, childMap.get(id) ?? []);
+	const { isActive, select } = useSetSelection({ setPath: row.set, name: row.name, variants: childMap.get(id) ?? [] });
 
 	return (
 		<li>
@@ -27,7 +27,7 @@ const Row = ({ row }: { row: SetAttention }) => {
 				onClick={select}
 				className={cn(
 					"flex w-full flex-col gap-1 rounded-md p-2 text-left text-sm hover:bg-slate-700",
-					remoteURL && activeFile.setPath === row.set && "bg-sky-800/30",
+					isActive && "bg-sky-800/30",
 				)}
 			>
 				<span className="truncate font-medium text-neutral-100">{row.name}</span>
@@ -39,7 +39,11 @@ const Row = ({ row }: { row: SetAttention }) => {
 						<span
 							key={name}
 							title={reason}
-							className="rounded border border-dashed border-amber-700/60 px-1.5 py-0.5 text-slate-300"
+							className={
+								state === "mismatched"
+									? "rounded border border-dotted border-amber-700/60 bg-slate-800 px-1.5 py-0.5 text-slate-400"
+									: "rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
+							}
 						>
 							{name} {state === "mismatched" ? "mismatched" : "missing"}
 						</span>
@@ -83,7 +87,7 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 			</label>
 			{isPending ? (
 				<StateMessage tone="info" spin icon={LucideLoader2} title="Checking sets..." />
-			) : error ? (
+			) : error && rows.length === 0 ? (
 				<StateMessage
 					tone="error"
 					icon={LucideAlertTriangle}
@@ -93,8 +97,14 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 			) : rows.length === 0 ? (
 				<StateMessage
 					icon={LucideCheck}
-					title="Nothing needs attention"
-					message="Every set in this folder is complete"
+					title={all || total === 0 ? "No sets" : "Nothing needs attention"}
+					message={
+						total === 0
+							? "No sets directly in this folder"
+							: all
+								? "This folder has no sets"
+								: "Every set in this folder is complete"
+					}
 				/>
 			) : (
 				<ul>
@@ -103,6 +113,16 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 					))}
 				</ul>
 			)}
+			{data?.pages[0]?.partial && <PartialNotice count={total ?? 0} />}
+			{error && rows.length > 0 && (
+				<StateMessage
+					size="inline"
+					tone="error"
+					icon={LucideAlertTriangle}
+					title="Failed to load more"
+					message={serverErrorMessage(error)}
+				/>
+			)}
 			{hasNextPage && (
 				<button
 					type="button"
@@ -110,7 +130,7 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 					onClick={() => fetchNextPage()}
 					className="rounded bg-slate-700 px-2 py-1 text-sm text-slate-200 hover:bg-slate-600 disabled:opacity-50"
 				>
-					{isFetchingNextPage ? "Loading..." : "Load more"}
+					{isFetchingNextPage ? "Loading..." : error ? "Retry" : "Load more"}
 				</button>
 			)}
 		</div>

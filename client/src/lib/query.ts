@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type InfiniteData,
+	type QueryKey,
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 
 import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
@@ -95,10 +102,15 @@ export const useManifest = (set: string) => {
 
 export const useAttention = (folder: string, all: boolean) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
-	return useInfiniteQuery<AttentionResponse, ApiError>({
+	return useInfiniteQuery<
+		AttentionResponse,
+		ApiError,
+		InfiniteData<AttentionResponse, string | undefined>,
+		QueryKey,
+		string | undefined
+	>({
 		queryKey: ["attention", bucketName, folder, all],
-		queryFn: ({ pageParam }) =>
-			getAttention(folder, { all, cursor: pageParam as string | undefined }, { bucketName, bucketRegion }),
+		queryFn: ({ pageParam }) => getAttention(folder, { all, cursor: pageParam }, { bucketName, bucketRegion }),
 		initialPageParam: undefined,
 		getNextPageParam: ({ nextCursor }) => nextCursor ?? undefined,
 		enabled: !!bucketName && !!bucketRegion,

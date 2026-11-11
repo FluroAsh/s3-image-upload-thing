@@ -46,7 +46,7 @@ export const DetailsPanel = () => {
 	const isImage = isImageFile(remoteURL);
 	const isVideo = isVideoFile(remoteURL);
 
-	if (!remoteURL) {
+	if (!remoteURL && !setPath) {
 		return (
 			<div id="explorer-details-panel" className="bg-slate-800 border-l border-slate-700 flex-1">
 				<StateMessage
@@ -81,21 +81,23 @@ export const DetailsPanel = () => {
 				</div>
 			</div>
 
-			<div className="p-6 border-b border-slate-600">
-				<div className="flex items-center gap-2 mb-3">
-					<LucideLink className="size-4 text-sky-400" />
-					<h3 className="text-sm font-medium text-neutral-100">Remote URL</h3>
+			{remoteURL && (
+				<div className="p-6 border-b border-slate-600">
+					<div className="flex items-center gap-2 mb-3">
+						<LucideLink className="size-4 text-sky-400" />
+						<h3 className="text-sm font-medium text-neutral-100">Remote URL</h3>
+					</div>
+					<a
+						target="_blank"
+						rel="noopener noreferrer"
+						className="inline-flex items-center gap-2 p-3 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600 hover:border-sky-500/50 transition-all duration-200 group w-full"
+						href={remoteURL}
+					>
+						<span className="text-sm text-neutral-100 break-all flex-1">{previewURLText}</span>
+						<LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
+					</a>
 				</div>
-				<a
-					target="_blank"
-					rel="noopener noreferrer"
-					className="inline-flex items-center gap-2 p-3 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600 hover:border-sky-500/50 transition-all duration-200 group w-full"
-					href={remoteURL}
-				>
-					<span className="text-sm text-neutral-100 break-all flex-1">{previewURLText}</span>
-					<LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
-				</a>
-			</div>
+			)}
 
 			{setPath && (
 				<>

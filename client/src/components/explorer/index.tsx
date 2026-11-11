@@ -11,6 +11,7 @@ import {
 	LucideImages,
 } from "lucide-react";
 
+import { useSetSelection } from "@/hooks/useSetSelection";
 import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
@@ -19,7 +20,7 @@ import type { TreeNode } from "~/shared/types";
 
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
-import { getDepthPadding, isSetFolder, pickPreviewVariant, setPathOf } from "./utils";
+import { getDepthPadding, isSetFolder, setPathOf } from "./utils";
 
 export const ExplorerLayout = () => {
 	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
@@ -100,7 +101,7 @@ type ImageVariantProps = {
  * collection of image variants for a given node (thumbnail, medium, large, etc.).
  */
 const ImageCollection = ({ variants, node }: ImageVariantProps) => {
-	const { remoteURL, activeFile, select } = useSetSelection(node, variants);
+	const { isActive, select } = useSetSelection({ setPath: setPathOf(node.id), name: node.name, variants });
 
 	return (
 		<button
@@ -108,7 +109,7 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 			aria-label={`Open image collection ${node.name}`}
 			className={cn(
 				"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-				remoteURL && activeFile.fileName === node.name
+				isActive
 					? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
 					: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
 			)}
@@ -122,33 +123,6 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 			<span className="ml-auto text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
 		</button>
 	);
-};
-
-/** Opens a set in the details panel; the file tree and the attention list select a set the same way. */
-export const useSetSelection = (node: TreeNode, variants: TreeNode[]) => {
-	const {
-		actions: { setActiveFile },
-		state: { bucketName, bucketRegion, activeFile },
-	} = useExplorer();
-
-	const { data: presignedUrls = {} } = usePresignedUrls(
-		variants.map((v) => v.id),
-		bucketName,
-		bucketRegion,
-	);
-
-	const previewVariant = pickPreviewVariant(variants);
-	const remoteURL = (previewVariant && presignedUrls[previewVariant.id]) ?? "";
-
-	const select = () =>
-		setActiveFile({
-			remoteURL,
-			fileName: node.name,
-			setPath: setPathOf(node.id),
-			variants: variants.map((variant) => ({ ...variant, presignedUrl: presignedUrls[variant.id] })),
-		});
-
-	return { remoteURL, activeFile, select };
 };
 
 const File = ({ node }: { node: TreeNode }) => {

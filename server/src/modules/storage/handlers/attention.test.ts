@@ -78,7 +78,15 @@ describe("GET /storage/attention", () => {
 
 		const { sets } = await attention();
 
-		expect(sets).toEqual([{ name: "legacy", set: "trip/legacy", manifest: "none", hasOriginal: false, problems: [] }]);
+		expect(sets).toEqual([
+			{
+				name: "legacy",
+				set: "trip/legacy",
+				manifest: "none",
+				hasOriginal: false,
+				problems: ["placeholder", "thumbnail", "small", "medium", "large"].map((name) => ({ name, state: "missing" })),
+			},
+		]);
 	});
 
 	it("names the missing and mismatched sizes and whether an original is held", async () => {
@@ -114,7 +122,7 @@ describe("GET /storage/attention", () => {
 	it("flags an unreadable manifest instead of failing", async () => {
 		stock({ odd: { hello: "world" } });
 
-		expect((await attention()).sets[0].manifest).toBe("unreadable");
+		expect((await attention()).sets[0].manifest).toBe("notAManifest");
 	});
 
 	it("includes sets that need nothing when asked for all", async () => {
