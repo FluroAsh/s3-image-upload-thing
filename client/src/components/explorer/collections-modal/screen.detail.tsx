@@ -19,7 +19,7 @@ import type { Collection, CollectionPhoto } from "~/shared/types";
 
 import { RemoveFromCollectionDialog } from "../collection-dialogs";
 import { PhotoTextFields } from "../photo-text-fields";
-import { Sizes } from "../sizes";
+import { SizeChips } from "../size-chips";
 import { serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
@@ -143,7 +143,9 @@ const PhotoEditor = ({
 				/>
 			)}
 			<div className="border-t border-line pt-2">
-				<Sizes key={photo.set} set={photo.set} />
+				<p className="mb-1.5 text-caption font-medium uppercase tracking-label text-fg-2">Sizes</p>
+				<SizeChips set={photo.set} />
+				<p className="mt-2 text-caption text-fg-2">Open the set in the explorer to generate missing sizes.</p>
 			</div>
 			<RemoveFromCollectionDialog
 				open={removing}
