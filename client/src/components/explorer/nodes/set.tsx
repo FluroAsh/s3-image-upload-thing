@@ -8,7 +8,7 @@ import type { NodeProps } from "./types";
 
 export const SetNode = ({ row, query, tabbable, onFocus }: NodeProps) => {
 	const { node, variants } = row;
-	const { isActive, select } = useSetSelection({ setPath: setPathOf(node.id), name: node.name, variants });
+	const { isActive, select } = useSetSelection(setPathOf(node.id));
 
 	return (
 		<TreeRow

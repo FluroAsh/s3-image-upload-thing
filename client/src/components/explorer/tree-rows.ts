@@ -2,11 +2,13 @@ import type { TreeNode } from "~/shared/types";
 
 import { isSetFolder } from "./utils";
 
+export const ROW_KINDS = ["folder", "set", "file"] as const;
+
 export type TreeRowData = {
 	/** The tree entry this row shows. */
 	node: TreeNode;
 	/** A set is a folder of one image's sizes, shown as a single row. */
-	kind: "folder" | "set" | "file";
+	kind: (typeof ROW_KINDS)[number];
 	/** A set's size files; empty for folders and files. */
 	variants: TreeNode[];
 	/** Whether a folder's children are listed below it. */
@@ -60,12 +62,16 @@ export const buildRows = (childMap: Map<string, TreeNode[]>, expanded: Record<st
 	return { rows: roots.flatMap((root) => root.rows), matches: roots.reduce((sum, root) => sum + root.hits, 0) };
 };
 
-export type TreeKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Home" | "End";
+export const TREE_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"] as const;
+
+export type TreeKey = (typeof TREE_KEYS)[number];
+
+export const isTreeKey = (key: string): key is TreeKey => (TREE_KEYS as readonly string[]).includes(key);
 
 export type TreeMove = { type: "focus"; id: string } | { type: "toggle"; id: string };
 
-/** What a navigation key does from the focused row; `undefined` when it has no effect there. */
-export const navigate = (rows: TreeRowData[], id: string, key: TreeKey): TreeMove | undefined => {
+/** What a navigation key does from the focused row; `undefined` when it has no effect there. While filtering, Left never collapses, as the filter keeps every folder open. */
+export const navigate = (rows: TreeRowData[], id: string, key: TreeKey, filtering = false): TreeMove | undefined => {
 	const index = rows.findIndex((row) => row.node.id === id);
 	const row = rows[index];
 	if (!row) return;
@@ -89,7 +95,7 @@ export const navigate = (rows: TreeRowData[], id: string, key: TreeKey): TreeMov
 			return focus(next?.node.parentId === id ? next : undefined);
 		}
 		case "ArrowLeft":
-			if (row.kind === "folder" && row.expanded) return { type: "toggle", id };
+			if (!filtering && row.kind === "folder" && row.expanded) return { type: "toggle", id };
 			return focus(rows.find((candidate) => candidate.node.id === row.node.parentId));
 	}
 };

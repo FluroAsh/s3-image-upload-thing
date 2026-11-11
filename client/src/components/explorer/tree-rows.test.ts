@@ -100,4 +100,9 @@ describe("navigate", () => {
 		expect(navigate(rows, "2026/sydney/", "ArrowLeft")).toEqual({ type: "focus", id: "2026/" });
 		expect(navigate(rows, "2025/", "ArrowLeft")).toBeUndefined();
 	});
+
+	it("moves to the parent instead of collapsing while filtering", () => {
+		expect(navigate(rows, "2026/sydney/", "ArrowLeft", true)).toEqual({ type: "focus", id: "2026/" });
+		expect(navigate(rows, "2026/", "ArrowLeft", true)).toBeUndefined();
+	});
 });

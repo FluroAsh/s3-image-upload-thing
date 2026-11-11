@@ -9,6 +9,8 @@ import { getDepthPadding } from "../utils";
 type TreeRowProps = {
 	/** Full key of the node; the tree finds the row by it to move focus. */
 	id: string;
+	/** Accessible name for rows whose visible text is not enough, such as a folder with a count. */
+	label?: string;
 	/** Tree depth, which sets the indent and `aria-level`. */
 	depth: number;
 	/** Whether this row is the one open in the details panel. */
@@ -21,8 +23,6 @@ type TreeRowProps = {
 	children: ReactNode;
 	/** Right-hand text, such as a count or a size. */
 	meta?: string | number;
-	/** Extra controls shown before the meta text. */
-	actions?: ReactNode;
 	onActivate: () => void;
 	onFocus: () => void;
 };
@@ -30,18 +30,19 @@ type TreeRowProps = {
 /** The one tree row, so folders, sets and files share height, indent, stripe, hover and focus. */
 export const TreeRow = ({
 	id,
+	label,
 	depth,
 	selected,
 	expanded,
 	tabbable,
 	children,
 	meta,
-	actions,
 	onActivate,
 	onFocus,
 }: TreeRowProps) => (
 	<div
 		role="treeitem"
+		aria-label={label}
 		aria-level={depth + 1}
 		aria-selected={selected}
 		aria-expanded={expanded}
@@ -68,7 +69,6 @@ export const TreeRow = ({
 			)}
 		</span>
 		{children}
-		{actions}
 		{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
 	</div>
 );
@@ -77,21 +77,20 @@ type NodeNameProps = {
 	name: string;
 	/** The active filter; the first match in the name is highlighted. */
 	query: string;
-	className?: string;
 };
 
-export const NodeName = ({ name, query, className }: NodeNameProps) => {
+export const NodeName = ({ name, query }: NodeNameProps) => {
 	const needle = query.trim();
 	const start = needle ? name.toLowerCase().indexOf(needle.toLowerCase()) : -1;
 
 	return (
-		<span className={cn("min-w-0 flex-1 truncate", className)} title={name}>
+		<span className={"min-w-0 flex-1 truncate"} title={name}>
 			{start < 0 ? (
 				name
 			) : (
 				<>
 					{name.slice(0, start)}
-					<mark className="rounded-sm bg-pressed text-fg">{name.slice(start, start + needle.length)}</mark>
+					<mark className="rounded-sm bg-accent/30 text-fg">{name.slice(start, start + needle.length)}</mark>
 					{name.slice(start + needle.length)}
 				</>
 			)}

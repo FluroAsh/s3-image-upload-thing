@@ -3,19 +3,19 @@ import { createContext, useContext, useReducer, useState } from "react";
 import { useQueryStates } from "nuqs";
 
 import { dashboardSearchParams } from "@/lib/search-params";
-import type { TreeNode } from "~/shared/types";
 
-type ActiveFile = {
-	remoteURL: string;
-	fileName: string;
-	variants?: TreeNode[];
-	/** CDN path of the image set, which collections key on; unset for a single file. */
-	setPath?: string;
+export const SELECTION_KINDS = ["file", "set"] as const;
+
+/** Identity only: the live node, URLs and sizes come from `useActiveFile`, so a refetch or re-sign never leaves a copy stale. */
+export type Selection = {
+	/** Tree node id: the S3 key of a file, or the folder key (trailing slash) of a set. */
+	id: string;
+	kind: (typeof SELECTION_KINDS)[number];
 };
 
 type ReducerState = {
 	bucketSearchTerm: string;
-	activeFile: ActiveFile;
+	selection: Selection | null;
 	/** Folder whose sets needing attention are listed in place of the file tree; `null` shows the tree. */
 	attentionFolder: string | null;
 };
@@ -35,26 +35,22 @@ export type Action =
 			payload: string | null;
 	  }
 	| {
-			type: "SET_ACTIVE_FILE";
-			payload: ActiveFile;
+			type: "SET_SELECTION";
+			payload: Selection | null;
 	  };
 
 const initialState: ReducerState = {
 	bucketSearchTerm: "",
 	attentionFolder: null,
-	activeFile: {
-		remoteURL: "",
-		fileName: "",
-		variants: [],
-	},
+	selection: null,
 };
 
 const reducer = (state: ReducerState, action: Action): ReducerState => {
 	switch (action.type) {
 		case "SET_BUCKET_SEARCH_TERM":
 			return { ...state, bucketSearchTerm: action.payload };
-		case "SET_ACTIVE_FILE":
-			return { ...state, activeFile: action.payload };
+		case "SET_SELECTION":
+			return { ...state, selection: action.payload };
 		case "SET_ATTENTION_FOLDER":
 			return { ...state, attentionFolder: action.payload };
 		default:
@@ -64,7 +60,7 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
 
 export type Actions = {
 	setBucketSearchTerm: (searchTerm: string) => void;
-	setActiveFile: (file: ActiveFile) => void;
+	select: (selection: Selection) => void;
 	setAttentionFolder: (folder: string | null) => void;
 	resetActiveState: () => void;
 };
@@ -79,7 +75,7 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 	const [shownBucketKey, setShownBucketKey] = useState(bucketKey);
 	if (shownBucketKey !== bucketKey) {
 		setShownBucketKey(bucketKey);
-		dispatch({ type: "SET_ACTIVE_FILE", payload: initialState.activeFile });
+		dispatch({ type: "SET_SELECTION", payload: null });
 		dispatch({ type: "SET_ATTENTION_FOLDER", payload: null });
 	}
 
@@ -89,17 +85,9 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 				type: "SET_BUCKET_SEARCH_TERM",
 				payload: searchTerm,
 			}),
-		setActiveFile: ({ remoteURL, fileName, variants, setPath }) =>
-			dispatch({
-				type: "SET_ACTIVE_FILE",
-				payload: { remoteURL, fileName, variants: variants ?? [], setPath },
-			}),
+		select: (selection) => dispatch({ type: "SET_SELECTION", payload: selection }),
 		setAttentionFolder: (folder) => dispatch({ type: "SET_ATTENTION_FOLDER", payload: folder }),
-		resetActiveState: () =>
-			dispatch({
-				type: "SET_ACTIVE_FILE",
-				payload: { remoteURL: "", fileName: "", variants: [] },
-			}),
+		resetActiveState: () => dispatch({ type: "SET_SELECTION", payload: null }),
 	};
 
 	return (

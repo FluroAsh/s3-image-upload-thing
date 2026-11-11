@@ -1,28 +1,27 @@
 import { useRef, useState } from "react";
 
+import { useExplorer } from "@/lib/providers/explorer-provider";
+
 import { FileNode } from "./nodes/file";
 import { FolderNode } from "./nodes/folder";
 import { SetNode } from "./nodes/set";
-import { navigate, type TreeKey, type TreeRowData } from "./tree-rows";
-
-const NAV_KEYS: readonly string[] = [
-	"ArrowUp",
-	"ArrowDown",
-	"ArrowLeft",
-	"ArrowRight",
-	"Home",
-	"End",
-] satisfies TreeKey[];
+import { isTreeKey, navigate, type TreeRowData } from "./tree-rows";
+import { setPathOf } from "./utils";
 
 type FileTreeProps = {
 	rows: TreeRowData[];
 	query: string;
 	onToggle: (id: string) => void;
+	onClearFilter: () => void;
 };
 
-export const FileTree = ({ rows, query, onToggle }: FileTreeProps) => {
+export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps) => {
+	const {
+		actions: { setAttentionFolder },
+	} = useExplorer();
 	const [focusedId, setFocusedId] = useState<string>();
 	const listRef = useRef<HTMLDivElement>(null);
+	const filtering = query.trim() !== "";
 	const tabbableId = rows.some((row) => row.node.id === focusedId) ? focusedId : rows[0]?.node.id;
 
 	const focusRow = (id: string) => {
@@ -32,9 +31,16 @@ export const FileTree = ({ rows, query, onToggle }: FileTreeProps) => {
 
 	const handleKeyDown = (event: React.KeyboardEvent) => {
 		const id = (event.target as HTMLElement).dataset.treeId;
-		if (!id || !NAV_KEYS.includes(event.key)) return;
+		if (!id) return;
 
-		const move = navigate(rows, id, event.key as TreeKey);
+		if (event.key === "Escape") return onClearFilter();
+		if (event.key.toLowerCase() === "a" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+			if (rows.find((row) => row.node.id === id)?.kind === "folder") setAttentionFolder(setPathOf(id));
+			return;
+		}
+		if (!isTreeKey(event.key)) return;
+
+		const move = navigate(rows, id, event.key, filtering);
 		event.preventDefault();
 		if (move?.type === "focus") focusRow(move.id);
 		else if (move) onToggle(move.id);

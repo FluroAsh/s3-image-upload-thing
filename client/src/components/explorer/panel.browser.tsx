@@ -37,10 +37,11 @@ const FooterHints = ({ filtering }: { filtering: boolean }) =>
 			<Kbd>esc</Kbd> clears
 		</span>
 	) : (
-		<span className="flex items-center gap-1">
+		<span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
 			<Kbd>↑↓</Kbd>
 			<Kbd>→</Kbd>
 			<Kbd>⏎</Kbd>
+			<Kbd>a</Kbd> attention
 		</span>
 	);
 
@@ -53,7 +54,7 @@ const UploadAction = () => (
 
 const Pane = () => {
 	const { bucketName, bucketRegion, attentionFolder } = useExplorer().state;
-	const { data, isLoading, isFetching, error, refetch, childMap } = useFileTree(bucketName, bucketRegion);
+	const { data, isLoading, error, refetch, childMap } = useFileTree(bucketName, bucketRegion);
 	const { data: buckets } = useBuckets();
 	const hasMounted = useHasMounted();
 	const [query, setQuery] = useState("");
@@ -91,32 +92,31 @@ const Pane = () => {
 	const toggle = (id: string) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
 
 	const body = loading ? (
-		<StateMessage spin icon={LucideLoader2} title="Loading files..." />
+		<StateMessage className="h-full" spin icon={LucideLoader2} title="Loading files..." />
 	) : error ? (
-		<div className="flex flex-col items-center">
+		<div className="flex h-full flex-col items-center justify-center pb-6">
 			<StateMessage
 				tone="err"
 				icon={LucideAlertTriangle}
 				title="Failed to load files"
 				message={serverErrorMessage(error, "The server could not be reached. Try again shortly.")}
 			/>
-			<Button pending={isFetching} onClick={() => refetch()}>
-				{isFetching ? "Retrying..." : "Retry"}
-			</Button>
+			<Button onClick={() => refetch()}>Retry</Button>
 		</div>
 	) : !data?.tree.length ? (
-		<div className="flex flex-col items-center">
+		<div className="flex h-full flex-col items-center justify-center pb-6">
 			<StateMessage icon={LucideFolder} title="No files yet" message="Upload images to start a set in this bucket." />
 			<UploadAction />
 		</div>
 	) : rows.length === 0 ? (
 		<StateMessage
+			className="h-full"
 			icon={LucideSearch}
 			title={`No matches for “${query.trim()}”`}
 			message="Matching is on folder, set and file names."
 		/>
 	) : (
-		<FileTree rows={rows} query={query} onToggle={toggle} />
+		<FileTree rows={rows} query={query} onToggle={toggle} onClearFilter={() => setQuery("")} />
 	);
 
 	if (attentionFolder !== null && ready) {
@@ -137,28 +137,27 @@ const Pane = () => {
 					/>
 					<Input
 						ref={filterRef}
-						type="text"
-						role="searchbox"
+						type="search"
 						aria-label="Filter files"
 						placeholder="Filter files...  ( / )"
 						disabled={!ready}
 						value={query}
-						className="pl-7 pr-7"
+						className="pl-7 pr-7 [&::-webkit-search-cancel-button]:hidden"
 						onChange={(event) => setQuery(event.target.value)}
 						onKeyDown={(event) => event.key === "Escape" && setQuery("")}
 					/>
 					{filtering && (
-						<button
-							type="button"
+						<Button
+							variant="icon"
 							aria-label="Clear filter"
-							className="absolute right-2 top-1/2 -translate-y-1/2 text-fg-2 hover:text-fg"
+							className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2"
 							onClick={() => {
 								setQuery("");
 								filterRef.current?.focus();
 							}}
 						>
 							<LucideXCircle className="size-3.5" />
-						</button>
+						</Button>
 					)}
 				</div>
 				<Button
