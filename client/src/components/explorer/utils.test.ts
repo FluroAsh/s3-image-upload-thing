@@ -5,6 +5,7 @@ import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { TreeNode } from "~/shared/types";
 
 import {
+	fileType,
 	formatCount,
 	formatSize,
 	PREVIEW_ORDER,
@@ -14,6 +15,7 @@ import {
 	setPathOf,
 	setsUnder,
 	toggleSets,
+	variantOf,
 } from "./utils";
 
 const node = (name: string): TreeNode => ({
@@ -170,5 +172,19 @@ describe("set picker selection", () => {
 		const whole = toggleSets(new Set(["cdn/trip/kyoto"]), group);
 		expect([...whole]).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
 		expect(toggleSets(whole, group).size).toBe(0);
+	});
+});
+
+describe("variantOf", () => {
+	it("names the size a file is stored as", () => {
+		expect(variantOf("small_photo.webp")).toBe("small");
+		expect(variantOf("legacy_name.jpg")).toBe("legacy");
+	});
+});
+
+describe("fileType", () => {
+	it("names the type from the extension", () => {
+		expect(fileType("photo.JPG")).toBe("JPG");
+		expect(fileType("notes")).toBe("unknown");
 	});
 });

@@ -35,6 +35,16 @@ export default {
 				control: "26px",
 				chip: "18px",
 				topbar: "36px",
+				label: "84px",
+			},
+			letterSpacing: {
+				label: "0.06em",
+			},
+			backgroundImage: {
+				checkerboard: "conic-gradient(rgb(var(--bg-1)) 25%, rgb(var(--bg-0)) 0 50%, rgb(var(--bg-1)) 0 75%, rgb(var(--bg-0)) 0)",
+			},
+			backgroundSize: {
+				checkerboard: "16px 16px",
 			},
 			opacity: {
 				12: "0.12",

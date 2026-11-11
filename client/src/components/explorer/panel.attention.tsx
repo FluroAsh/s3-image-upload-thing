@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import type { SetAttention } from "~/shared/types";
 
 import { PartialNotice } from "./partial-notice";
-import { serverErrorMessage } from "./utils";
+import { formatCount, serverErrorMessage } from "./utils";
 
 const MANIFEST_NOTE = { none: "No manifest", notAManifest: "Not a manifest" } as const;
 
@@ -62,7 +62,9 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 			</Button>
 			<h3 className="text-body font-medium text-fg">
 				{folder || "Bucket root"}
-				{total !== undefined && <span className="ml-2 text-secondary text-fg-1">{total} sets</span>}
+				{total !== undefined && (
+					<span className="ml-2 text-secondary text-fg-1">{formatCount(total, "set", false)}</span>
+				)}
 			</h3>
 			<label className="flex items-center gap-2 text-secondary text-fg-1">
 				<input type="checkbox" checked={!all} onChange={(event) => setAll(!event.target.checked)} />

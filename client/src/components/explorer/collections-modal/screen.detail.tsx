@@ -18,7 +18,7 @@ import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
-import { SetInfo } from "../set-info";
+import { Sizes } from "../sizes";
 import { serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
@@ -140,7 +140,7 @@ const PhotoEditor = ({
 				/>
 			)}
 			<div className="border-t border-line pt-2">
-				<SetInfo key={photo.set} set={photo.set} />
+				<Sizes key={photo.set} set={photo.set} />
 			</div>
 		</div>
 	);

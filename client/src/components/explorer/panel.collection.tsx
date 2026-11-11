@@ -1,10 +1,13 @@
-import { LucideAlertTriangle, LucideFolderHeart, LucideLoader2 } from "lucide-react";
+import { useId } from "react";
+
+import { LucideAlertTriangle, LucideLoader2 } from "lucide-react";
 
 import { Select } from "@/components/ui/select";
 import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
 import { holdingSet, setsToMove } from "~/shared/collections";
 
+import { InspectorSection } from "./inspector";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "./photo-text-fields";
 import { serverErrorMessage } from "./utils";
 
@@ -14,12 +17,12 @@ const NEW = "__new__";
 
 export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const { data, isLoading, error } = useCollections();
+	const selectId = useId();
 	const create = useCreateCollection();
 	const setMembers = useSetMembers();
 	const updatePhoto = useUpdatePhoto();
 
 	const saved = holdingSet(data, setPath);
-	const writeError = create.error ?? setMembers.error ?? updatePhoto.error;
 
 	const onCollectionChange = (value: string) => {
 		const target = value === NEW ? window.prompt("Name the new collection") : value;
@@ -38,13 +41,17 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 		else setMembers.mutate({ sets: [setPath], collection: into });
 	};
 
-	return (
-		<div className="p-6 border-b border-line">
-			<div className="flex items-center gap-2 mb-3">
-				<LucideFolderHeart className="size-4 text-accent" />
-				<h3 className="text-body font-medium text-fg">Collection</h3>
-			</div>
+	const updatedField =
+		updatePhoto.variables && "caption" in updatePhoto.variables ? ("caption" as const) : ("alt" as const);
+	const photoResult = updatePhoto.isError
+		? { field: updatedField, error: serverErrorMessage(updatePhoto.error) }
+		: updatePhoto.isSuccess
+			? { field: updatedField }
+			: undefined;
+	const collectionError = create.error ?? setMembers.error;
 
+	return (
+		<InspectorSection title="Collection">
 			{isLoading ? (
 				<StateMessage size="inline" spin icon={LucideLoader2} title="Loading collections..." />
 			) : error ? (
@@ -56,40 +63,48 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 					message={serverErrorMessage(error)}
 				/>
 			) : (
-				<div className="space-y-3">
-					<Select
-						aria-label="Collection"
-						value={saved?.collection.slug ?? NONE}
-						disabled={create.isPending || setMembers.isPending}
-						onChange={(e) => onCollectionChange(e.target.value)}
-					>
-						<option value={NONE}>None</option>
-						{data?.collections.map(({ slug, name }) => (
-							<option key={slug} value={slug}>
-								{name}
-							</option>
-						))}
-						<option value={NEW}>New collection…</option>
-					</Select>
-
-					<PhotoTextFields
-						set={setPath}
-						photo={saved?.photo}
-						altPlaceholder="Add to a collection to set alt text"
-						onSave={(field, value) => updatePhoto.mutate({ set: setPath, [field]: value })}
-					/>
-
-					{writeError && (
+				<div className="space-y-2">
+					<div>
+						<label htmlFor={selectId} className="mb-1 block text-caption text-fg-2">
+							In collection
+						</label>
+						<Select
+							id={selectId}
+							value={saved?.collection.slug ?? NONE}
+							disabled={create.isPending || setMembers.isPending}
+							invalid={!!collectionError}
+							onChange={(e) => onCollectionChange(e.target.value)}
+						>
+							<option value={NONE}>None</option>
+							{data?.collections.map(({ slug, name }) => (
+								<option key={slug} value={slug}>
+									{name}
+								</option>
+							))}
+							<option value={NEW}>New collection…</option>
+						</Select>
+					</div>
+					{collectionError && (
 						<StateMessage
 							size="inline"
 							tone="err"
 							icon={LucideAlertTriangle}
 							title="Could not save"
-							message={serverErrorMessage(writeError)}
+							message={serverErrorMessage(collectionError)}
 						/>
 					)}
+
+					<PhotoTextFields
+						set={setPath}
+						photo={saved?.photo}
+						withCaption
+						altPlaceholder={saved ? undefined : "Add to a collection to set alt text"}
+						result={photoResult}
+						onSave={(field, value) => updatePhoto.mutate({ set: setPath, [field]: value })}
+					/>
+					<p className="text-caption text-fg-2">Saves on blur</p>
 				</div>
 			)}
-		</div>
+		</InspectorSection>
 	);
 };
