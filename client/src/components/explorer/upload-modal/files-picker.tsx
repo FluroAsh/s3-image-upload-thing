@@ -7,7 +7,6 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 import { uploadWarnings } from "@/lib/upload-files";
 import { cn } from "@/lib/utils";
-import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
 import { FileList } from "./file-list";
 import { useUpload } from "./provider";
@@ -79,7 +78,6 @@ export const FilesPicker = () => {
 			)}
 
 			<input
-				name={UPLOAD_FIELD.Images}
 				type="file"
 				accept="image/*"
 				className="hidden"

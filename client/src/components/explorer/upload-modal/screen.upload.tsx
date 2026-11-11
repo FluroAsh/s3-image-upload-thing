@@ -1,5 +1,6 @@
 import { LucideUpload } from "lucide-react";
 
+import { formatCount } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
 
@@ -25,7 +26,7 @@ export const UploadScreen = () => {
 				</DialogClose>
 				<Button variant="primary" disabled={count === 0} onClick={submit}>
 					<LucideUpload className="size-3.5" />
-					{count > 0 ? `Upload ${count} ${count === 1 ? "file" : "files"}` : "Upload"}
+					{count > 0 ? `Upload ${formatCount(count, "file", false)}` : "Upload"}
 				</Button>
 			</DialogFooter>
 		</>

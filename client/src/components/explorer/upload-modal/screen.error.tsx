@@ -26,7 +26,7 @@ export const ErrorScreen = () => {
 			<DialogFooter>
 				<span className="mr-auto font-mono text-caption text-fg-2">{filesSummary(files)} · kept</span>
 				<Button onClick={backToFiles}>Back to files</Button>
-				<Button variant="primary" onClick={retryLast}>
+				<Button variant="primary" disabled={files.length === 0} onClick={retryLast}>
 					Retry
 				</Button>
 			</DialogFooter>

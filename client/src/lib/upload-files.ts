@@ -1,8 +1,10 @@
 import { IMAGE_VARIANTS, planVariants, VARIANT_LONGEST_EDGE } from "~/shared/constants/image-variants";
+import { setNameOf } from "~/shared/set-name";
 
 export type PickedFile = {
 	/** Stable key for the row; file names can repeat within a selection. */
 	id: string;
+	/** The browser file, uploaded as is. */
 	file: File;
 	/** Pixel width; `undefined` when the browser cannot decode the file, e.g. HEIC. */
 	width?: number;
@@ -11,10 +13,10 @@ export type PickedFile = {
 };
 
 /** A source whose longest edge is below this loses at least one size to the no-upscale rule. */
-export const SMALL_SOURCE_PX = VARIANT_LONGEST_EDGE.medium;
+const SMALL_SOURCE_PX = VARIANT_LONGEST_EDGE.medium;
 
-/** The name of the set the server stores a file as: the file name without its last extension. */
-export const setNameOf = (fileName: string) => fileName.replace(/\.[^.]+$/, "");
+/** The sizes of the table that are not in `present`. */
+export const skippedSizes = (present: readonly string[]) => IMAGE_VARIANTS.filter((name) => !present.includes(name));
 
 export const pickFile = async (file: File): Promise<PickedFile> => {
 	const picked = { id: crypto.randomUUID(), file };
@@ -35,7 +37,7 @@ export const uploadWarnings = ({ file, width, height }: PickedFile, existingSets
 
 	if (longestEdge !== undefined && longestEdge < SMALL_SOURCE_PX) {
 		const stored = planVariants(longestEdge);
-		warnings.push(`source ${longestEdge}px · ${IMAGE_VARIANTS.filter((v) => !stored.includes(v)).join(", ")} skipped`);
+		warnings.push(`source ${longestEdge}px · ${skippedSizes(stored).join(", ")} skipped`);
 	}
 
 	const name = setNameOf(file.name);

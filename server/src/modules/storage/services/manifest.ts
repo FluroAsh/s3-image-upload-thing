@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import * as path from "node:path";
 
 import type { Metadata } from "sharp";
 
+import { setNameOf } from "~/shared/set-name";
 import type { ImageVariant, Manifest, ManifestSource, ManifestVariant } from "~/shared/types";
 
 import { DEFAULT_FILE_TYPE, DEFAULT_MIME_TYPE } from "../processors/variants/config";
@@ -88,7 +88,7 @@ export const hasRefusedUploadPrefix = (key: string): boolean =>
 /** The one place an upload's set identity is derived, so the pre-check, variant keys and manifest agree. */
 export const uploadSetIdentity = (destination: string, fileName: string): SetIdentity => ({
 	folder: destination,
-	name: path.parse(fileName).name,
+	name: setNameOf(fileName),
 });
 
 /** The set's own folder as a key prefix: every variant of an uploaded set and its manifest are stored under it. */

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LucideChevronRight, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
 
-import { formatCount, isSetFolder } from "@/components/explorer/utils";
+import { formatCount, isSetFolder, setPathOf } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PromptDialog } from "@/components/ui/prompt-dialog";
@@ -119,7 +119,7 @@ export const FolderSelect = () => {
 									<button
 										type="button"
 										className="flex h-row w-full items-center gap-2 px-2 text-left text-body text-fg hover:bg-raised"
-										onClick={() => open(node.id.replace(/\/$/, ""))}
+										onClick={() => open(setPathOf(node.id))}
 									>
 										<LucideFolder className="size-3.5 shrink-0 text-fg-1" />
 										<span className="flex-1 truncate">{node.name}</span>

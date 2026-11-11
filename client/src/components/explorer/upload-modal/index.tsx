@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-import { LucideUpload, LucideX } from "lucide-react";
+import { LucideUpload } from "lucide-react";
 
+import { setPathOf } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -11,6 +12,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
+import { useActiveFile } from "@/hooks/useActiveFile";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 
 import { EUploadState, type UploadState, useUpload } from "./provider";
@@ -30,7 +32,8 @@ const DIALOG_CLOSE_DELAY_MS = 500;
 
 export const UploadTrigger = () => {
 	const { bucketName } = useExplorer().state;
-	const { uploadState, destination, resetState } = useUpload();
+	const { uploadState, destination, setDestination, resetState } = useUpload();
+	const active = useActiveFile();
 	const [open, setOpen] = useState(false);
 
 	const uploading = uploadState === EUploadState.Uploading;
@@ -38,6 +41,7 @@ export const UploadTrigger = () => {
 
 	const handleOpenChange = (next: boolean) => {
 		if (!next && uploading) return;
+		if (next) setDestination(active ? setPathOf(active.folder) : "");
 		setOpen(next);
 		if (!next) setTimeout(resetState, DIALOG_CLOSE_DELAY_MS);
 	};
@@ -51,18 +55,13 @@ export const UploadTrigger = () => {
 				</Button>
 			</DialogTrigger>
 
-			<DialogContent showClose={!uploading}>
+			<DialogContent closeDisabled={uploading}>
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription className="truncate font-mono text-secondary text-fg-2">
 						→ {[bucketName, ...(destination ? destination.split("/") : [""])].join(" / ")}
 					</DialogDescription>
 				</DialogHeader>
-				{uploading && (
-					<Button variant="icon" disabled aria-label="Close" className="absolute right-2 top-[7px]">
-						<LucideX className="size-3.5" />
-					</Button>
-				)}
 				<Screen />
 			</DialogContent>
 		</Dialog>

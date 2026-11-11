@@ -18,7 +18,9 @@ export const EUploadState = {
 export type UploadState = (typeof EUploadState)[keyof typeof EUploadState];
 
 type UploadProviderContext = {
+	/** Which screen the modal shows. */
 	uploadState: UploadState;
+	/** The server's per-file results; `null` before a response. */
 	uploadResponse: UploadResponse | null;
 	/** The server's message for a failed request; `null` when none was sent. */
 	uploadError: string | null;
@@ -26,19 +28,23 @@ type UploadProviderContext = {
 	files: PickedFile[];
 	/** Folder path the sets are created in, without a trailing slash; `""` for the bucket root. */
 	destination: string;
+	/** Sets the destination folder; pass `""` for the bucket root. */
 	setDestination: (destination: string) => void;
+	/** Adds the image files among `incoming` to the picked list, reading their dimensions. */
 	addFiles: (incoming: File[]) => Promise<void>;
+	/** Drops one picked file by its row id. */
 	removeFile: (id: string) => void;
 	/** Uploads every picked file. */
 	submit: () => Promise<void>;
 	/** Resends the files the last response marked `failed`, keeping the other results. */
 	retryFailed: () => Promise<void>;
-	/** Repeats the request that just failed. */
+	/** Repeats the request that just failed, minus any file removed since. */
 	retryLast: () => Promise<void>;
 	/** Back to the file picker with the files kept, dropping those that were stored. */
 	backToFiles: () => void;
 	/** Back to an empty file picker in the same destination. */
 	uploadMore: () => void;
+	/** Back to the first screen with no files and the root destination. */
 	resetState: () => void;
 };
 
@@ -93,6 +99,14 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 		);
 	};
 
+	const retryLast = () => {
+		const listed = new Set(files.map(({ id }) => id));
+		return send(
+			lastSend.current.batch.filter(({ id }) => listed.has(id)),
+			lastSend.current.merge,
+		);
+	};
+
 	const backToFiles = () => {
 		const stored = new Set(uploadResponse?.results.filter(({ status }) => status === "stored").map(({ file }) => file));
 		setFiles((previous) => previous.filter(({ file }) => !stored.has(file.name)));
@@ -127,7 +141,7 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 				removeFile: (id) => setFiles((previous) => previous.filter((picked) => picked.id !== id)),
 				submit: () => send(files, false),
 				retryFailed,
-				retryLast: () => send(lastSend.current.batch, lastSend.current.merge),
+				retryLast,
 				backToFiles,
 				uploadMore,
 				resetState,

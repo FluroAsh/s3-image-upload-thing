@@ -1,9 +1,10 @@
 import { formatBytes } from "@/components/explorer/inspector";
+import { formatCount } from "@/components/explorer/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
+import { skippedSizes } from "@/lib/upload-files";
 import type { ImageVariant, UploadFileResult, UploadStatus } from "~/shared/types";
 
 import { Thumb } from "./file-list";
@@ -22,8 +23,8 @@ const VARIANT_LABEL: Record<ImageVariant, string> = {
 
 const detailOf = ({ status, reason, variants = [] }: UploadFileResult) => {
 	if (status !== "stored") return `${status === "failed" ? "Failed" : "Refused"} · ${reason ?? "no reason given"}`;
-	const skipped = IMAGE_VARIANTS.filter((name) => !variants.some(({ variant }) => variant === name));
-	const sizes = `${variants.length} ${variants.length === 1 ? "size" : "sizes"}`;
+	const skipped = skippedSizes(variants.map(({ variant }) => variant));
+	const sizes = formatCount(variants.length, "size", false);
 	return skipped.length > 0 ? `Stored · ${sizes} · ${skipped.join(", ")} skipped` : `Stored · ${sizes}`;
 };
 
@@ -75,7 +76,7 @@ const Summary = ({ results }: { results: UploadFileResult[] }) => {
 			)}
 			<span className="ml-auto font-mono text-caption text-fg-2">
 				{stored.length > 0
-					? `${results.length} ${results.length === 1 ? "file" : "files"} · ${variants} variants · ${formatBytes(bytes)} stored`
+					? `${formatCount(results.length, "file", false)} · ${variants} variants · ${formatBytes(bytes)} stored`
 					: "nothing stored"}
 			</span>
 		</div>

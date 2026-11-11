@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import { LucideFile, LucideX } from "lucide-react";
 
 import { formatBytes } from "@/components/explorer/inspector";
+import { formatCount } from "@/components/explorer/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { PickedFile } from "@/lib/upload-files";
 
-/** A file's preview, or a file icon when the browser cannot decode it. */
 export const Thumb = ({ file }: { file?: File }) => {
 	const [url, setUrl] = useState<string>();
 	const [broken, setBroken] = useState(false);
@@ -61,7 +61,6 @@ const FileRow = ({
 	</li>
 );
 
-/** Rows of picked files; pass `onRemove` to let each be taken out and `warningsFor` to flag them. */
 export const FileList = ({
 	files,
 	onRemove,
@@ -83,6 +82,5 @@ export const FileList = ({
 	</ul>
 );
 
-/** "4 files · 17.5 MB" for the footers. */
 export const filesSummary = (files: PickedFile[]) =>
-	`${files.length} ${files.length === 1 ? "file" : "files"} · ${formatBytes(files.reduce((sum, { file }) => sum + file.size, 0))}`;
+	`${formatCount(files.length, "file", false)} · ${formatBytes(files.reduce((sum, { file }) => sum + file.size, 0))}`;

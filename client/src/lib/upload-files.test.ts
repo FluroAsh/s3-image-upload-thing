@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { type PickedFile, setNameOf, uploadWarnings } from "./upload-files";
+import { setNameOf } from "~/shared/set-name";
+
+import { type PickedFile, uploadWarnings } from "./upload-files";
 
 const picked = (name: string, width?: number, height?: number): PickedFile => ({
 	id: name,
