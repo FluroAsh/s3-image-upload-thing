@@ -3,28 +3,27 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TONES = {
-	neutral: { circle: "bg-neutral-800/50", icon: "stroke-neutral-400", message: "text-slate-400" },
-	info: { circle: "bg-sky-500/10", icon: "stroke-sky-400", message: "text-slate-400" },
-	error: { circle: "bg-red-500/10", icon: "stroke-red-500", message: "text-red-500" },
+	neutral: { icon: "text-fg-2", message: "text-fg-1", bar: "bg-raised text-fg-1" },
+	error: { icon: "text-err", message: "text-err", bar: "bg-err/10 text-err" },
+	ok: { icon: "text-ok", message: "text-ok", bar: "bg-ok/10 text-ok" },
 } as const;
 
-const SIZES = {
-	sm: { container: "p-12 h-full", circle: "size-12 mb-3", icon: "size-5" },
-	lg: { container: "p-8", circle: "size-16 mb-4", icon: "size-8" },
-	inline: { container: "p-4", circle: "size-10 mb-2", icon: "size-4" },
+const BLOCK_SIZES = {
+	sm: { container: "h-full p-6", icon: "mb-2 size-4" },
+	lg: { container: "p-8", icon: "mb-3 size-5" },
 } as const;
 
 type StateMessageProps = {
-	/** Icon drawn in the circle. */
+	/** Icon shown above the title, or at the start of the notice bar. */
 	icon: LucideIcon;
 	/** Headline, or the whole message for a bare state such as loading. */
 	title: string;
 	/** Detail under the title; leave out when the title says it all. */
 	message?: string;
-	/** Colours the circle and icon, and the message when `"error"`. Defaults to `"neutral"`. */
+	/** Colours the icon and, for `"error"` and `"ok"`, the message. Defaults to `"neutral"`. */
 	tone?: keyof typeof TONES;
-	/** `"sm"` fills a narrow column such as the bucket list, `"lg"` a wide panel, and `"inline"` sits above content as a notice. Defaults to `"lg"`. */
-	size?: keyof typeof SIZES;
+	/** `"sm"` fills a narrow column, `"lg"` a wide panel, and `"inline"` is a notice bar above content. Defaults to `"lg"`. */
+	size?: keyof typeof BLOCK_SIZES | "inline";
 	/** Makes the icon spin, for a state that is still working. */
 	spin?: boolean;
 	/** Extra classes for the container, e.g. to fill a parent. */
@@ -40,18 +39,32 @@ export const StateMessage = ({
 	size = "lg",
 	spin = false,
 	className,
-}: StateMessageProps) => (
-	<div
-		className={cn(
-			"flex flex-col items-center justify-center text-center text-balance",
-			SIZES[size].container,
-			className,
-		)}
-	>
-		<div className={cn("rounded-full flex items-center justify-center", TONES[tone].circle, SIZES[size].circle)}>
-			<Icon className={cn(TONES[tone].icon, SIZES[size].icon, spin && "animate-spin")} />
+}: StateMessageProps) => {
+	const { icon, message: messageTone, bar } = TONES[tone];
+
+	if (size === "inline") {
+		return (
+			<div className={cn("flex items-start gap-2 rounded-md px-2 py-1.5 text-xs", bar, className)}>
+				<Icon className={cn("mt-0.5 size-3.5 shrink-0", spin && "animate-spin")} />
+				<p>
+					<span className="font-medium">{title}{message && "."}</span>
+					{message && <span> {message}</span>}
+				</p>
+			</div>
+		);
+	}
+
+	return (
+		<div
+			className={cn(
+				"flex flex-col items-center justify-center text-balance text-center",
+				BLOCK_SIZES[size].container,
+				className,
+			)}
+		>
+			<Icon className={cn(icon, BLOCK_SIZES[size].icon, spin && "animate-spin")} />
+			<h3 className="text-body font-medium text-fg">{title}</h3>
+			{message && <p className={cn("mt-1 max-w-xs text-xs", messageTone)}>{message}</p>}
 		</div>
-		<h3 className="text-sm font-medium text-neutral-100">{title}</h3>
-		{message && <p className={cn("mt-2 text-xs max-w-xs", TONES[tone].message)}>{message}</p>}
-	</div>
-);
+	);
+};

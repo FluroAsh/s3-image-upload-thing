@@ -36,9 +36,7 @@ export default function RootLayout({
 		<html lang="en" className="dark">
 			<body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
 				<div className="min-h-screen w-screen grid grid-rows-[auto_1fr_auto]">
-					{/* <header className="bg-sky-600 text-center">Placeholder Header</header> */}
 					<GlobalProviders>{children}</GlobalProviders>
-					{/* <footer className="bg-red-600 text-center">Placeholder Footer</footer> */}
 				</div>
 			</body>
 		</html>

@@ -2,19 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  color: var(--foreground);
-  background: var(--background);
-}
-
 @layer base {
   :root {
-    --radius: 0.5rem;
+    --bg-0: 11 12 14;
+    --bg-1: 18 19 22;
+    --bg-2: 25 27 31;
+    --bg-3: 34 37 43;
+    --line: 38 41 48;
+    --line-strong: 53 57 67;
+    --fg-0: 232 234 237;
+    --fg-1: 164 169 179;
+    --fg-2: 107 114 128;
+    --accent: 124 184 255;
+    --ok: 74 222 128;
+    --warn: 251 191 36;
+    --err: 248 113 113;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-body text-fg;
+  }
+
+  :focus-visible {
+    @apply outline outline-2 outline-offset-1 outline-accent;
   }
 }

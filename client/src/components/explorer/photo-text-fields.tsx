@@ -1,4 +1,4 @@
-import { FIELD_CLASS } from "./utils";
+import { Input } from "../ui/input";
 
 export const TEXT_DELETED_NOTE = "Its alt text and caption are deleted.";
 
@@ -23,11 +23,10 @@ export const PhotoTextFields = ({
 		const saved = photo?.[name] ?? "";
 		return (
 			// Keyed on the saved text so a refetch resets what was typed.
-			<input
+			<Input
 				key={`${name}:${set}:${saved}`}
 				aria-label={label}
 				placeholder={placeholder}
-				className={FIELD_CLASS}
 				defaultValue={saved}
 				disabled={!photo}
 				onBlur={(e) => {

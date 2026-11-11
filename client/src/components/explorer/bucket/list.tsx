@@ -30,7 +30,7 @@ export const BucketList = ({
 }: BucketListProps) => {
 	const [, setParams] = useQueryStates(dashboardSearchParams);
 
-	if (isLoading) return <StateMessage size="sm" tone="info" spin icon={LucideLoader2} title="Loading buckets..." />;
+	if (isLoading) return <StateMessage size="sm" spin icon={LucideLoader2} title="Loading buckets..." />;
 	if (isError) {
 		return (
 			<StateMessage

@@ -8,6 +8,8 @@ import { useAttention, useFileTree } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { SetAttention } from "~/shared/types";
 
+import { Button } from "../ui/button";
+import { Chip } from "../ui/chip";
 import { StateMessage } from "../ui/state-message";
 import { PartialNotice } from "./partial-notice";
 import { serverErrorMessage } from "./utils";
@@ -26,31 +28,21 @@ const Row = ({ row }: { row: SetAttention }) => {
 				type="button"
 				onClick={select}
 				className={cn(
-					"flex w-full flex-col gap-1 rounded-md p-2 text-left text-sm hover:bg-slate-700",
-					isActive && "bg-sky-800/30",
+					"flex w-full flex-col gap-1 rounded-md p-2 text-left text-body hover:bg-raised",
+					isActive && "bg-accent/12",
 				)}
 			>
-				<span className="truncate font-medium text-neutral-100">{row.name}</span>
+				<span className="truncate font-medium text-fg">{row.name}</span>
 				<span className="flex flex-wrap gap-1 text-xs">
 					{row.manifest !== "present" && (
-						<span className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300">{MANIFEST_NOTE[row.manifest]}</span>
+						<Chip>{MANIFEST_NOTE[row.manifest]}</Chip>
 					)}
 					{row.problems.map(({ name, state, reason }) => (
-						<span
-							key={name}
-							title={reason}
-							className={
-								state === "mismatched"
-									? "rounded border border-dotted border-amber-700/60 bg-slate-800 px-1.5 py-0.5 text-slate-400"
-									: "rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
-							}
-						>
+						<Chip key={name} title={reason} tone={state === "mismatched" ? "mismatched" : "missing"}>
 							{name} {state === "mismatched" ? "mismatched" : "missing"}
-						</span>
+						</Chip>
 					))}
-					<span className="rounded px-1.5 py-0.5 text-slate-400">
-						{row.hasOriginal ? "Original held" : "No original"}
-					</span>
+					<span className="px-1.5 text-fg-1">{row.hasOriginal ? "Original held" : "No original"}</span>
 				</span>
 			</button>
 		</li>
@@ -69,24 +61,20 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 
 	return (
 		<div className="flex flex-col gap-2 p-2">
-			<button
-				type="button"
-				onClick={() => setAttentionFolder(null)}
-				className="flex items-center gap-2 text-sm text-slate-300 hover:text-neutral-100"
-			>
+			<Button variant="ghost" className="self-start" onClick={() => setAttentionFolder(null)}>
 				<LucideArrowLeft className="size-4" />
 				Back to files
-			</button>
-			<h3 className="text-sm font-medium text-neutral-100">
+			</Button>
+			<h3 className="text-body font-medium text-fg">
 				{folder || "Bucket root"}
-				{total !== undefined && <span className="ml-2 text-xs text-slate-400">{total} sets</span>}
+				{total !== undefined && <span className="ml-2 text-xs text-fg-1">{total} sets</span>}
 			</h3>
-			<label className="flex items-center gap-2 text-xs text-slate-300">
+			<label className="flex items-center gap-2 text-xs text-fg-1">
 				<input type="checkbox" checked={!all} onChange={(event) => setAll(!event.target.checked)} />
 				Only sets needing attention
 			</label>
 			{isPending ? (
-				<StateMessage tone="info" spin icon={LucideLoader2} title="Checking sets..." />
+				<StateMessage spin icon={LucideLoader2} title="Checking sets..." />
 			) : error && rows.length === 0 ? (
 				<StateMessage
 					tone="error"
@@ -124,14 +112,9 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 				/>
 			)}
 			{hasNextPage && (
-				<button
-					type="button"
-					disabled={isFetchingNextPage}
-					onClick={() => fetchNextPage()}
-					className="rounded bg-slate-700 px-2 py-1 text-sm text-slate-200 hover:bg-slate-600 disabled:opacity-50"
-				>
+				<Button pending={isFetchingNextPage} onClick={() => fetchNextPage()}>
 					{isFetchingNextPage ? "Loading..." : error ? "Retry" : "Load more"}
-				</button>
+				</Button>
 			)}
 		</div>
 	);

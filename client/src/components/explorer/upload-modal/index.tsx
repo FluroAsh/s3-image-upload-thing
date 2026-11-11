@@ -1,6 +1,14 @@
 import { LucideUpload } from "lucide-react";
 
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogBody,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 
 import { EUploadState, type UploadState, useUpload } from "./provider";
 import { CompleteScreen } from "./screen.complete";
@@ -42,16 +50,22 @@ export const UploadTrigger = () => {
 
 	return (
 		<Dialog onOpenChange={handleOpenChange}>
-			<DialogTrigger className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-neutral-100 font-medium text-sm rounded-lg transition-colors duration-200">
-				<LucideUpload className="size-4" />
-				Upload Files
+			<DialogTrigger asChild>
+				<Button variant="primary">
+					<LucideUpload className="size-4" />
+					Upload Files
+				</Button>
 			</DialogTrigger>
 
-			<DialogContent className="max-w-[700px] w-full bg-slate-900 border-slate-700">
-				<DialogTitle className="text-xl font-semibold text-neutral-100">{title}</DialogTitle>
-				<div className="min-h-[500px]">
-					<Screen />
-				</div>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+				</DialogHeader>
+				<DialogBody>
+					<div className="min-h-[500px]">
+						<Screen />
+					</div>
+				</DialogBody>
 			</DialogContent>
 		</Dialog>
 	);

@@ -12,8 +12,8 @@ const AddImageButton = ({ onClick }: { onClick: () => void }) => (
 		type="button"
 		onClick={onClick}
 		className={cn(
-			"h-[120px] border-2 border-dashed border-neutral-500 rounded-md hover:bg-neutral-500/10",
-			"transition-colors hover:text-neutral-300 text-neutral-500",
+			"h-[120px] border-2 border-dashed border-line-strong rounded-md hover:bg-raised",
+			"transition-colors hover:text-fg-1 text-fg-2",
 		)}
 	>
 		<div className="grid place-items-center gap-1">
@@ -27,8 +27,8 @@ const ImagePlaceholder = ({ onClick }: { onClick: () => void }) => (
 	<button
 		type="button"
 		className={cn(
-			"border-neutral-500 border-2 border-dashed grid place-items-center hover:cursor-pointer h-full rounded-md",
-			"transition-colors text-neutral-500 hover:text-neutral-300 hover:bg-neutral-500/10",
+			"border-line-strong border-2 border-dashed grid place-items-center hover:cursor-pointer h-full rounded-md",
+			"transition-colors text-fg-2 hover:text-fg-1 hover:bg-raised",
 		)}
 		onClick={onClick}
 		onKeyDown={(e) => {
@@ -40,7 +40,7 @@ const ImagePlaceholder = ({ onClick }: { onClick: () => void }) => (
 	>
 		<div className="flex flex-col items-center gap-2">
 			<LucideUpload className="size-10 " />
-			<p className="text-sm">Drag & drop an image, or click to browse</p>
+			<p className="text-body">Drag & drop an image, or click to browse</p>
 		</div>
 	</button>
 );

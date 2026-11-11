@@ -4,6 +4,7 @@ import { isImageFile, isVideoFile } from "@/lib/helpers";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "~/shared/types";
 
+import { Badge } from "../ui/badge";
 import { ScrollArea } from "../ui/scroll-area";
 import { StateMessage } from "../ui/state-message";
 import { CollectionSection } from "./panel.collection";
@@ -20,17 +21,17 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
 		<li className="group">
 			<a
 				target="_blank"
-				className="flex items-center justify-between p-3 rounded-lg bg-slate-700/40 hover:bg-slate-700/70 border border-slate-600/50 hover:border-sky-500/50 transition-all duration-200"
+				className="flex items-center justify-between p-3 rounded-lg bg-raised hover:bg-pressed border border-line hover:border-accent/50 transition-colors duration-100"
 				href={remoteURL}
 			>
 				<div className="flex items-center gap-3">
-					<div className="size-2 rounded-full bg-sky-400"></div>
+					<div className="size-2 rounded-full bg-accent"></div>
 					<div className="flex flex-col">
-						<span className="text-sm font-medium text-neutral-100">{getVariantType(variant.name)}</span>
-						<span className="text-xs text-slate-300">{variant.size}</span>
+						<span className="text-body font-medium text-fg">{getVariantType(variant.name)}</span>
+						<span className="text-xs text-fg-1">{variant.size}</span>
 					</div>
 				</div>
-				<LucideExternalLink className="size-4 text-slate-400 group-hover:text-sky-300 transition-colors" />
+				<LucideExternalLink className="size-4 text-fg-1 group-hover:text-accent transition-colors" />
 			</a>
 		</li>
 	);
@@ -48,9 +49,8 @@ export const DetailsPanel = () => {
 
 	if (!remoteURL && !setPath) {
 		return (
-			<div id="explorer-details-panel" className="bg-slate-800 border-l border-slate-700 flex-1">
+			<div id="explorer-details-panel" className="bg-panel border-l border-line flex-1">
 				<StateMessage
-					tone="info"
 					className="size-full"
 					icon={LucideFile}
 					title="No file selected"
@@ -66,43 +66,43 @@ export const DetailsPanel = () => {
 	return (
 		<ScrollArea
 			id="explorer-details-panel"
-			className="bg-slate-800 border-l border-slate-700 flex-1 overflow-y-auto overflow-x-hidden"
+			className="bg-panel border-l border-line flex-1 overflow-y-auto overflow-x-hidden"
 			aria-label="File details"
 		>
-			<div className="border-b border-slate-600 p-6 bg-slate-750">
+			<div className="border-b border-line p-6">
 				<div className="flex items-center gap-3">
-					<div className="size-10 rounded-lg bg-sky-500/20 flex items-center justify-center">
-						<Icon className="size-6 stroke-sky-400" />
+					<div className="size-10 rounded-lg bg-accent/12 flex items-center justify-center">
+						<Icon className="size-6 stroke-accent" />
 					</div>
 					<div>
-						<h2 className="text-lg font-semibold text-neutral-100">{fileName || "Active File"}</h2>
-						<p className="text-sm text-slate-300">File Preview & Details</p>
+						<h2 className="text-lg font-semibold text-fg">{fileName || "Active File"}</h2>
+						<p className="text-body text-fg-1">File Preview & Details</p>
 					</div>
 				</div>
 			</div>
 
 			{remoteURL && (
-				<div className="p-6 border-b border-slate-600">
+				<div className="p-6 border-b border-line">
 					<div className="flex items-center gap-2 mb-3">
-						<LucideLink className="size-4 text-sky-400" />
-						<h3 className="text-sm font-medium text-neutral-100">Remote URL</h3>
+						<LucideLink className="size-4 text-accent" />
+						<h3 className="text-body font-medium text-fg">Remote URL</h3>
 					</div>
 					<a
 						target="_blank"
 						rel="noopener noreferrer"
-						className="inline-flex items-center gap-2 p-3 rounded-lg bg-slate-700/60 hover:bg-slate-700 border border-slate-600 hover:border-sky-500/50 transition-all duration-200 group w-full"
+						className="inline-flex items-center gap-2 p-3 rounded-lg bg-raised hover:bg-pressed border border-line-strong hover:border-accent/50 transition-colors duration-100 group w-full"
 						href={remoteURL}
 					>
-						<span className="text-sm text-neutral-100 break-all flex-1">{previewURLText}</span>
-						<LucideExternalLink className="size-4 text-sky-400 group-hover:text-sky-300 transition-colors flex-shrink-0" />
+						<span className="text-body text-fg break-all flex-1">{previewURLText}</span>
+						<LucideExternalLink className="size-4 text-accent transition-colors flex-shrink-0" />
 					</a>
 				</div>
 			)}
 
 			{setPath && (
 				<>
-					<div className="p-6 border-b border-slate-600">
-						<h3 className="mb-3 text-sm font-medium text-neutral-100">Sizes</h3>
+					<div className="p-6 border-b border-line">
+						<h3 className="mb-3 text-body font-medium text-fg">Sizes</h3>
 						<SetInfo key={setPath} set={setPath} imageUrl={remoteURL} />
 					</div>
 					<CollectionSection setPath={setPath} />
@@ -110,12 +110,12 @@ export const DetailsPanel = () => {
 			)}
 
 			{(isImage || isVideo) && (
-				<div className="p-6 border-b border-slate-600">
+				<div className="p-6 border-b border-line">
 					<div className="flex items-center gap-2 mb-4">
-						<LucideImage className="size-4 text-sky-400" />
-						<h3 className="text-sm font-medium text-neutral-100">{isVideo ? "Video Preview" : "Preview"}</h3>
+						<LucideImage className="size-4 text-accent" />
+						<h3 className="text-body font-medium text-fg">{isVideo ? "Video Preview" : "Preview"}</h3>
 					</div>
-					<div className="relative rounded-lg overflow-hidden border border-slate-500 bg-slate-700/30">
+					<div className="relative rounded-lg overflow-hidden border border-line-strong bg-raised">
 						{isImage ? (
 							<div
 								className="mx-auto flex items-center justify-center "
@@ -142,9 +142,11 @@ export const DetailsPanel = () => {
 			{variants && variants.length > 0 && (
 				<div className="p-6">
 					<div className="flex items-center gap-2 mb-4">
-						<div className="size-4 rounded bg-sky-500"></div>
-						<h3 className="text-sm font-medium text-neutral-100">Available Variants</h3>
-						<span className="text-xs bg-slate-700 text-sky-300 px-2 py-1 rounded-full">{variants.length}</span>
+						<div className="size-4 rounded-sm bg-accent"></div>
+						<h3 className="text-body font-medium text-fg">Available Variants</h3>
+						<Badge plain className="text-accent">
+							{variants.length}
+						</Badge>
 					</div>
 					<ul className="space-y-2">
 						{variants.map((variant) => (

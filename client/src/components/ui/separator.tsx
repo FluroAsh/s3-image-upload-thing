@@ -2,11 +2,10 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type SeparatorOrientation = "horizontal" | "vertical";
-
-interface SeparatorProps extends React.ComponentPropsWithoutRef<"hr"> {
-	orientation?: SeparatorOrientation;
-}
+type SeparatorProps = React.ComponentPropsWithoutRef<"hr"> & {
+	/** Direction of the rule. Defaults to `"horizontal"`. */
+	orientation?: "horizontal" | "vertical";
+};
 
 const Separator = React.forwardRef<HTMLHRElement, SeparatorProps>(
 	({ orientation = "horizontal", className, ...props }, ref) => (
@@ -14,7 +13,7 @@ const Separator = React.forwardRef<HTMLHRElement, SeparatorProps>(
 			ref={ref}
 			aria-orientation={orientation}
 			className={cn(
-				"shrink-0 bg-neutral-700",
+				"shrink-0 border-0 bg-line",
 				orientation === "horizontal" && "h-px w-full",
 				orientation === "vertical" && "h-full w-px",
 				className,

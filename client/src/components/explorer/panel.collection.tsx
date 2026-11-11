@@ -3,9 +3,10 @@ import { LucideAlertTriangle, LucideFolderHeart, LucideLoader2 } from "lucide-re
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
 import { holdingSet, setsToMove } from "~/shared/collections";
 
+import { Select } from "../ui/select";
 import { StateMessage } from "../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "./photo-text-fields";
-import { FIELD_CLASS, serverErrorMessage } from "./utils";
+import { serverErrorMessage } from "./utils";
 
 const NONE = "";
 // A real slug can't hold underscores, so this never collides with one.
@@ -38,14 +39,14 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	};
 
 	return (
-		<div className="p-6 border-b border-slate-600">
+		<div className="p-6 border-b border-line">
 			<div className="flex items-center gap-2 mb-3">
-				<LucideFolderHeart className="size-4 text-sky-400" />
-				<h3 className="text-sm font-medium text-neutral-100">Collection</h3>
+				<LucideFolderHeart className="size-4 text-accent" />
+				<h3 className="text-body font-medium text-fg">Collection</h3>
 			</div>
 
 			{isLoading ? (
-				<StateMessage size="inline" tone="info" spin icon={LucideLoader2} title="Loading collections..." />
+				<StateMessage size="inline" spin icon={LucideLoader2} title="Loading collections..." />
 			) : error ? (
 				<StateMessage
 					size="inline"
@@ -56,9 +57,8 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 				/>
 			) : (
 				<div className="space-y-3">
-					<select
+					<Select
 						aria-label="Collection"
-						className={FIELD_CLASS}
 						value={saved?.collection.slug ?? NONE}
 						disabled={create.isPending || setMembers.isPending}
 						onChange={(e) => onCollectionChange(e.target.value)}
@@ -70,7 +70,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 							</option>
 						))}
 						<option value={NEW}>New collection…</option>
-					</select>
+					</Select>
 
 					<PhotoTextFields
 						set={setPath}

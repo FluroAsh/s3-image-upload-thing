@@ -3,9 +3,11 @@
 import * as React from "react";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { LucideX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+import { Button } from "./button";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -22,7 +24,7 @@ const DialogOverlay = React.forwardRef<
 	<DialogPrimitive.Overlay
 		ref={ref}
 		className={cn(
-			"fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+			"fixed inset-0 z-50 bg-canvas/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
 			className,
 		)}
 		{...props}
@@ -30,37 +32,62 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
-const DialogContent = React.forwardRef<
-	React.ElementRef<typeof DialogPrimitive.Content>,
-	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-	<DialogPortal>
-		<DialogOverlay />
-		<DialogPrimitive.Content
-			ref={ref}
-			className={cn(
-				"fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-neutral-200 bg-white p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg dark:border-neutral-800 dark:bg-neutral-950",
-				className,
-			)}
-			{...props}
-		>
-			{children}
-			<DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-neutral-950 focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-neutral-100 data-[state=open]:text-neutral-500 dark:ring-offset-neutral-950 dark:focus:ring-neutral-300 dark:data-[state=open]:bg-neutral-800 dark:data-[state=open]:text-neutral-400">
-				<X className="h-4 w-4" />
-				<span className="sr-only">Close</span>
-			</DialogPrimitive.Close>
-		</DialogPrimitive.Content>
-	</DialogPortal>
-));
+const CONTENT_SIZES = {
+	small: "max-w-[420px]",
+	default: "max-w-[720px]",
+	wide: "max-w-[860px]",
+} as const;
+
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+	/** Width of the dialog: `"small"` for confirm and prompt, `"wide"` for the collections modal. Defaults to `"default"`. */
+	size?: keyof typeof CONTENT_SIZES;
+	/** Hides the corner close button, for dialogs that close through their own footer. Defaults to `true`. */
+	showClose?: boolean;
+};
+
+const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
+	({ className, children, size = "default", showClose = true, ...props }, ref) => (
+		<DialogPortal>
+			<DialogOverlay />
+			<DialogPrimitive.Content
+				ref={ref}
+				className={cn(
+					"fixed left-[50%] top-[50%] z-50 flex max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden rounded-lg border border-line bg-panel text-fg shadow-xl outline-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+					CONTENT_SIZES[size],
+					className,
+				)}
+				{...props}
+			>
+				{children}
+				{showClose && (
+					<DialogPrimitive.Close asChild>
+						<Button variant="icon" className="absolute right-2 top-[7px]">
+							<LucideX className="size-3.5" />
+							<span className="sr-only">Close</span>
+						</Button>
+					</DialogPrimitive.Close>
+				)}
+			</DialogPrimitive.Content>
+		</DialogPortal>
+	),
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+	<div className={cn("flex h-10 shrink-0 items-center gap-3 border-b border-line pl-4 pr-12", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
+const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+	<div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-3", className)} {...props} />
+);
+DialogBody.displayName = "DialogBody";
+
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+	<div
+		className={cn("flex h-11 shrink-0 items-center justify-end gap-2 border-t border-line bg-canvas px-3", className)}
+		{...props}
+	/>
 );
 DialogFooter.displayName = "DialogFooter";
 
@@ -68,11 +95,7 @@ const DialogTitle = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Title>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
 >(({ className, ...props }, ref) => (
-	<DialogPrimitive.Title
-		ref={ref}
-		className={cn("text-lg font-semibold leading-none tracking-tight", className)}
-		{...props}
-	/>
+	<DialogPrimitive.Title ref={ref} className={cn("text-body font-semibold", className)} {...props} />
 ));
 DialogTitle.displayName = DialogPrimitive.Title.displayName;
 
@@ -80,11 +103,7 @@ const DialogDescription = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Description>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
-	<DialogPrimitive.Description
-		ref={ref}
-		className={cn("text-sm text-neutral-500 dark:text-neutral-400", className)}
-		{...props}
-	/>
+	<DialogPrimitive.Description ref={ref} className={cn("text-body text-fg-1", className)} {...props} />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
@@ -96,6 +115,7 @@ export {
 	DialogClose,
 	DialogContent,
 	DialogHeader,
+	DialogBody,
 	DialogFooter,
 	DialogTitle,
 	DialogDescription,

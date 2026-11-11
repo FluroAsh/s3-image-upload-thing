@@ -36,10 +36,10 @@ export const BucketCard = ({
 }: BucketCardProps) => (
 	<button
 		type="button"
-		className={`group border rounded-lg p-4 cursor-pointer transition-all hover:shadow-lg min-w-0 ${
+		className={`group border rounded-lg p-4 cursor-pointer transition-all min-w-0 ${
 			isActive
-				? "bg-sky-900/50 border-sky-400/70 shadow-lg shadow-sky-500/20"
-				: "hover:bg-sky-900/10 border-slate-600/60 hover:border-sky-400/50 hover:shadow-sky-500/10"
+				? "bg-accent/12 border-accent/70"
+				: "hover:bg-accent/12 border-line-strong hover:border-accent/50"
 		}`}
 		onClick={handleClick}
 		onKeyDown={(e) => {
@@ -54,13 +54,9 @@ export const BucketCard = ({
 			<div className="w-full text-center">
 				<div
 					title={name}
-					className={`flex gap-2 items-center text-base font-semibold truncate transition-colors ${
-						isActive ? "text-sky-50" : "text-neutral-100 group-hover:text-sky-100"
-					}`}
+					className="flex gap-2 items-center text-base font-semibold truncate text-fg"
 				>
-					<LucideDatabase
-						className={`size-4 transition-colors shrink-0 ${isActive ? "text-sky-200" : "text-sky-400"}`}
-					/>
+					<LucideDatabase className="size-4 shrink-0 text-accent" />
 					<h3 className="truncate">{name}</h3>
 				</div>
 
@@ -81,7 +77,7 @@ export const BucketCard = ({
 						{formattedCreationDate}
 					</span>
 
-					<span className="text-xs transition-colors rounded-md px-2 py-1 border border-sky-500/50 bg-sky-500/10 w-fit text-sky-200">
+					<span className="text-xs transition-colors rounded-md px-2 py-1 border border-accent/50 bg-accent/12 w-fit text-accent">
 						{region}
 					</span>
 				</div>

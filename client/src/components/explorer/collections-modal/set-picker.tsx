@@ -35,8 +35,8 @@ const Row = ({
 	return (
 		<label
 			className={cn(
-				"flex items-center gap-2 rounded-md py-1 pr-2 text-sm text-neutral-100",
-				free.length ? "hover:bg-slate-800" : "cursor-not-allowed opacity-50",
+				"flex items-center gap-2 rounded-md py-1 pr-2 text-body text-fg",
+				free.length ? "hover:bg-raised" : "cursor-not-allowed opacity-50",
 			)}
 			style={{ paddingLeft: getDepthPadding(depth) }}
 		>
@@ -49,9 +49,9 @@ const Row = ({
 				}}
 				onChange={() => onChange(toggleSets(picked, free))}
 			/>
-			<Icon className="size-4 shrink-0 text-sky-400" />
+			<Icon className="size-4 shrink-0 text-accent" />
 			<span className="truncate">{label}</span>
-			{note && <span className="ml-auto text-xs text-amber-400">{note}</span>}
+			{note && <span className="ml-auto text-xs text-warn">{note}</span>}
 		</label>
 	);
 };
@@ -93,7 +93,7 @@ export const SetPicker = (pick: PickerProps) => {
 	const { childMap, sets, data } = useBucketSets();
 
 	return (
-		<div className="max-h-[320px] overflow-y-auto rounded-lg border border-slate-600 p-2">
+		<div className="max-h-[320px] overflow-y-auto rounded-lg border border-line-strong p-2">
 			{data?.partial && <PartialNotice count={data.tree.length} />}
 			<Row {...pick} label={bucketName} icon={LucideDatabase} group={setsUnder(sets, "")} depth={0} />
 			{(childMap.get("") ?? []).map((node) => (

@@ -6,7 +6,7 @@ export const ErrorScreen = () => {
 	return (
 		<div>
 			<p>Uh oh, we ran into an error!</p>
-			{uploadError && <p className="text-sm text-neutral-400 mt-2">{uploadError}</p>}
+			{uploadError && <p className="text-body text-fg-1 mt-2">{uploadError}</p>}
 		</div>
 	);
 };

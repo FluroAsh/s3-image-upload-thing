@@ -5,25 +5,12 @@ import type { ApiError } from "@/lib/ofetch";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useMutateUpload } from "@/lib/query";
 import { buildUploadFormData } from "@/lib/upload-form-data";
-import { cn } from "@/lib/utils";
+
+import { Button } from "@/components/ui/button";
 
 import { FolderSelect } from "./folder-select";
 import { UploadImageGrid } from "./image-grid";
 import { EUploadState, useUpload } from "./provider";
-
-const SubmitButton = ({ hasImages, onClick }: { hasImages: boolean; onClick: () => void }) => (
-	<button
-		type="button"
-		className={cn(
-			"bg-neutral-300 px-4 py-2 rounded-sm text-neutral-900",
-			!hasImages && "bg-neutral-600 text-neutral-400",
-		)}
-		onClick={onClick}
-		disabled={!hasImages}
-	>
-		Upload
-	</button>
-);
 
 export const UploadScreen = () => {
 	const [images, setImages] = useState<File[]>([]);
@@ -58,7 +45,9 @@ export const UploadScreen = () => {
 			<UploadImageGrid setImages={setImages} mainImage={images[0]} restImages={images.slice(1)} />
 
 			<div className="flex justify-center pt-6">
-				<SubmitButton hasImages={images.length > 0} onClick={handleSubmit} />
+				<Button variant="primary" disabled={images.length === 0} onClick={handleSubmit}>
+					Upload
+				</Button>
 			</div>
 		</div>
 	);

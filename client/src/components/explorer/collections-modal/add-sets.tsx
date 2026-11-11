@@ -1,11 +1,11 @@
 import { useState } from "react";
 
 import { useCollections, useSetMembers } from "@/lib/query";
-import { cn } from "@/lib/utils";
 import { setsNotIn } from "~/shared/collections";
 import type { Collection } from "~/shared/types";
 
-import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { Button } from "../../ui/button";
+import { serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { SetPicker } from "./set-picker";
 
@@ -25,19 +25,14 @@ export const AddSets = ({ collection, onDone }: { collection: Collection; onDone
 	return (
 		<div className="space-y-3">
 			<SetPicker picked={picked} onChange={setPicked} locked={new Set(collection.photos.map((photo) => photo.set))} />
-			{add.error && <p className="text-sm text-red-500">{serverErrorMessage(add.error, "Could not add.")}</p>}
+			{add.error && <p className="text-body text-err">{serverErrorMessage(add.error, "Could not add.")}</p>}
 			<div className="flex gap-2">
-				<button
-					type="button"
-					disabled={!sets.length || add.isPending}
-					onClick={onAdd}
-					className={cn("px-4 py-2", PRIMARY_BUTTON_CLASS)}
-				>
+				<Button variant="primary" disabled={!sets.length} pending={add.isPending} onClick={onAdd}>
 					Add to {collection.name}
-				</button>
-				<button type="button" onClick={onDone} className="px-4 py-2 text-sm text-slate-300 hover:text-neutral-100">
+				</Button>
+				<Button variant="ghost" onClick={onDone}>
 					Cancel
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

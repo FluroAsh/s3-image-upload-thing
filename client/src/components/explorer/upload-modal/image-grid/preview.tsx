@@ -36,13 +36,13 @@ export const ImagePreview = ({ image, onRemoveClick }: ImageProps) => {
 			<button
 				type="button"
 				className={cn(
-					"absolute z-10 size-[28px] -top-3 -right-3 bg-red-500/70 hover:bg-red-500/90 backdrop-blur-sm rounded-full grid place-items-center",
-					"transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg border border-white/20",
+					"absolute z-10 size-[28px] -top-3 -right-3 bg-err/70 hover:bg-err/90 backdrop-blur-sm rounded-full grid place-items-center",
+					"transition-all duration-200 opacity-0 group-hover:opacity-100 shadow-lg border border-fg/20",
 				)}
 				onClick={onRemoveClick}
 				title="Remove image"
 			>
-				<LucideX className="stroke-neutral-100 size-4" />
+				<LucideX className="stroke-fg size-4" />
 			</button>
 
 			<div className="overflow-hidden rounded-md h-full">

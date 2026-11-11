@@ -12,13 +12,13 @@ import { PartialNotice } from "./partial-notice";
 import { serverErrorMessage } from "./utils";
 
 const BucketHeader = ({ bucketName }: { bucketName: string }) => (
-	<div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-4 z-10">
+	<div className="sticky top-0 bg-panel border-b border-line p-4 z-10">
 		<div className="flex items-center gap-3">
-			<div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
-				<LucideDatabase className="size-4 text-sky-400" />
+			<div className="size-8 rounded-lg bg-accent/12 flex items-center justify-center">
+				<LucideDatabase className="size-4 text-accent" />
 			</div>
 			<div>
-				<h2 className="text-sm font-semibold text-neutral-100">{bucketName}</h2>
+				<h2 className="text-body font-semibold text-fg">{bucketName}</h2>
 			</div>
 		</div>
 	</div>
@@ -32,12 +32,12 @@ export const BrowserPanel = () => {
 	const shouldShowLoading = !hasMounted || isLoading;
 
 	return (
-		<nav className="flex flex-col flex-1 bg-slate-900 border-r border-slate-700">
+		<nav className="flex flex-col flex-1 bg-canvas border-r border-line">
 			<BucketHeader bucketName={bucketName} />
 
 			<ScrollArea>
 				{shouldShowLoading ? (
-					<StateMessage tone="info" spin icon={LucideLoader2} title="Loading file tree..." />
+					<StateMessage spin icon={LucideLoader2} title="Loading file tree..." />
 				) : error ? (
 					<StateMessage
 						tone="error"

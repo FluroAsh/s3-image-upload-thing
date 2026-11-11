@@ -26,20 +26,20 @@ export const Sidebar = () => {
 	);
 
 	return (
-		<aside className="min-w-[300px] max-w-[300px] h-full bg-neutral-900 flex flex-col border-r border-neutral-700">
+		<aside className="min-w-[300px] max-w-[300px] h-full bg-canvas flex flex-col border-r border-line">
 			<header className="flex flex-col shrink-0">
 				<div className="flex items-center gap-2 p-4">
-					<div className="size-8 rounded-lg bg-sky-500/20 flex items-center justify-center">
-						<LucideDatabase className="size-4 stroke-sky-400" />
+					<div className="size-8 rounded-lg bg-accent/12 flex items-center justify-center">
+						<LucideDatabase className="size-4 stroke-accent" />
 					</div>
-					<span className="text-neutral-100 font-semibold">Buckets</span>
+					<span className="text-fg font-semibold">Buckets</span>
 				</div>
 
 				<div className="pb-4 px-4">
 					<BucketSearch disabled={isLoading} />
 				</div>
 
-				<Separator className="border-neutral-700" />
+				<Separator />
 			</header>
 
 			<section className="shrink-0" aria-labelledby="bucket-collection-summary-heading">
@@ -47,10 +47,10 @@ export const Sidebar = () => {
 					<h2 id="bucket-collection-summary-heading" className="sr-only">
 						Bucket Collection Summary
 					</h2>
-					<p className="text-sm text-neutral-300">Total Buckets: {isLoading ? "..." : totalCount}</p>
-					<p className="text-sm text-neutral-300">Total Files: {isLoading ? "..." : totalObjectCount}</p>
+					<p className="text-body text-fg-1">Total Buckets: {isLoading ? "..." : totalCount}</p>
+					<p className="text-body text-fg-1">Total Files: {isLoading ? "..." : totalObjectCount}</p>
 				</div>
-				<Separator className="border-neutral-700" />
+				<Separator />
 			</section>
 
 			<ScrollArea className="flex-1 min-h-0">
@@ -64,14 +64,14 @@ export const Sidebar = () => {
 				/>
 			</ScrollArea>
 
-			<footer className="p-3 border-t border-neutral-700 shrink-0">
+			<footer className="p-3 border-t border-line shrink-0">
 				<span className="sr-only">Account Settings</span>
 				<button
 					type="button"
 					onClick={() => console.log("Open settings modal")}
-					className="w-full justify-start gap-2 text-sm hover:bg-sky-900/30 hover:[text,fill]-sky-400 transition-colors hover:cursor-pointer rounded-md p-2"
+					className="w-full justify-start gap-2 text-body hover:bg-accent/12 hover:text-accent transition-colors hover:cursor-pointer rounded-md p-2"
 				>
-					<LucideSettings className="size-4 text-neutral-100 inline mr-1.5" />
+					<LucideSettings className="size-4 inline mr-1.5" />
 					Settings
 				</button>
 			</footer>

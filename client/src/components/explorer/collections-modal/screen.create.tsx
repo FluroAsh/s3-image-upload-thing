@@ -3,9 +3,10 @@ import { useState } from "react";
 import { LucideArrowLeft } from "lucide-react";
 
 import { useCollections, useCreateCollection } from "@/lib/query";
-import { cn } from "@/lib/utils";
 
-import { FIELD_CLASS, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { Button } from "../../ui/button";
+import { Input } from "../../ui/input";
+import { serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { useCollectionsModal } from "./provider";
 import { SetPicker } from "./set-picker";
@@ -27,32 +28,23 @@ export const CreateScreen = () => {
 
 	return (
 		<form onSubmit={onSubmit} className="space-y-3">
-			<button
-				type="button"
-				onClick={() => setScreen({ screen: "list" })}
-				className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-neutral-100"
-			>
+			<Button variant="ghost" onClick={() => setScreen({ screen: "list" })}>
 				<LucideArrowLeft className="size-4" />
 				Back to collections
-			</button>
-			<input
+			</Button>
+			<Input
 				aria-label="Name"
 				placeholder="Name"
-				className={FIELD_CLASS}
 				value={name}
 				onChange={(e) => setName(e.target.value)}
 			/>
 			<SetPicker picked={picked} onChange={setPicked} />
 
-			{create.error && <p className="text-sm text-red-500">{serverErrorMessage(create.error, "Could not create.")}</p>}
+			{create.error && <p className="text-body text-err">{serverErrorMessage(create.error, "Could not create.")}</p>}
 
-			<button
-				type="submit"
-				disabled={!name.trim() || !picked.size || create.isPending}
-				className={cn("px-4 py-2", PRIMARY_BUTTON_CLASS)}
-			>
+			<Button type="submit" variant="primary" disabled={!name.trim() || !picked.size} pending={create.isPending}>
 				Create
-			</button>
+			</Button>
 		</form>
 	);
 };
