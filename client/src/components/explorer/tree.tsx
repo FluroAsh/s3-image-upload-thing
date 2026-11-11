@@ -6,6 +6,7 @@ import { FileNode } from "./nodes/file";
 import { FolderNode } from "./nodes/folder";
 import { SetNode } from "./nodes/set";
 import { isTreeKey, navigate, type TreeRowData } from "./tree-rows";
+import { useCollectionMove } from "./use-collection-move";
 import { setPathOf } from "./utils";
 
 type FileTreeProps = {
@@ -19,6 +20,7 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 	const {
 		actions: { setAttentionFolder },
 	} = useExplorer();
+	const move = useCollectionMove();
 	const [focusedId, setFocusedId] = useState<string>();
 	const listRef = useRef<HTMLDivElement>(null);
 	const filtering = query.trim() !== "";
@@ -55,6 +57,7 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 					query,
 					tabbable: node.id === tabbableId,
 					onFocus: () => setFocusedId(node.id),
+					assign: move.assign,
 				};
 
 				return row.kind === "folder" ? (
@@ -65,6 +68,7 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 					<FileNode key={node.id} {...shared} />
 				);
 			})}
+			{move.dialogs}
 		</div>
 	);
 };

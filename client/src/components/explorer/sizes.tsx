@@ -5,20 +5,13 @@ import { Chip } from "@/components/ui/chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StateMessage } from "@/components/ui/state-message";
 import { useAttachOriginal, useGenerateSizes, useManifest } from "@/lib/query";
-import { IMAGE_VARIANTS } from "~/shared/constants/image-variants";
 import type { Manifest, TreeNode } from "~/shared/types";
 
 import { InspectorSection } from "./inspector";
 import { OriginalUpload } from "./original-upload";
 import { ManifestBadge } from "./set-badge";
 import { Legend, SizeRow } from "./size-row";
-import { formatCount, pickPreviewVariant, serverErrorMessage, summariseSizes, variantOf } from "./utils";
-
-/** Variants outside the size table sort last. */
-const sizeRank = (name: string) => {
-	const rank = IMAGE_VARIANTS.findIndex((variant) => variant === name);
-	return rank === -1 ? IMAGE_VARIANTS.length : rank;
-};
+import { formatCount, pickPreviewVariant, serverErrorMessage, sizeRank, summariseSizes, variantOf } from "./utils";
 
 const SizeRows = ({
 	manifest,

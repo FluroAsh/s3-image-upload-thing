@@ -3,6 +3,7 @@ import { LucideFile } from "lucide-react";
 import { getFileIcon } from "@/lib/helpers";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 
+import { FileMenu } from "./menus";
 import { NodeName, TreeRow } from "./row";
 import type { NodeProps } from "./types";
 
@@ -13,6 +14,7 @@ export const FileNode = ({ row, query, tabbable, onFocus }: NodeProps) => {
 		state: { selection },
 	} = useExplorer();
 	const Icon = getFileIcon(node.name) || LucideFile;
+	const open = () => select({ id: node.id, kind: "file" });
 
 	return (
 		<TreeRow
@@ -21,7 +23,8 @@ export const FileNode = ({ row, query, tabbable, onFocus }: NodeProps) => {
 			selected={selection?.kind === "file" && selection.id === node.id}
 			tabbable={tabbable}
 			meta={node.size}
-			onActivate={() => select({ id: node.id, kind: "file" })}
+			menu={<FileMenu row={row} onOpen={open} />}
+			onActivate={open}
 			onFocus={onFocus}
 		>
 			<Icon className="size-4 shrink-0 text-fg-2" />

@@ -14,6 +14,12 @@ export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 export const variantOf = (fileName: string): string =>
 	IMAGE_VARIANTS.find((variant) => fileName.startsWith(`${variant}_`)) ?? fileName.split("_")[0];
 
+/** Position of a size in the size table, smallest first; a name outside the table ranks last. */
+export const sizeRank = (name: string) => {
+	const rank = IMAGE_VARIANTS.findIndex((variant) => variant === name);
+	return rank === -1 ? IMAGE_VARIANTS.length : rank;
+};
+
 /** The file's extension in capitals, which names its type; `"unknown"` without one. */
 export const fileType = (fileName: string): string => {
 	const extension = fileName.includes(".") ? fileName.split(".").pop() : "";

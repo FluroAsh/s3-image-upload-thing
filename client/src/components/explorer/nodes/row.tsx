@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { LucideChevronRight } from "lucide-react";
 
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { cn } from "@/lib/utils";
 
 import { getDepthPadding } from "../utils";
@@ -23,8 +24,16 @@ type TreeRowProps = {
 	children: ReactNode;
 	/** Right-hand text, such as a count or a size. */
 	meta?: string | number;
+	/** Items of the row's context menu; the content mounts only while the menu is open. */
+	menu: ReactNode;
 	onActivate: () => void;
 	onFocus: () => void;
+};
+
+/** Opens the context menu on the focused row, which the browser does not do on every platform for Shift+F10 or the menu key. */
+const openMenuFromKeyboard = (row: HTMLElement) => {
+	const { left, top, height } = row.getBoundingClientRect();
+	row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: left + 24, clientY: top + height }));
 };
 
 /** The one tree row, so folders, sets and files share height, indent, stripe, hover and focus. */
@@ -37,40 +46,51 @@ export const TreeRow = ({
 	tabbable,
 	children,
 	meta,
+	menu,
 	onActivate,
 	onFocus,
 }: TreeRowProps) => (
-	<div
-		role="treeitem"
-		aria-label={label}
-		aria-level={depth + 1}
-		aria-selected={selected}
-		aria-expanded={expanded}
-		data-tree-id={id}
-		tabIndex={tabbable ? 0 : -1}
-		className={cn(
-			"group relative flex h-row cursor-pointer select-none items-center gap-1.5 rounded-md pr-2 text-body text-fg transition-colors duration-100",
-			"focus-visible:-outline-offset-2",
-			selected ? "bg-accent/12" : "hover:bg-raised",
-		)}
-		style={{ paddingLeft: getDepthPadding(depth) }}
-		onClick={onActivate}
-		onFocus={onFocus}
-		onKeyDown={(event) => {
-			if (event.target !== event.currentTarget || event.key !== "Enter") return;
-			event.preventDefault();
-			onActivate();
-		}}
-	>
-		{selected && <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 rounded-sm bg-accent" />}
-		<span className="flex size-4 shrink-0 items-center justify-center text-fg-2">
-			{expanded !== undefined && (
-				<LucideChevronRight className={cn("size-3.5 transition-transform duration-100", expanded && "rotate-90")} />
-			)}
-		</span>
-		{children}
-		{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
-	</div>
+	<ContextMenu>
+		<ContextMenuTrigger asChild>
+			<div
+				role="treeitem"
+				aria-label={label}
+				aria-level={depth + 1}
+				aria-selected={selected}
+				aria-expanded={expanded}
+				data-tree-id={id}
+				tabIndex={tabbable ? 0 : -1}
+				className={cn(
+					"group relative flex h-row cursor-pointer select-none items-center gap-1.5 rounded-md pr-2 text-body text-fg transition-colors duration-100",
+					"focus-visible:-outline-offset-2",
+					selected ? "bg-accent/12" : "hover:bg-raised",
+				)}
+				style={{ paddingLeft: getDepthPadding(depth) }}
+				onClick={onActivate}
+				onFocus={onFocus}
+				onKeyDown={(event) => {
+					if (event.target !== event.currentTarget) return;
+					if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+						event.preventDefault();
+						openMenuFromKeyboard(event.currentTarget);
+					} else if (event.key === "Enter") {
+						event.preventDefault();
+						onActivate();
+					}
+				}}
+			>
+				{selected && <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 rounded-sm bg-accent" />}
+				<span className="flex size-4 shrink-0 items-center justify-center text-fg-2">
+					{expanded !== undefined && (
+						<LucideChevronRight className={cn("size-3.5 transition-transform duration-100", expanded && "rotate-90")} />
+					)}
+				</span>
+				{children}
+				{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
+			</div>
+		</ContextMenuTrigger>
+		<ContextMenuContent>{menu}</ContextMenuContent>
+	</ContextMenu>
 );
 
 type NodeNameProps = {
