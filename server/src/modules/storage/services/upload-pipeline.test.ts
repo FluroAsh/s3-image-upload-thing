@@ -72,18 +72,19 @@ const upload = async (
 ) => {
 	const jpeg = await makeJpeg(jpegOptions);
 
-	return runUploadPipeline({
+	const [result] = await runUploadPipeline({
 		fileEntries: [["0", new File([jpeg], fileName, { type: "image/jpeg" })]],
 		bucketName: "example-bucket",
 		bucketRegion: "us-east-1",
 		destination,
 	});
+	return result;
 };
 
 const uploadStored = async () => {
 	const result = await upload();
-	if (!("files" in result)) throw new Error(`Upload was refused: ${result.refused}`);
-	return result.files;
+	if (result.status !== "stored") throw new Error(`Upload was ${result.status}: ${result.reason}`);
+	return result.variants ?? [];
 };
 
 beforeEach(() => {
@@ -143,7 +144,7 @@ describe("runUploadPipeline", () => {
 		});
 	});
 
-	it("answers 409 and stores nothing more when another upload stored the original first", async () => {
+	it("refuses and stores nothing more when another upload stored the original first", async () => {
 		s3.respond = async (sent) => {
 			if (sent.command === "PutObject" && sent.input.Key.endsWith("/original.jpg")) {
 				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
@@ -153,7 +154,10 @@ describe("runUploadPipeline", () => {
 			return s3.defaultRespond(sent);
 		};
 
-		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+		await expect(upload()).resolves.toMatchObject({
+			status: "refused",
+			reason: 'An image set named "photo" already exists',
+		});
 
 		expect(puts().map(({ Key }) => Key)).toEqual(["trip/photo/original.jpg"]);
 	});
@@ -256,13 +260,13 @@ describe("runUploadPipeline", () => {
 	it("deletes the original and the sizes it stored when a size fails, so a retry succeeds", async () => {
 		const bucket = fakeBucket({ failOn: (key) => key.includes("full_") });
 
-		await expect(upload()).rejects.toThrow("S3 is down");
+		await expect(upload()).resolves.toMatchObject({ status: "failed", reason: "S3 is down" });
 
 		expect(puts().some(({ Key }) => Key.endsWith(".json"))).toBe(false);
 		expect(bucket.keys()).toEqual([]);
 
 		bucket.failOn = () => false;
-		await expect(upload()).resolves.toHaveProperty("files");
+		await expect(upload()).resolves.toMatchObject({ status: "stored" });
 		expect(bucket.keys()).toContain("trip/photo/manifest.json");
 	});
 
@@ -273,7 +277,10 @@ describe("runUploadPipeline", () => {
 			const bucket = fakeBucket({ stallOn: (key) => key.includes("full_") });
 			vi.useFakeTimers();
 
-			const outcome = expect(upload()).rejects.toThrow(`S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`);
+			const outcome = expect(upload()).resolves.toMatchObject({
+				status: "failed",
+				reason: `S3 request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`,
+			});
 			await bucket.stalled;
 			await vi.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS);
 			await outcome;
@@ -286,7 +293,7 @@ describe("runUploadPipeline", () => {
 	it("deletes the original and every size when the manifest fails to store", async () => {
 		const bucket = fakeBucket({ failOn: (key) => key.endsWith("/manifest.json") });
 
-		await expect(upload()).rejects.toThrow("S3 is down");
+		await expect(upload()).resolves.toMatchObject({ status: "failed", reason: "S3 is down" });
 
 		expect(bucket.keys()).toEqual([]);
 	});
@@ -294,14 +301,20 @@ describe("runUploadPipeline", () => {
 	it("names the keys left behind when the clean-up fails too", async () => {
 		fakeBucket({ failOn: (key) => key.endsWith("/manifest.json"), failDelete: (key) => key.endsWith("/original.jpg") });
 
-		await expect(upload()).rejects.toThrow(/S3 is down.*trip\/photo\/original\.jpg/);
+		await expect(upload()).resolves.toMatchObject({
+			status: "failed",
+			reason: expect.stringMatching(/S3 is down.*trip\/photo\/original\.jpg/),
+		});
 	});
 
 	it("deletes nothing when the original already belongs to someone else", async () => {
 		const bucket = fakeBucket({});
 		bucket.objects.add("trip/photo/original.jpg");
 
-		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+		await expect(upload()).resolves.toMatchObject({
+			status: "refused",
+			reason: 'An image set named "photo" already exists',
+		});
 
 		expect(s3.sent.some(({ command }) => command === "DeleteObject")).toBe(false);
 		expect(bucket.keys()).toEqual(["trip/photo/original.jpg"]);
@@ -315,7 +328,10 @@ describe("runUploadPipeline", () => {
 		s3.respond = async (sent) =>
 			sent.command === "ListObjectsV2" ? { Contents: [{ Key: key }] } : s3.defaultRespond(sent);
 
-		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+		await expect(upload()).resolves.toMatchObject({
+			status: "refused",
+			reason: 'An image set named "photo" already exists',
+		});
 
 		expect(s3.sent).toEqual([
 			{ command: "ListObjectsV2", input: { Bucket: "example-bucket", Prefix: "trip/photo/", MaxKeys: 1 } },
@@ -328,7 +344,10 @@ describe("runUploadPipeline", () => {
 		["original.v2.png", "trip"],
 		["photo.png", "trip/original.v2"],
 	])("refuses %s into destination '%s' as reserved before touching S3", async (fileName, destination) => {
-		await expect(upload(fileName, destination)).resolves.toMatchObject({ refused: "reserved" });
+		await expect(upload(fileName, destination)).resolves.toMatchObject({
+			status: "refused",
+			reason: expect.stringContaining("is reserved"),
+		});
 
 		expect(s3.sent).toEqual([]);
 	});
@@ -341,10 +360,10 @@ describe("runUploadPipeline", () => {
 		["legacy.png", ""],
 		["photo.png", "legacy"],
 	])("accepts %s into destination '%s': only the start of a key is reserved", async (fileName, destination) => {
-		await expect(upload(fileName, destination)).resolves.toHaveProperty("files");
+		await expect(upload(fileName, destination)).resolves.toMatchObject({ status: "stored" });
 	});
 
-	it("answers 409 when another upload stores the manifest first, never replacing it", async () => {
+	it("refuses when another upload stores the manifest first, never replacing it", async () => {
 		s3.respond = async (sent) => {
 			if (sent.command === "PutObject" && sent.input.Key.endsWith("/manifest.json")) {
 				throw Object.assign(new Error("At least one of the pre-conditions you specified did not hold"), {
@@ -354,8 +373,60 @@ describe("runUploadPipeline", () => {
 			return s3.defaultRespond(sent);
 		};
 
-		await expect(upload()).resolves.toEqual({ refused: "exists", names: ["photo"] });
+		await expect(upload()).resolves.toMatchObject({
+			status: "refused",
+			reason: 'An image set named "photo" already exists',
+		});
 
 		expect(manifestPut()).toMatchObject({ Key: "trip/photo/manifest.json", IfNoneMatch: "*" });
+	});
+
+	it("stores the good files of a batch and reports the bad ones, never blocking the rest", async () => {
+		const bucket = fakeBucket({});
+		bucket.objects.add("trip/taken/manifest.json");
+		const jpeg = new Uint8Array(await makeJpeg({ width: 300, height: 150 }));
+
+		const results = await runUploadPipeline({
+			fileEntries: [
+				["0", new File([jpeg], "fresh.jpg", { type: "image/jpeg" })],
+				["1", new File([jpeg], "taken.jpg", { type: "image/jpeg" })],
+				["2", new File(["not an image"], "broken.jpg", { type: "image/jpeg" })],
+			],
+			bucketName: "example-bucket",
+			bucketRegion: "us-east-1",
+			destination: "trip",
+		});
+
+		expect(results.map(({ file, status, reason }) => ({ file, status, reason }))).toEqual([
+			{ file: "fresh.jpg", status: "stored", reason: undefined },
+			{ file: "taken.jpg", status: "refused", reason: 'An image set named "taken" already exists' },
+			{ file: "broken.jpg", status: "refused", reason: "Not a valid image" },
+		]);
+		expect(bucket.keys()).toContain("trip/fresh/manifest.json");
+		expect(bucket.keys().some((key) => key.startsWith("trip/broken/"))).toBe(false);
+	});
+
+	it("refuses each repeat of a name within one batch and still stores the first", async () => {
+		const bucket = fakeBucket({});
+		const jpeg = new Uint8Array(await makeJpeg({ width: 300, height: 150 }));
+
+		const results = await runUploadPipeline({
+			fileEntries: [
+				["0", new File([jpeg], "dup.jpg", { type: "image/jpeg" })],
+				["1", new File([jpeg], "dup.png", { type: "image/jpeg" })],
+				["2", new File([jpeg], "other.jpg", { type: "image/jpeg" })],
+			],
+			bucketName: "example-bucket",
+			bucketRegion: "us-east-1",
+			destination: "trip",
+		});
+
+		expect(results.map(({ file, status, reason }) => ({ file, status, reason }))).toEqual([
+			{ file: "dup.jpg", status: "stored", reason: undefined },
+			{ file: "dup.png", status: "refused", reason: "duplicate name in this upload" },
+			{ file: "other.jpg", status: "stored", reason: undefined },
+		]);
+		expect(bucket.keys()).toContain("trip/dup/manifest.json");
+		expect(bucket.keys()).toContain("trip/other/manifest.json");
 	});
 });

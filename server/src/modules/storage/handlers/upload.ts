@@ -1,9 +1,7 @@
 import type { Context } from "hono";
-import { HTTPException } from "hono/http-exception";
 
 import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
-import { uploadSetIdentity } from "../services/manifest";
 import { runUploadPipeline } from "../services/upload-pipeline";
 import { badRequest, respond } from "./respond";
 
@@ -34,11 +32,6 @@ const parseUploadRequest = async (ctx: Context) => {
 	const imageArray = Array.isArray(images) ? images : [images];
 	const fileEntries = Object.entries(imageArray);
 
-	const names = imageArray.flatMap((image) =>
-		image instanceof File ? [uploadSetIdentity(destination, image.name).name] : [],
-	);
-	if (new Set(names).size < names.length) throw badRequest("Two files in one upload cannot share a name");
-
 	return {
 		bucketName,
 		bucketRegion,
@@ -55,17 +48,5 @@ export const uploadImagesHandler = (ctx: Context) =>
 			throw badRequest("No files uploaded");
 		}
 
-		const outcome = await runUploadPipeline({ fileEntries, bucketName, bucketRegion, destination });
-
-		if ("refused" in outcome) {
-			if (outcome.refused === "reserved") {
-				throw badRequest(`Path ${outcome.names.map((name) => `"${name}"`).join(", ")} is reserved`);
-			}
-			throw new HTTPException(409, { message: `An image set already exists for: ${outcome.names.join(", ")}` });
-		}
-
-		return {
-			message: "Successfully uploaded images",
-			files: outcome.files,
-		};
+		return { results: await runUploadPipeline({ fileEntries, bucketName, bucketRegion, destination }) };
 	});

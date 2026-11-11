@@ -62,7 +62,8 @@ export const useMutateUpload = (bucketName: string) => {
 
 	return useMutation({
 		mutationFn: (formData: FormData) => postUploadImages(formData),
-		onSuccess: () => {
+		onSuccess: ({ results }) => {
+			if (!results.some(({ status }) => status === "stored")) return;
 			qc.invalidateQueries({
 				exact: false,
 				queryKey: ["fileTree", bucketName],
@@ -143,7 +144,7 @@ const FIVE_MINUTES_MS = 5 * 60 * 1000;
  * are batched into a single network request via the presigned URL batcher.
  */
 export const usePresignedUrls = (keys: string[], bucketName: string, bucketRegion: string) => {
-	setBatcherBucket(bucketName, bucketRegion); // Keep the batcher in sync with the active bucket
+	setBatcherBucket(bucketName, bucketRegion);
 
 	const sortedKeys = [...keys].sort();
 

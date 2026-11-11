@@ -1,3 +1,4 @@
+import type { UPLOAD_STATUSES } from "../constants/upload";
 import type { Collection, CollectionPhoto, CollectionsFile } from "./collections";
 import type { ImageVariant } from "./image";
 
@@ -110,11 +111,22 @@ export type FileVariant = {
   ETag: string;
 };
 
-export type FileVariants = FileVariant[];
+export type UploadStatus = (typeof UPLOAD_STATUSES)[number];
 
-export type UploadSuccess = {
-  message: string;
-  files: FileVariant[];
+export type UploadFileResult = {
+  /** Name of the uploaded file, with its extension. */
+  file: string;
+  /** How this file ended; one file's status never changes another's. */
+  status: UploadStatus;
+  /** Why the file was `refused` or `failed`; absent when `stored`. */
+  reason?: string;
+  /** Every variant stored for the file; present only when `stored`. */
+  variants?: FileVariant[];
+};
+
+export type UploadResponse = {
+  /** One result per uploaded file, in request order. */
+  results: UploadFileResult[];
 };
 
 export type CreateCollectionRequest = {

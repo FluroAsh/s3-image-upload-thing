@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 
+import { serverErrorMessage } from "@/components/explorer/utils";
+import type { ApiError } from "@/lib/ofetch";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useMutateUpload } from "@/lib/query";
 import { buildUploadFormData } from "@/lib/upload-form-data";
@@ -8,13 +10,6 @@ import { cn } from "@/lib/utils";
 import { FolderSelect } from "./folder-select";
 import { UploadImageGrid } from "./image-grid";
 import { EUploadState, useUpload } from "./provider";
-
-// TODO: modify strucutre to allow for custom properties prior to submission
-// eg: "isRenaming"...
-// type ImageItem = {
-//   file: File
-//   isRenaming: boolean
-// }
 
 const SubmitButton = ({ hasImages, onClick }: { hasImages: boolean; onClick: () => void }) => (
 	<button
@@ -35,7 +30,7 @@ export const UploadScreen = () => {
 	const folderPathRef = useRef<string>("");
 
 	const { bucketName, bucketRegion } = useExplorer().state;
-	const { setUploadState, setUploadResponse } = useUpload();
+	const { setUploadState, setUploadResponse, setUploadError } = useUpload();
 	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName);
 
 	const handleSubmit = async () => {
@@ -49,11 +44,10 @@ export const UploadScreen = () => {
 			);
 			setUploadResponse(response);
 			setUploadState(EUploadState.Complete);
-
-			// TODO: set toast or success message
 		} catch (e) {
 			setUploadState(EUploadState.Error);
 			setUploadResponse(null);
+			setUploadError(serverErrorMessage(e as ApiError, (e as Error).message));
 			console.warn(e);
 		}
 	};
