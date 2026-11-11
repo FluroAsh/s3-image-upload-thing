@@ -1,14 +1,7 @@
 import { LucideUpload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogBody,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 import { EUploadState, type UploadState, useUpload } from "./provider";
 import { CompleteScreen } from "./screen.complete";

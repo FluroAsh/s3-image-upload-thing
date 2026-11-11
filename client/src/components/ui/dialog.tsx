@@ -5,9 +5,8 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { LucideX } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-import { Button } from "./button";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -41,7 +40,7 @@ const CONTENT_SIZES = {
 type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
 	/** Width of the dialog: `"small"` for confirm and prompt, `"wide"` for the collections modal. Defaults to `"default"`. */
 	size?: keyof typeof CONTENT_SIZES;
-	/** Hides the corner close button, for dialogs that close through their own footer. Defaults to `true`. */
+	/** Shows the corner close button; turn off for dialogs that close from their footer. */
 	showClose?: boolean;
 };
 
@@ -60,12 +59,14 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
 			>
 				{children}
 				{showClose && (
-					<DialogPrimitive.Close asChild>
-						<Button variant="icon" className="absolute right-2 top-[7px]">
-							<LucideX className="size-3.5" />
-							<span className="sr-only">Close</span>
-						</Button>
-					</DialogPrimitive.Close>
+					<div className="absolute right-2 top-0 flex h-10 items-center">
+						<DialogPrimitive.Close asChild>
+							<Button variant="icon">
+								<LucideX className="size-3.5" />
+								<span className="sr-only">Close</span>
+							</Button>
+						</DialogPrimitive.Close>
+					</div>
 				)}
 			</DialogPrimitive.Content>
 		</DialogPortal>

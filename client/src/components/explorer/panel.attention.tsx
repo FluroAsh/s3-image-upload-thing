@@ -2,15 +2,15 @@ import { useState } from "react";
 
 import { LucideAlertTriangle, LucideArrowLeft, LucideCheck, LucideLoader2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { StateMessage } from "@/components/ui/state-message";
 import { useSetSelection } from "@/hooks/useSetSelection";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useAttention, useFileTree } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { SetAttention } from "~/shared/types";
 
-import { Button } from "../ui/button";
-import { Chip } from "../ui/chip";
-import { StateMessage } from "../ui/state-message";
 import { PartialNotice } from "./partial-notice";
 import { serverErrorMessage } from "./utils";
 
@@ -33,10 +33,8 @@ const Row = ({ row }: { row: SetAttention }) => {
 				)}
 			>
 				<span className="truncate font-medium text-fg">{row.name}</span>
-				<span className="flex flex-wrap gap-1 text-xs">
-					{row.manifest !== "present" && (
-						<Chip>{MANIFEST_NOTE[row.manifest]}</Chip>
-					)}
+				<span className="flex flex-wrap gap-1 text-secondary">
+					{row.manifest !== "present" && <Chip>{MANIFEST_NOTE[row.manifest]}</Chip>}
 					{row.problems.map(({ name, state, reason }) => (
 						<Chip key={name} title={reason} tone={state === "mismatched" ? "mismatched" : "missing"}>
 							{name} {state === "mismatched" ? "mismatched" : "missing"}
@@ -67,9 +65,9 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 			</Button>
 			<h3 className="text-body font-medium text-fg">
 				{folder || "Bucket root"}
-				{total !== undefined && <span className="ml-2 text-xs text-fg-1">{total} sets</span>}
+				{total !== undefined && <span className="ml-2 text-secondary text-fg-1">{total} sets</span>}
 			</h3>
-			<label className="flex items-center gap-2 text-xs text-fg-1">
+			<label className="flex items-center gap-2 text-secondary text-fg-1">
 				<input type="checkbox" checked={!all} onChange={(event) => setAll(!event.target.checked)} />
 				Only sets needing attention
 			</label>
@@ -77,7 +75,7 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 				<StateMessage spin icon={LucideLoader2} title="Checking sets..." />
 			) : error && rows.length === 0 ? (
 				<StateMessage
-					tone="error"
+					tone="err"
 					icon={LucideAlertTriangle}
 					title="Failed to check sets"
 					message={serverErrorMessage(error)}
@@ -105,7 +103,7 @@ export const AttentionPanel = ({ folder }: { folder: string }) => {
 			{error && rows.length > 0 && (
 				<StateMessage
 					size="inline"
-					tone="error"
+					tone="err"
 					icon={LucideAlertTriangle}
 					title="Failed to load more"
 					message={serverErrorMessage(error)}

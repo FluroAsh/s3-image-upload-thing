@@ -2,9 +2,8 @@ import * as React from "react";
 
 import { LucideChevronDown } from "lucide-react";
 
+import { FIELD_STYLE } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-
-import { FIELD_STYLE } from "./input";
 
 type SelectProps = React.ComponentPropsWithoutRef<"select"> & {
 	/** Draws the error border; the message itself is the caller's line under the field. */

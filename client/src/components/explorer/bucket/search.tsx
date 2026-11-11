@@ -1,8 +1,7 @@
 import { LucideSearch } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-
-import { Input } from "../../ui/input";
 
 export const BucketSearch = ({ disabled }: { disabled: boolean }) => {
 	const {

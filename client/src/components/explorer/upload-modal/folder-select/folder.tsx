@@ -14,7 +14,7 @@ export const Folder = ({ name, onClick }: { name: string; onClick: () => void })
 	>
 		<div className="grid place-items-center h-full [&>*]:transition-colors">
 			<LucideFolder className="size-6 stroke-fg-2 group-hover:stroke-fg-1" />
-			<span className="text-xs text-center text-fg-1 group-hover:text-fg">{name}</span>
+			<span className="text-secondary text-center text-fg-1 group-hover:text-fg">{name}</span>
 		</div>
 	</button>
 );

@@ -18,7 +18,7 @@ const AddImageButton = ({ onClick }: { onClick: () => void }) => (
 	>
 		<div className="grid place-items-center gap-1">
 			<LucidePlus className="size-6" />
-			<span className="text-xs">Add Image</span>
+			<span className="text-secondary">Add Image</span>
 		</div>
 	</button>
 );
@@ -72,14 +72,11 @@ export const UploadImageGrid = ({
 	const triggerFileInput = () => inputRef.current?.click();
 
 	return (
-		// overflow-y-auto is a temp fix to scroll when there's overflow
-		// TODO: Fix the layout to handle overflow properly...
 		<div className="overflow-y-auto overflow-x-hidden">
 			<div id="main-image" className="mb-6 h-[350px]">
 				{mainImage ? (
 					<ImagePreview image={mainImage} onRemoveClick={() => handleRemoveImage(0)} />
 				) : (
-					// TODO: Add drag & drop support
 					<ImagePlaceholder onClick={triggerFileInput} />
 				)}
 			</div>

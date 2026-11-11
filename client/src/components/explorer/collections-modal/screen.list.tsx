@@ -7,12 +7,12 @@ import {
 	LucideTrash2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useDeleteCollection, useUpdateCollection } from "@/lib/query";
 import { coverOf } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
-import { Button } from "../../ui/button";
-import { StateMessage } from "../../ui/state-message";
 import { PartialNotice } from "../partial-notice";
 import { formatCount, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
@@ -49,10 +49,10 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 				<CollectionThumb folder={shown ? sets.get(shown) : undefined} />
 				<div className="min-w-0 flex-1">
 					<h3 className="truncate text-body font-medium text-fg">{collection.name}</h3>
-					<p className="truncate text-xs text-fg-1">
+					<p className="truncate text-secondary text-fg-1">
 						{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
 					</p>
-					{error && <p className="text-xs text-err">{serverErrorMessage(error)}</p>}
+					{error && <p className="text-secondary text-err">{serverErrorMessage(error)}</p>}
 				</div>
 			</button>
 			<Button
@@ -112,7 +112,7 @@ export const ListScreen = () => {
 					<StateMessage spin icon={LucideLoader2} title="Loading collections..." />
 				) : error ? (
 					<StateMessage
-						tone="error"
+						tone="err"
 						icon={LucideAlertTriangle}
 						title="Failed to load collections"
 						message={serverErrorMessage(error)}

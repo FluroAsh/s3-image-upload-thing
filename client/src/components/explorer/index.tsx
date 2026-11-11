@@ -11,6 +11,7 @@ import {
 	LucideImages,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { useSetSelection } from "@/hooks/useSetSelection";
 import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
@@ -18,14 +19,11 @@ import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { TreeNode } from "~/shared/types";
 
-import { Badge } from "../ui/badge";
 import { MainContent } from "./layout.main-content";
 import { Sidebar } from "./layout.sidebar";
 import { getDepthPadding, isSetFolder, setPathOf } from "./utils";
 
 export const ExplorerLayout = () => {
-	// TODO: https://github.com/bvaughn/react-resizable-panels/tree/main
-
 	return (
 		<ExplorerProvider>
 			<div id="explorer-container" className="flex overflow-hidden size-full">
@@ -55,7 +53,6 @@ export const FileTree = () => {
 		});
 	};
 
-	// TODO: Tidy this up...
 	const visibleNodes = useMemo(() => {
 		const nodes: RenderTreeNode[] = [];
 
@@ -119,9 +116,7 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 				<LucideImages className="size-4 text-accent flex-shrink-0" />
 				<span className="text-body truncate">{node.name}</span>
 			</div>
-			<Badge plain tone="neutral" className="ml-auto text-accent">
-				{variants.length}
-			</Badge>
+			<span className="ml-auto font-mono text-caption text-fg-1">{variants.length}</span>
 		</button>
 	);
 };
@@ -153,7 +148,7 @@ const File = ({ node }: { node: TreeNode }) => {
 				<Icon className="size-4 stroke-accent" />
 				<span className="text-body truncate">{node.name}</span>
 			</div>
-			{node.size && <span className="ml-auto text-xs text-fg-1">{node.size}</span>}
+			{node.size && <span className="ml-auto text-secondary text-fg-1">{node.size}</span>}
 		</button>
 	);
 };
@@ -200,17 +195,17 @@ const Folder = ({
 					<span className="text-body font-medium truncate">{node.name}</span>
 				</div>
 
-				{node.childCount > 0 && <span className="ml-auto text-xs text-fg-1">{node.childCount}</span>}
+				{node.childCount > 0 && <span className="ml-auto text-secondary text-fg-1">{node.childCount}</span>}
 			</button>
-			<button
-				type="button"
+			<Button
+				variant="icon"
 				aria-label={`Show sets needing attention in ${node.name}`}
 				title="Sets needing attention"
-				className="rounded-sm p-1 text-fg-1 hover:bg-raised hover:text-warn"
+				className="hover:text-warn"
 				onClick={() => setAttentionFolder(setPathOf(node.id))}
 			>
 				<LucideAlertTriangle className="size-4" />
-			</button>
+			</Button>
 		</div>
 	);
 };

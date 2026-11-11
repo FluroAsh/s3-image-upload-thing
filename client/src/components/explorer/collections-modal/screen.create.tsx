@@ -2,10 +2,10 @@ import { useState } from "react";
 
 import { LucideArrowLeft } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useCollections, useCreateCollection } from "@/lib/query";
 
-import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { useCollectionsModal } from "./provider";
@@ -32,12 +32,7 @@ export const CreateScreen = () => {
 				<LucideArrowLeft className="size-4" />
 				Back to collections
 			</Button>
-			<Input
-				aria-label="Name"
-				placeholder="Name"
-				value={name}
-				onChange={(e) => setName(e.target.value)}
-			/>
+			<Input aria-label="Name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
 			<SetPicker picked={picked} onChange={setPicked} />
 
 			{create.error && <p className="text-body text-err">{serverErrorMessage(create.error, "Could not create.")}</p>}

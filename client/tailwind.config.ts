@@ -1,11 +1,11 @@
 import type { Config } from "tailwindcss";
+import { FONT_SIZES } from "./src/lib/font-sizes";
 import { fontFamily } from "tailwindcss/defaultTheme";
 
 /** Colours are stored as `r g b` channels so opacity modifiers like `bg-accent/12` work. */
 const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 
 export default {
-	darkMode: ["class"],
 	content: [
 		"./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
 		"./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -29,10 +29,7 @@ export default {
 				warn: token("warn"),
 				err: token("err"),
 			},
-			fontSize: {
-				body: ["13px", "18px"],
-				caption: ["11px", "14px"],
-			},
+			fontSize: FONT_SIZES,
 			spacing: {
 				row: "28px",
 				control: "26px",

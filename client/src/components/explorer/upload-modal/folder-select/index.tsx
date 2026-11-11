@@ -3,13 +3,12 @@ import { type MutableRefObject, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
 
-import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useFileTree } from "@/lib/query";
-import type { FileTreeResponse, TreeNode } from "~/shared/types";
-
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
+import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useFileTree } from "@/lib/query";
+import type { FileTreeResponse, TreeNode } from "~/shared/types";
 
 import { Folder } from "./folder";
 
@@ -74,7 +73,6 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 	};
 
 	return (
-		// Header
 		<div className="mb-4">
 			<div className="mb-4 flex justify-between items-center">
 				<div className="text-fg-1">
@@ -87,7 +85,6 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 				</Button>
 			</div>
 
-			{/* Search/Navigation */}
 			<div className="flex gap-x-2 mb-4">
 				<div className="relative w-full">
 					<Input

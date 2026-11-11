@@ -17,7 +17,7 @@ export const Header = () => {
 					</div>
 					<div>
 						<h1 className="text-lg font-semibold text-fg tracking-tight">S3 Explorer</h1>
-						<p className="text-xs text-fg-1 font-medium">Cloud File Management</p>
+						<p className="text-secondary text-fg-1 font-medium">Cloud File Management</p>
 					</div>
 				</div>
 			</div>

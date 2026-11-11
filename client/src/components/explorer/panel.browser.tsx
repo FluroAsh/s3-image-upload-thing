@@ -1,11 +1,11 @@
 import { LucideAlertTriangle, LucideDatabase, LucideFolder, LucideLoader2 } from "lucide-react";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { StateMessage } from "@/components/ui/state-message";
 import { useHasMounted } from "@/hooks/useHasMounted";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 
-import { ScrollArea } from "../ui/scroll-area";
-import { StateMessage } from "../ui/state-message";
 import { FileTree } from "./index";
 import { AttentionPanel } from "./panel.attention";
 import { PartialNotice } from "./partial-notice";
@@ -40,7 +40,7 @@ export const BrowserPanel = () => {
 					<StateMessage spin icon={LucideLoader2} title="Loading file tree..." />
 				) : error ? (
 					<StateMessage
-						tone="error"
+						tone="err"
 						icon={LucideAlertTriangle}
 						title="Failed to load files"
 						message={serverErrorMessage(error)}

@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 
 import { LucideAlertTriangle } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { StateMessage } from "@/components/ui/state-message";
 import { useAttachOriginal, useGenerateSizes, useManifest } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import { sizeStatuses } from "~/shared/image-sizes";
 import type { Manifest } from "~/shared/types";
 
-import { buttonVariants, Button } from "../ui/button";
-import { Chip } from "../ui/chip";
-import { StateMessage } from "../ui/state-message";
 import { serverErrorMessage } from "./utils";
 
 const BYTE_UNITS = ["B", "kB", "MB", "GB"];
@@ -43,7 +43,7 @@ const OriginalUpload = ({
 
 	if (!file) {
 		return (
-			<label className={cn(buttonVariants(), "cursor-pointer has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-accent")}>
+			<label className={cn(buttonVariants(), "cursor-pointer")}>
 				Upload original
 				<input
 					type="file"
@@ -68,7 +68,9 @@ const OriginalUpload = ({
 					<figcaption>Existing image</figcaption>
 				</figure>
 				<figure className="flex-1">
-					{previewUrl && <img src={previewUrl} alt="Chosen file" className="max-h-48 w-full rounded-sm object-contain" />}
+					{previewUrl && (
+						<img src={previewUrl} alt="Chosen file" className="max-h-48 w-full rounded-sm object-contain" />
+					)}
 					<figcaption>{file.name}</figcaption>
 				</figure>
 			</div>
@@ -130,7 +132,9 @@ const Info = ({ manifest, set, imageUrl }: { manifest: Manifest; set: string; im
 					);
 				})}
 				{source ? (
-					<Chip title={`${source.width}×${source.height} · ${formatBytes(source.bytes)} · ${source.public ? "public" : "private"}`}>
+					<Chip
+						title={`${source.width}×${source.height} · ${formatBytes(source.bytes)} · ${source.public ? "public" : "private"}`}
+					>
 						original {source.width}
 					</Chip>
 				) : (
@@ -170,7 +174,7 @@ export const SetInfo = ({ set, imageUrl }: { set: string; imageUrl?: string }) =
 	const { data, error, isPending } = useManifest(set);
 
 	return (
-		<div className="text-xs text-fg-1">
+		<div className="text-secondary text-fg-1">
 			{isPending ? (
 				"Loading set info..."
 			) : error ? (
@@ -179,7 +183,7 @@ export const SetInfo = ({ set, imageUrl }: { set: string; imageUrl?: string }) =
 				) : (
 					<StateMessage
 						size="inline"
-						tone="error"
+						tone="err"
 						icon={LucideAlertTriangle}
 						title="Could not load set info"
 						message={serverErrorMessage(error)}

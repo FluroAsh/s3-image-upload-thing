@@ -1,9 +1,17 @@
 import type * as React from "react";
 
-import { Button } from "./button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
-import { StateMessage } from "./state-message";
 import { LucideAlertTriangle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { StateMessage } from "@/components/ui/state-message";
 
 type ConfirmDialogProps = {
 	/** Whether the dialog is shown. */
@@ -41,7 +49,7 @@ export const ConfirmDialog = ({
 	error,
 	onConfirm,
 }: ConfirmDialogProps) => (
-	<Dialog open={open} onOpenChange={onOpenChange}>
+	<Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
 		<DialogContent size="small" showClose={false}>
 			<DialogHeader className="pr-4">
 				<DialogTitle>{title}</DialogTitle>
@@ -50,7 +58,9 @@ export const ConfirmDialog = ({
 				<DialogDescription asChild>
 					<div>{children}</div>
 				</DialogDescription>
-				{error && <StateMessage size="inline" tone="error" icon={LucideAlertTriangle} title="Could not finish" message={error} />}
+				{error && (
+					<StateMessage size="inline" tone="err" icon={LucideAlertTriangle} title="Could not finish" message={error} />
+				)}
 			</div>
 			<DialogFooter>
 				<Button disabled={pending} onClick={() => onOpenChange(false)} autoFocus={destructive}>

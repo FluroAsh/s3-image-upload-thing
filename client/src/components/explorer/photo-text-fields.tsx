@@ -1,4 +1,4 @@
-import { Input } from "../ui/input";
+import { Input } from "@/components/ui/input";
 
 export const TEXT_DELETED_NOTE = "Its alt text and caption are deleted.";
 
@@ -19,10 +19,10 @@ export const PhotoTextFields = ({
 	withCaption = false,
 	altPlaceholder = "Alt text",
 }: PhotoTextFieldsProps) => {
+	/** Keyed on the saved text so a refetch resets what was typed. */
 	const field = (name: "alt" | "caption", label: string, placeholder: string) => {
 		const saved = photo?.[name] ?? "";
 		return (
-			// Keyed on the saved text so a refetch resets what was typed.
 			<Input
 				key={`${name}:${set}:${saved}`}
 				aria-label={label}

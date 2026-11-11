@@ -39,7 +39,7 @@ CSS variables in `globals.css`, exposed through `tailwind.config.ts` `theme.exte
 | Pressed / menu hover | `--bg-3` | `#22252b` | `bg-pressed` |
 | Hairline | `--line` | `#262930` | `border-line` |
 | Strong border (inputs, menus) | `--line-strong` | `#353943` | `border-line-strong` |
-| Text | `--fg-0 / 1 / 2` | `#e8eaed / #a4a9b3 / #6b7280` | `text-fg / text-fg-1 / text-fg-2` |
+| Text | `--fg-0 / 1 / 2` | `#e8eaed / #a4a9b3 / #80868f` | `text-fg / text-fg-1 / text-fg-2` |
 | Accent (selection, links, focus) | `--accent` | `#7cb8ff` | `text-accent`, `bg-accent/12` |
 | Status | `--ok / --warn / --err` | `#4ade80 / #fbbf24 / #f87171` | `text-ok` etc, `bg-ok/10` |
 

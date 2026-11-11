@@ -1,7 +1,6 @@
-import type { FileVariant, ImageVariant, UploadFileResult, UploadStatus } from "~/shared/types";
-
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
+import type { FileVariant, ImageVariant, UploadFileResult, UploadStatus } from "~/shared/types";
 
 import { useUpload } from "./provider";
 
@@ -30,14 +29,10 @@ const FileItem = ({ file }: { file: FileVariant }) => {
 		<div className="flex items-center justify-between bg-raised rounded-md p-2 border border-line-strong hover:border-fg-2 transition-colors">
 			<Chip className="mr-2 uppercase">{variantSizeLabel[file.variant]}</Chip>
 
-			<a
-				href={file.imageURL}
-				target="_blank"
-				className="text-accent hover:underline text-body font-medium mr-2 flex-1"
-			>
+			<a href={file.imageURL} target="_blank" className="text-accent hover:underline text-body font-medium mr-2 flex-1">
 				{file.fileName}
 			</a>
-			<span className="text-xs text-fg-1 whitespace-nowrap">{file.size}</span>
+			<span className="text-secondary text-fg-1 whitespace-nowrap">{file.size}</span>
 		</div>
 	);
 };
@@ -46,9 +41,7 @@ const FileResult = ({ result }: { result: UploadFileResult }) => (
 	<div className="bg-panel rounded-lg p-3 border border-line">
 		<div className="flex items-center justify-between gap-2">
 			<h4 className="text-body font-medium text-fg break-all">{result.file}</h4>
-			<Badge tone={STATUS_TONE[result.status]} className="uppercase">
-				{result.status}
-			</Badge>
+			<Badge tone={STATUS_TONE[result.status]}>{result.status}</Badge>
 		</div>
 
 		{result.reason && <p className="text-body text-fg-1 mt-2">{result.reason}</p>}

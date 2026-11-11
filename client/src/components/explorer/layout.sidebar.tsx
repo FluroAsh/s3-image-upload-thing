@@ -2,11 +2,11 @@
 
 import { LucideDatabase, LucideSettings } from "lucide-react";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets } from "@/lib/query";
 
-import { ScrollArea } from "../ui/scroll-area";
-import { Separator } from "../ui/separator";
 import { BucketList } from "./bucket/list";
 import { BucketSearch } from "./bucket/search";
 import { formatCount } from "./utils";
@@ -20,7 +20,6 @@ export const Sidebar = () => {
 	const totalObjectCount = formatCount(bucketData?.totalObjectCount ?? 0, undefined, bucketData?.partial ?? false);
 	const buckets = bucketData?.buckets ?? [];
 
-	// Filter buckets based on search term
 	const filteredBuckets = buckets.filter((bucket) =>
 		bucket.Name?.toLowerCase().includes(bucketSearchTerm.toLowerCase()),
 	);

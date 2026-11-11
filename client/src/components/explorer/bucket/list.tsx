@@ -3,11 +3,11 @@
 import { LucideAlertTriangle, LucideDatabase, LucideLoader2, LucideSearchX } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
+import { StateMessage } from "@/components/ui/state-message";
 import type { ApiError } from "@/lib/ofetch";
 import { dashboardSearchParams } from "@/lib/search-params";
 import type { Bucket } from "~/shared/types";
 
-import { StateMessage } from "../../ui/state-message";
 import { serverErrorMessage } from "../utils";
 import { BucketCard } from "./card";
 
@@ -35,7 +35,7 @@ export const BucketList = ({
 		return (
 			<StateMessage
 				size="sm"
-				tone="error"
+				tone="err"
 				icon={LucideAlertTriangle}
 				title="Failed to load buckets"
 				message={error ? serverErrorMessage(error) : undefined}

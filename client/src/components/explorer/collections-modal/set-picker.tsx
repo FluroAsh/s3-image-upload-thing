@@ -51,7 +51,7 @@ const Row = ({
 			/>
 			<Icon className="size-4 shrink-0 text-accent" />
 			<span className="truncate">{label}</span>
-			{note && <span className="ml-auto text-xs text-warn">{note}</span>}
+			{note && <span className="ml-auto text-secondary text-warn">{note}</span>}
 		</label>
 	);
 };

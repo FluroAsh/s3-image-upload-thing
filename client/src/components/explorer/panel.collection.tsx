@@ -1,15 +1,15 @@
 import { LucideAlertTriangle, LucideFolderHeart, LucideLoader2 } from "lucide-react";
 
+import { Select } from "@/components/ui/select";
+import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
 import { holdingSet, setsToMove } from "~/shared/collections";
 
-import { Select } from "../ui/select";
-import { StateMessage } from "../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "./photo-text-fields";
 import { serverErrorMessage } from "./utils";
 
 const NONE = "";
-// A real slug can't hold underscores, so this never collides with one.
+/** A real slug can't hold underscores, so this never collides with one. */
 const NEW = "__new__";
 
 export const CollectionSection = ({ setPath }: { setPath: string }) => {
@@ -27,7 +27,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 
 		const into = target === NONE ? null : target;
 		const leaving = setsToMove(data, [setPath], into)[0]?.from;
-		// Dropping a set from every collection deletes its alt text and caption, and the collection if it was the last set.
+		/** Dropping a set from every collection deletes its alt text and caption, and the collection if it was the last set. */
 		const prompt =
 			into === null
 				? `Remove this set from "${leaving?.name}"? ${TEXT_DELETED_NOTE}`
@@ -50,7 +50,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 			) : error ? (
 				<StateMessage
 					size="inline"
-					tone="error"
+					tone="err"
 					icon={LucideAlertTriangle}
 					title="Failed to load collections"
 					message={serverErrorMessage(error)}
@@ -82,7 +82,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 					{writeError && (
 						<StateMessage
 							size="inline"
-							tone="error"
+							tone="err"
 							icon={LucideAlertTriangle}
 							title="Could not save"
 							message={serverErrorMessage(writeError)}

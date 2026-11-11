@@ -10,13 +10,13 @@ import {
 	LucideTrash2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useReorderCollection, useSetMembers, useUpdateCollection, useUpdatePhoto } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
-import { Button } from "../../ui/button";
-import { StateMessage } from "../../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
 import { SetInfo } from "../set-info";
 import { serverErrorMessage } from "../utils";
@@ -66,19 +66,19 @@ const PhotoTile = ({
 			{folder ? (
 				<CollectionThumb folder={folder} className="size-full" />
 			) : (
-				<div className="grid size-full place-items-center rounded-md bg-raised p-2 text-center text-xs text-fg-1">
+				<div className="grid size-full place-items-center rounded-md bg-raised p-2 text-center text-secondary text-fg-1">
 					<LucideImageOff className="size-5" />
 					Missing
 				</div>
 			)}
 			{isCover && (
-				<span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded-sm bg-accent px-1.5 py-0.5 text-xs text-canvas">
+				<span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded-sm bg-accent px-1.5 py-0.5 text-secondary text-canvas">
 					<LucideStar className="size-3" />
 					Cover
 				</span>
 			)}
 			{!photo.alt && (
-				<span className="absolute bottom-1 left-1 rounded-sm bg-warn px-1.5 py-0.5 text-xs text-canvas">
+				<span className="absolute bottom-1 left-1 rounded-sm bg-warn px-1.5 py-0.5 text-secondary text-canvas">
 					No alt
 				</span>
 			)}
@@ -107,7 +107,7 @@ const PhotoEditor = ({
 
 	return (
 		<div className="space-y-2 rounded-lg border border-line-strong p-3">
-			<p className="truncate text-xs text-fg-1">{photo.set}</p>
+			<p className="truncate text-secondary text-fg-1">{photo.set}</p>
 			<div className="grid grid-cols-2 gap-2">
 				<PhotoTextFields
 					set={photo.set}
@@ -133,7 +133,7 @@ const PhotoEditor = ({
 			{error && (
 				<StateMessage
 					size="inline"
-					tone="error"
+					tone="err"
 					icon={LucideAlertTriangle}
 					title="Could not save"
 					message={serverErrorMessage(error)}
@@ -164,7 +164,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 	if (!collection)
 		return error ? (
 			<StateMessage
-				tone="error"
+				tone="err"
 				icon={LucideAlertTriangle}
 				title="Failed to load collection"
 				message={serverErrorMessage(error)}

@@ -1,12 +1,11 @@
 import { LucideExternalLink, LucideFile, LucideImage, LucideLink } from "lucide-react";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { StateMessage } from "@/components/ui/state-message";
 import { isImageFile, isVideoFile } from "@/lib/helpers";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "~/shared/types";
 
-import { Badge } from "../ui/badge";
-import { ScrollArea } from "../ui/scroll-area";
-import { StateMessage } from "../ui/state-message";
 import { CollectionSection } from "./panel.collection";
 import { SetInfo } from "./set-info";
 import { getVariantType } from "./utils";
@@ -28,7 +27,7 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
 					<div className="size-2 rounded-full bg-accent"></div>
 					<div className="flex flex-col">
 						<span className="text-body font-medium text-fg">{getVariantType(variant.name)}</span>
-						<span className="text-xs text-fg-1">{variant.size}</span>
+						<span className="text-secondary text-fg-1">{variant.size}</span>
 					</div>
 				</div>
 				<LucideExternalLink className="size-4 text-fg-1 group-hover:text-accent transition-colors" />
@@ -144,9 +143,7 @@ export const DetailsPanel = () => {
 					<div className="flex items-center gap-2 mb-4">
 						<div className="size-4 rounded-sm bg-accent"></div>
 						<h3 className="text-body font-medium text-fg">Available Variants</h3>
-						<Badge plain className="text-accent">
-							{variants.length}
-						</Badge>
+						<span className="font-mono text-caption text-fg-1">{variants.length}</span>
 					</div>
 					<ul className="space-y-2">
 						{variants.map((variant) => (

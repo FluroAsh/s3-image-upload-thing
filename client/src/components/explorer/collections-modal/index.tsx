@@ -1,15 +1,7 @@
 import { LucideFolderHeart } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogBody,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections } from "@/lib/query";
 
@@ -38,11 +30,7 @@ export const CollectionsTrigger = () => {
 				<Button disabled={!bucketName}>
 					<LucideFolderHeart className="size-4" />
 					Collections
-					{count > 0 && (
-						<Badge plain tone="neutral" className="bg-accent/12 text-accent">
-							{count}
-						</Badge>
-					)}
+					{count > 0 && <span className="font-mono text-caption text-fg-1">{count}</span>}
 				</Button>
 			</DialogTrigger>
 

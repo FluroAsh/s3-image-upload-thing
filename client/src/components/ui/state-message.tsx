@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const TONES = {
 	neutral: { icon: "text-fg-2", message: "text-fg-1", bar: "bg-raised text-fg-1" },
-	error: { icon: "text-err", message: "text-err", bar: "bg-err/10 text-err" },
+	err: { icon: "text-err", message: "text-err", bar: "bg-err/10 text-err" },
 	ok: { icon: "text-ok", message: "text-ok", bar: "bg-ok/10 text-ok" },
 } as const;
 
@@ -20,7 +20,7 @@ type StateMessageProps = {
 	title: string;
 	/** Detail under the title; leave out when the title says it all. */
 	message?: string;
-	/** Colours the icon and, for `"error"` and `"ok"`, the message. Defaults to `"neutral"`. */
+	/** Colours the icon and, for `"err"` and `"ok"`, the message. Defaults to `"neutral"`. */
 	tone?: keyof typeof TONES;
 	/** `"sm"` fills a narrow column, `"lg"` a wide panel, and `"inline"` is a notice bar above content. Defaults to `"lg"`. */
 	size?: keyof typeof BLOCK_SIZES | "inline";
@@ -44,10 +44,13 @@ export const StateMessage = ({
 
 	if (size === "inline") {
 		return (
-			<div className={cn("flex items-start gap-2 rounded-md px-2 py-1.5 text-xs", bar, className)}>
+			<div className={cn("flex items-start gap-2 rounded-md px-2 py-1.5 text-secondary", bar, className)}>
 				<Icon className={cn("mt-0.5 size-3.5 shrink-0", spin && "animate-spin")} />
 				<p>
-					<span className="font-medium">{title}{message && "."}</span>
+					<span className={cn("font-medium", tone === "neutral" && "text-fg")}>
+						{title}
+						{message && "."}
+					</span>
 					{message && <span> {message}</span>}
 				</p>
 			</div>
@@ -64,7 +67,7 @@ export const StateMessage = ({
 		>
 			<Icon className={cn(icon, BLOCK_SIZES[size].icon, spin && "animate-spin")} />
 			<h3 className="text-body font-medium text-fg">{title}</h3>
-			{message && <p className={cn("mt-1 max-w-xs text-xs", messageTone)}>{message}</p>}
+			{message && <p className={cn("mt-1 max-w-xs text-secondary", messageTone)}>{message}</p>}
 		</div>
 	);
 };

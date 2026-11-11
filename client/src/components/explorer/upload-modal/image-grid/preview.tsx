@@ -12,10 +12,7 @@ export const PreviewGrid = ({ items, children, handleRemoveImage }: ImageGridPro
 	return (
 		<div className="grid grid-cols-5 gap-4 max-h-[250px]">
 			{items.map((item, i) => (
-				// Force images to be square and "slightly" break the grid layout if necessary while maintaining
-				// the aspectio ratio and spacing
 				<div key={`preview-image-${item.name}`} className="h-[120px] aspect-square">
-					{/* eslint-disable-next-line */}
 					<ImagePreview image={item} onRemoveClick={() => handleRemoveImage(i + 1)} />
 				</div>
 			))}

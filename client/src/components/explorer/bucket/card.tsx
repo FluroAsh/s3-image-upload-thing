@@ -37,9 +37,7 @@ export const BucketCard = ({
 	<button
 		type="button"
 		className={`group border rounded-lg p-4 cursor-pointer transition-all min-w-0 ${
-			isActive
-				? "bg-accent/12 border-accent/70"
-				: "hover:bg-accent/12 border-line-strong hover:border-accent/50"
+			isActive ? "bg-accent/12 border-accent/70" : "hover:bg-accent/12 border-line-strong hover:border-accent/50"
 		}`}
 		onClick={handleClick}
 		onKeyDown={(e) => {
@@ -50,34 +48,29 @@ export const BucketCard = ({
 		}}
 	>
 		<div className="flex flex-col items-center gap-3">
-			{/* Content section */}
 			<div className="w-full text-center">
-				<div
-					title={name}
-					className="flex gap-2 items-center text-base font-semibold truncate text-fg"
-				>
+				<div title={name} className="flex gap-2 items-center text-base font-semibold truncate text-fg">
 					<LucideDatabase className="size-4 shrink-0 text-accent" />
 					<h3 className="truncate">{name}</h3>
 				</div>
 
-				{/* Attributes section */}
 				<div className="flex flex-col gap-2 mt-2 ml-5">
-					<span className="text-xs transition-colors flex items-center">
+					<span className="text-secondary transition-colors flex items-center">
 						<HardDrive className="size-4 inline mr-1" />
 						{formatSize(counted ? totalSizeHuman : undefined, partial)}
 					</span>
 
-					<span className="text-xs transition-colors flex items-center">
+					<span className="text-secondary transition-colors flex items-center">
 						<LucideFileText className="size-4 inline mr-1" />
 						{formatCount(counted ? objectCount : undefined, "file", partial)}
 					</span>
 
-					<span className={`text-xs transition-colors flex items-center`}>
+					<span className={`text-secondary transition-colors flex items-center`}>
 						<LucideTimer className="size-4 inline mr-1" />
 						{formattedCreationDate}
 					</span>
 
-					<span className="text-xs transition-colors rounded-md px-2 py-1 border border-accent/50 bg-accent/12 w-fit text-accent">
+					<span className="text-secondary transition-colors rounded-md px-2 py-1 border border-accent/50 bg-accent/12 w-fit text-accent">
 						{region}
 					</span>
 				</div>

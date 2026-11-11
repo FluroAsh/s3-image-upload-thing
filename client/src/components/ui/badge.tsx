@@ -14,15 +14,11 @@ const badgeVariants = cva("inline-flex h-chip items-center gap-1.5 rounded-full 
 	defaultVariants: { tone: "neutral" },
 });
 
-type BadgeProps = React.ComponentPropsWithoutRef<"span"> &
-	VariantProps<typeof badgeVariants> & {
-		/** Leaves out the leading status dot, for a plain count. */
-		plain?: boolean;
-	};
+type BadgeProps = React.ComponentPropsWithoutRef<"span"> & VariantProps<typeof badgeVariants>;
 
-export const Badge = ({ tone, plain = false, className, children, ...props }: BadgeProps) => (
+export const Badge = ({ tone, className, children, ...props }: BadgeProps) => (
 	<span className={cn(badgeVariants({ tone }), className)} {...props}>
-		{!plain && <span aria-hidden className="size-1.5 rounded-full bg-current" />}
+		<span aria-hidden className="size-1.5 rounded-full bg-current" />
 		{children}
 	</span>
 );

@@ -1,10 +1,10 @@
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { useCollections, useSetMembers } from "@/lib/query";
 import { setsNotIn } from "~/shared/collections";
 import type { Collection } from "~/shared/types";
 
-import { Button } from "../../ui/button";
 import { serverErrorMessage } from "../utils";
 import { confirmMove } from "./confirm-move";
 import { SetPicker } from "./set-picker";
