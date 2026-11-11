@@ -11,6 +11,7 @@ import type { Manifest } from "~/shared/types";
 
 import { DetailsHeader } from "./details-header";
 import { Preview } from "./details-preview";
+import { publicUrlOf } from "./file-actions";
 import { Field, formatBytes } from "./inspector";
 import { CollectionSection } from "./panel.collection";
 import { Sizes } from "./sizes";
@@ -70,7 +71,7 @@ export const DetailsPanel = () => {
 	}
 
 	const { remoteURL, name, folder, size, setPath, variants } = active;
-	const publicUrl = remoteURL.split("?")[0];
+	const publicUrl = publicUrlOf(remoteURL);
 
 	return (
 		<section

@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import {
 	ContextMenuItem,
 	ContextMenuSeparator,
@@ -7,32 +5,22 @@ import {
 	ContextMenuSubContent,
 	ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
+import { useCopy } from "@/hooks/useCopy";
 import { useCollections } from "@/lib/query";
 import { holdingSet } from "~/shared/collections";
 
 import type { CollectionAssign } from "../use-collection-move";
 
-const COPIED_MS = 1500;
-
 /** Copies `text` and reads "Copied" for a moment; the menu stays open so the label is seen. */
 export const CopyItem = ({ label, text }: { label: string; text: string | undefined }) => {
-	const [result, setResult] = useState<"copied" | "failed" | null>(null);
-
-	useEffect(() => {
-		if (!result) return;
-		const timer = setTimeout(() => setResult(null), COPIED_MS);
-		return () => clearTimeout(timer);
-	}, [result]);
+	const { result, copy } = useCopy();
 
 	return (
 		<ContextMenuItem
 			disabled={!text}
 			onSelect={(event) => {
 				event.preventDefault();
-				navigator.clipboard.writeText(text ?? "").then(
-					() => setResult("copied"),
-					() => setResult("failed"),
-				);
+				if (text) copy(text);
 			}}
 		>
 			{result === "copied" ? "Copied" : result === "failed" ? "Copy failed" : label}
@@ -45,6 +33,7 @@ type CollectionSubmenuProps = {
 	label: string;
 	/** The sets the choice applies to. */
 	sets: string[];
+	/** Add, move and remove writes for `sets`. */
 	assign: CollectionAssign;
 	/** Offers "Remove from X" when `sets` is one set already in a collection. */
 	removable?: boolean;

@@ -5,19 +5,22 @@ import {
 	ContextMenuSubContent,
 	ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
+import { Kbd } from "@/components/ui/kbd";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 
 import { openFile, publicUrlOf } from "../file-actions";
 import type { TreeRowData } from "../tree-rows";
 import type { CollectionAssign } from "../use-collection-move";
-import { pickPreviewVariant, setFoldersUnder, setPathOf, sizeRank, variantOf } from "../utils";
+import { pickPreviewVariant, setFoldersIn, setPathOf, sizeRank, variantOf } from "../utils";
 import { CollectionSubmenu, CopyItem } from "./menu-parts";
 
-const OPEN_KEY = "⏎";
+const OPEN_KEY = <Kbd>⏎</Kbd>;
 
 type MenuProps = {
+	/** The row the menu belongs to. */
 	row: TreeRowData;
+	/** Opens the row in the details panel. */
 	onOpen: () => void;
 };
 
@@ -43,7 +46,12 @@ export const SetMenu = ({ row, onOpen, assign }: MenuProps & { assign: Collectio
 						{variants
 							.toSorted((a, b) => sizeRank(variantOf(b.name)) - sizeRank(variantOf(a.name)))
 							.map(({ id, name, size }) => (
-								<ContextMenuItem key={id} meta={size} disabled={!urls[id]} onSelect={() => openFile(urls[id])}>
+								<ContextMenuItem
+									key={id}
+									meta={size}
+									disabled={!urls[id]}
+									onSelect={() => urls[id] && openFile(urls[id])}
+								>
 									{variantOf(name)}
 								</ContextMenuItem>
 							))}
@@ -79,21 +87,17 @@ export const FolderMenu = ({
 	row,
 	onToggle,
 	assign,
-}: {
-	row: TreeRowData;
-	onToggle: () => void;
-	assign: CollectionAssign;
-}) => {
+}: Omit<MenuProps, "onOpen"> & { onToggle: () => void; assign: CollectionAssign }) => {
 	const {
 		actions: { setAttentionFolder },
 		state: { bucketName, bucketRegion },
 	} = useExplorer();
 	const { childMap } = useFileTree(bucketName, bucketRegion);
-	const sets = setFoldersUnder(childMap, row.node.id).map(({ id }) => setPathOf(id));
+	const sets = setFoldersIn(childMap, row.node.id).map(({ id }) => setPathOf(id));
 
 	return (
 		<>
-			<ContextMenuItem meta={row.expanded ? "←" : "→"} onSelect={onToggle}>
+			<ContextMenuItem meta={<Kbd>{row.expanded ? "←" : "→"}</Kbd>} onSelect={onToggle}>
 				{row.expanded ? "Collapse" : "Expand"}
 			</ContextMenuItem>
 			<CopyItem label="Copy path" text={setPathOf(row.node.id)} />

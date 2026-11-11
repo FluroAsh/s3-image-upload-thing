@@ -11,6 +11,7 @@ import {
 	PREVIEW_ORDER,
 	pickPreviewVariant,
 	serverErrorMessage,
+	setFoldersIn,
 	setFoldersUnder,
 	setPathOf,
 	setsUnder,
@@ -148,6 +149,13 @@ describe("setFoldersUnder", () => {
 	it("finds set folders at any depth and skips plain folders", () => {
 		expect(setFoldersUnder(childMap, "").map((f) => f.id)).toEqual(["trip/kyoto/", "trip/osaka/"]);
 		expect(setFoldersUnder(childMap, "trip/kyoto/").map((f) => f.id)).toEqual([]);
+	});
+});
+
+describe("setFoldersIn", () => {
+	it("lists only set folders directly inside the folder", () => {
+		expect(setFoldersIn(childMap, "trip/").map((f) => f.id)).toEqual(["trip/kyoto/", "trip/osaka/"]);
+		expect(setFoldersIn(childMap, "").map((f) => f.id)).toEqual([]);
 	});
 });
 

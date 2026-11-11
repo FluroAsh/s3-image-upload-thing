@@ -26,14 +26,17 @@ type TreeRowProps = {
 	meta?: string | number;
 	/** Items of the row's context menu; the content mounts only while the menu is open. */
 	menu: ReactNode;
+	/** Runs on click and Enter. */
 	onActivate: () => void;
+	/** Called when the row takes focus. */
 	onFocus: () => void;
 };
 
 /** Opens the context menu on the focused row, which the browser does not do on every platform for Shift+F10 or the menu key. */
-const openMenuFromKeyboard = (row: HTMLElement) => {
+const openMenuFromKeyboard = (row: HTMLElement, depth: number) => {
 	const { left, top, height } = row.getBoundingClientRect();
-	row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX: left + 24, clientY: top + height }));
+	const clientX = left + Number.parseInt(getDepthPadding(depth), 10);
+	row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX, clientY: top + height }));
 };
 
 /** The one tree row, so folders, sets and files share height, indent, stripe, hover and focus. */
@@ -50,7 +53,7 @@ export const TreeRow = ({
 	onActivate,
 	onFocus,
 }: TreeRowProps) => (
-	<ContextMenu>
+	<ContextMenu modal={false}>
 		<ContextMenuTrigger asChild>
 			<div
 				role="treeitem"
@@ -72,7 +75,7 @@ export const TreeRow = ({
 					if (event.target !== event.currentTarget) return;
 					if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
 						event.preventDefault();
-						openMenuFromKeyboard(event.currentTarget);
+						openMenuFromKeyboard(event.currentTarget, depth);
 					} else if (event.key === "Enter") {
 						event.preventDefault();
 						onActivate();
@@ -89,7 +92,7 @@ export const TreeRow = ({
 				{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
 			</div>
 		</ContextMenuTrigger>
-		<ContextMenuContent>{menu}</ContextMenuContent>
+		<ContextMenuContent onCloseAutoFocus={(event) => event.preventDefault()}>{menu}</ContextMenuContent>
 	</ContextMenu>
 );
 

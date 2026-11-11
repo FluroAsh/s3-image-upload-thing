@@ -16,7 +16,7 @@ export const variantOf = (fileName: string): string =>
 
 /** Position of a size in the size table, smallest first; a name outside the table ranks last. */
 export const sizeRank = (name: string) => {
-	const rank = IMAGE_VARIANTS.findIndex((variant) => variant === name);
+	const rank = (IMAGE_VARIANTS as readonly string[]).indexOf(name);
 	return rank === -1 ? IMAGE_VARIANTS.length : rank;
 };
 
@@ -84,6 +84,10 @@ export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: str
 		if (!node.isFolder) return [];
 		return isSetFolder(node, childMap.get(node.id)) ? [node] : setFoldersUnder(childMap, node.id);
 	});
+
+/** The set folders directly inside `folderId`, not those in its subfolders. */
+export const setFoldersIn = (childMap: Map<string, TreeNode[]>, folderId: string): TreeNode[] =>
+	(childMap.get(folderId) ?? []).filter((node) => isSetFolder(node, childMap.get(node.id)));
 
 /** The sets inside a folder (`""` for the bucket root), found by folder id prefix. */
 export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>
