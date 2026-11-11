@@ -2,8 +2,8 @@ import { LucideExternalLink, LucideFile, LucideImage, LucideLink } from "lucide-
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StateMessage } from "@/components/ui/state-message";
+import { useActiveFile } from "@/hooks/useActiveFile";
 import { isImageFile, isVideoFile } from "@/lib/helpers";
-import { useExplorer } from "@/lib/providers/explorer-provider";
 import type { TreeNode } from "~/shared/types";
 
 import { CollectionSection } from "./panel.collection";
@@ -39,14 +39,9 @@ const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
 const PREVIEW_CONTAINER_SIZE = 600;
 
 export const DetailsPanel = () => {
-	const {
-		activeFile: { remoteURL, fileName, variants, setPath },
-	} = useExplorer().state;
+	const active = useActiveFile();
 
-	const isImage = isImageFile(remoteURL);
-	const isVideo = isVideoFile(remoteURL);
-
-	if (!remoteURL && !setPath) {
+	if (!active) {
 		return (
 			<div id="explorer-details-panel" className="bg-panel border-l border-line flex-1">
 				<StateMessage
@@ -59,6 +54,9 @@ export const DetailsPanel = () => {
 		);
 	}
 
+	const { remoteURL, name: fileName, variants, setPath, previewNode } = active;
+	const isImage = isImageFile(previewNode?.name ?? null);
+	const isVideo = isVideoFile(previewNode?.name ?? null);
 	const Icon = isImage ? LucideImage : LucideFile;
 	const previewURLText = remoteURL.split("?")[0];
 
@@ -108,7 +106,7 @@ export const DetailsPanel = () => {
 				</>
 			)}
 
-			{(isImage || isVideo) && (
+			{remoteURL && (isImage || isVideo) && (
 				<div className="p-6 border-b border-line">
 					<div className="flex items-center gap-2 mb-4">
 						<LucideImage className="size-4 text-accent" />

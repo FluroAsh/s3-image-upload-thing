@@ -7,7 +7,7 @@ import { Chip } from "@/components/ui/chip";
 import { StateMessage } from "@/components/ui/state-message";
 import { useSetSelection } from "@/hooks/useSetSelection";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useAttention, useFileTree } from "@/lib/query";
+import { useAttention } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { SetAttention } from "~/shared/types";
 
@@ -17,10 +17,7 @@ import { serverErrorMessage } from "./utils";
 const MANIFEST_NOTE = { none: "No manifest", notAManifest: "Not a manifest" } as const;
 
 const Row = ({ row }: { row: SetAttention }) => {
-	const { bucketName, bucketRegion } = useExplorer().state;
-	const { childMap } = useFileTree(bucketName, bucketRegion);
-	const id = `${row.set}/`;
-	const { isActive, select } = useSetSelection({ setPath: row.set, name: row.name, variants: childMap.get(id) ?? [] });
+	const { isActive, select } = useSetSelection(row.set);
 
 	return (
 		<li>

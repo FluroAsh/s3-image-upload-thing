@@ -2,7 +2,7 @@ import type { ApiError } from "@/lib/ofetch";
 import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
-const DEPTH_INDENT_PX = 24;
+const DEPTH_INDENT_PX = 16;
 const DEPTH_BASE_OFFSET_PX = 8;
 
 export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
