@@ -2,7 +2,6 @@ import { Chip } from "@/components/ui/chip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useManifest } from "@/lib/query";
 import { VARIANT_LONGEST_EDGE, type Variant } from "~/shared/constants/image-variants";
-import type { Manifest } from "~/shared/types";
 
 import { ManifestBadge } from "./set-badge";
 import { summariseSizes } from "./utils";
@@ -20,35 +19,6 @@ const SKELETON_CHIPS = 3;
 
 const edge = ({ width, height }: { width: number; height: number }) => Math.max(width, height);
 
-/** The pure strip, so a caller that already holds the manifest never refetches it. */
-export const SizeChipList = ({ manifest }: { manifest: Manifest }) => {
-	const { source } = manifest;
-
-	return (
-		<span className="flex flex-wrap gap-1">
-			{summariseSizes(manifest).statuses.map(({ name, state, variant, reason }) =>
-				state === "missing" ? (
-					<Chip key={name} tone="missing" title="missing">
-						{name}
-					</Chip>
-				) : (
-					<Chip key={name} tone={state === "mismatched" ? "mismatched" : "default"} title={reason}>
-						{SHORT_NAMES[name]} {variant ? edge(variant) : VARIANT_LONGEST_EDGE[name]}
-						{state === "mismatched" && " ≠"}
-					</Chip>
-				),
-			)}
-			{source ? (
-				<Chip>orig {edge(source)}</Chip>
-			) : (
-				<Chip tone="missing" title="No original kept">
-					original
-				</Chip>
-			)}
-		</span>
-	);
-};
-
 /** Reads the manifest itself; a set without a usable one shows its badge instead of chips. */
 export const SizeChips = ({ set }: { set: string }) => {
 	const { data, error, isPending } = useManifest(set);
@@ -64,7 +34,36 @@ export const SizeChips = ({ set }: { set: string }) => {
 		);
 	}
 
-	if (!data) return <ManifestBadge error={error} />;
+	if (!data) {
+		return error && error.status !== 404 && error.status !== 422 ? (
+			<span className="text-caption text-err">Could not load sizes</span>
+		) : (
+			<ManifestBadge error={error} />
+		);
+	}
 
-	return <SizeChipList manifest={data} />;
+	const { source } = data;
+
+	return (
+		<span className="flex flex-wrap gap-1">
+			{summariseSizes(data).statuses.map(({ name, state, variant, reason }) => (
+				<Chip
+					key={name}
+					tone={state === "missing" || state === "mismatched" ? state : "default"}
+					title={state === "missing" ? "missing" : reason}
+				>
+					{state === "missing"
+						? name
+						: `${SHORT_NAMES[name]} ${variant ? edge(variant) : VARIANT_LONGEST_EDGE[name]}${state === "mismatched" ? " ≠" : ""}`}
+				</Chip>
+			))}
+			{source ? (
+				<Chip>orig {edge(source)}</Chip>
+			) : (
+				<Chip tone="missing" title="No original kept">
+					original
+				</Chip>
+			)}
+		</span>
+	);
 };

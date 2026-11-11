@@ -78,9 +78,9 @@ const SizeRows = ({
 						<span className="text-caption text-fg-2">from the kept original</span>
 					</>
 				)}
-				{!source && (
+				{!source && missing > 0 && (
 					<p className="w-full text-caption text-fg-2">
-						No original was kept, so missing sizes can&apos;t be generated. Upload the original to fill them.
+						Missing sizes can&apos;t be generated here. Re-upload the original to fill them.
 					</p>
 				)}
 				{!source && imageUrl && <OriginalUpload attach={attach} imageUrl={imageUrl} onStart={generate.reset} />}
