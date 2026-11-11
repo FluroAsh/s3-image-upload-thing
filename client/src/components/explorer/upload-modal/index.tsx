@@ -46,7 +46,7 @@ export const UploadTrigger = () => {
 			<DialogTrigger asChild>
 				<Button variant="primary">
 					<LucideUpload className="size-4" />
-					Upload Files
+					Upload
 				</Button>
 			</DialogTrigger>
 

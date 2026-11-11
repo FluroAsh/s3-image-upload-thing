@@ -27,10 +27,10 @@ export const CollectionsTrigger = () => {
 	return (
 		<Dialog onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>
-				<Button disabled={!bucketName}>
+				<Button variant="ghost" disabled={!bucketName}>
 					<LucideFolderHeart className="size-4" />
 					Collections
-					{count > 0 && <span className="font-mono text-caption text-fg-1">{count}</span>}
+					<span className="font-mono text-caption text-fg-1">{count}</span>
 				</Button>
 			</DialogTrigger>
 

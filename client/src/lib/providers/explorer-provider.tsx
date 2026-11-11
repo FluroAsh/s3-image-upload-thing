@@ -14,7 +14,6 @@ export type Selection = {
 };
 
 type ReducerState = {
-	bucketSearchTerm: string;
 	selection: Selection | null;
 	/** Folder whose sets needing attention are listed in place of the file tree; `null` shows the tree. */
 	attentionFolder: string | null;
@@ -27,10 +26,6 @@ export type State = ReducerState & {
 
 export type Action =
 	| {
-			type: "SET_BUCKET_SEARCH_TERM";
-			payload: string;
-	  }
-	| {
 			type: "SET_ATTENTION_FOLDER";
 			payload: string | null;
 	  }
@@ -40,15 +35,12 @@ export type Action =
 	  };
 
 const initialState: ReducerState = {
-	bucketSearchTerm: "",
 	attentionFolder: null,
 	selection: null,
 };
 
 const reducer = (state: ReducerState, action: Action): ReducerState => {
 	switch (action.type) {
-		case "SET_BUCKET_SEARCH_TERM":
-			return { ...state, bucketSearchTerm: action.payload };
 		case "SET_SELECTION":
 			return { ...state, selection: action.payload };
 		case "SET_ATTENTION_FOLDER":
@@ -59,7 +51,6 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
 };
 
 export type Actions = {
-	setBucketSearchTerm: (searchTerm: string) => void;
 	select: (selection: Selection) => void;
 	setAttentionFolder: (folder: string | null) => void;
 	resetActiveState: () => void;
@@ -80,11 +71,6 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 	}
 
 	const actions: Actions = {
-		setBucketSearchTerm: (searchTerm) =>
-			dispatch({
-				type: "SET_BUCKET_SEARCH_TERM",
-				payload: searchTerm,
-			}),
 		select: (selection) => dispatch({ type: "SET_SELECTION", payload: selection }),
 		setAttentionFolder: (folder) => dispatch({ type: "SET_ATTENTION_FOLDER", payload: folder }),
 		resetActiveState: () => dispatch({ type: "SET_SELECTION", payload: null }),
