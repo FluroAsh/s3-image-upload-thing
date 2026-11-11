@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 
-import { LucideAlertTriangle } from "lucide-react";
+import { LucideAlertTriangle, LucideX } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { StateMessage } from "@/components/ui/state-message";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 
@@ -75,13 +76,19 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 				{collectionMove.dialogs}
 			</div>
 			{collectionMove.error && (
-				<StateMessage
-					size="inline"
-					tone="err"
-					icon={LucideAlertTriangle}
-					title="Could not save"
-					message={serverErrorMessage(collectionMove.error)}
-				/>
+				<div className="flex items-start gap-1">
+					<StateMessage
+						size="inline"
+						tone="err"
+						icon={LucideAlertTriangle}
+						title="Could not save"
+						message={serverErrorMessage(collectionMove.error)}
+						className="flex-1"
+					/>
+					<Button variant="icon" aria-label="Dismiss error" onClick={collectionMove.dismiss}>
+						<LucideX className="size-3.5" />
+					</Button>
+				</div>
 			)}
 		</>
 	);

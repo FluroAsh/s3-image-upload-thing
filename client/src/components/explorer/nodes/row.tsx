@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext, useRef } from "react";
 
 import { LucideChevronRight } from "lucide-react";
 
@@ -39,6 +39,11 @@ const openMenuFromKeyboard = (row: HTMLElement, depth: number) => {
 	row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, clientX, clientY: top + height }));
 };
 
+const AfterMenuClose = createContext<(run: () => void) => void>((run) => run());
+
+/** Queues an action, such as opening a dialog, until the row's menu has closed and handed focus back to the row; a dialog opened sooner loses focus to the closing menu. */
+export const useAfterMenuClose = () => useContext(AfterMenuClose);
+
 /** The one tree row, so folders, sets and files share height, indent, stripe, hover and focus. */
 export const TreeRow = ({
 	id,
@@ -52,49 +57,63 @@ export const TreeRow = ({
 	menu,
 	onActivate,
 	onFocus,
-}: TreeRowProps) => (
-	<ContextMenu modal={false}>
-		<ContextMenuTrigger asChild>
-			<div
-				role="treeitem"
-				aria-label={label}
-				aria-level={depth + 1}
-				aria-selected={selected}
-				aria-expanded={expanded}
-				data-tree-id={id}
-				tabIndex={tabbable ? 0 : -1}
-				className={cn(
-					"group relative flex h-row cursor-pointer select-none items-center gap-1.5 rounded-md pr-2 text-body text-fg transition-colors duration-100",
-					"focus-visible:-outline-offset-2",
-					selected ? "bg-accent/12" : "hover:bg-raised",
-				)}
-				style={{ paddingLeft: getDepthPadding(depth) }}
-				onClick={onActivate}
-				onFocus={onFocus}
-				onKeyDown={(event) => {
-					if (event.target !== event.currentTarget) return;
-					if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
-						event.preventDefault();
-						openMenuFromKeyboard(event.currentTarget, depth);
-					} else if (event.key === "Enter") {
-						event.preventDefault();
-						onActivate();
-					}
+}: TreeRowProps) => {
+	const afterClose = useRef<() => void>(undefined);
+
+	return (
+		<ContextMenu>
+			<ContextMenuTrigger asChild>
+				<div
+					role="treeitem"
+					aria-label={label}
+					aria-level={depth + 1}
+					aria-selected={selected}
+					aria-expanded={expanded}
+					data-tree-id={id}
+					tabIndex={tabbable ? 0 : -1}
+					className={cn(
+						"group relative flex h-row cursor-pointer select-none items-center gap-1.5 rounded-md pr-2 text-body text-fg transition-colors duration-100",
+						"focus-visible:-outline-offset-2",
+						selected ? "bg-accent/12" : "hover:bg-raised",
+					)}
+					style={{ paddingLeft: getDepthPadding(depth) }}
+					onClick={onActivate}
+					onFocus={onFocus}
+					onKeyDown={(event) => {
+						if (event.target !== event.currentTarget) return;
+						if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+							event.preventDefault();
+							openMenuFromKeyboard(event.currentTarget, depth);
+						} else if (event.key === "Enter") {
+							event.preventDefault();
+							onActivate();
+						}
+					}}
+				>
+					{selected && <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 rounded-sm bg-accent" />}
+					<span className="flex size-4 shrink-0 items-center justify-center text-fg-2">
+						{expanded !== undefined && (
+							<LucideChevronRight
+								className={cn("size-3.5 transition-transform duration-100", expanded && "rotate-90")}
+							/>
+						)}
+					</span>
+					{children}
+					{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
+				</div>
+			</ContextMenuTrigger>
+			<ContextMenuContent
+				onCloseAutoFocus={() => {
+					const run = afterClose.current;
+					afterClose.current = undefined;
+					run?.();
 				}}
 			>
-				{selected && <span aria-hidden className="absolute inset-y-0 left-0 w-0.5 rounded-sm bg-accent" />}
-				<span className="flex size-4 shrink-0 items-center justify-center text-fg-2">
-					{expanded !== undefined && (
-						<LucideChevronRight className={cn("size-3.5 transition-transform duration-100", expanded && "rotate-90")} />
-					)}
-				</span>
-				{children}
-				{meta !== undefined && <span className="shrink-0 font-mono text-caption text-fg-1">{meta}</span>}
-			</div>
-		</ContextMenuTrigger>
-		<ContextMenuContent onCloseAutoFocus={(event) => event.preventDefault()}>{menu}</ContextMenuContent>
-	</ContextMenu>
-);
+				<AfterMenuClose.Provider value={(run) => (afterClose.current = run)}>{menu}</AfterMenuClose.Provider>
+			</ContextMenuContent>
+		</ContextMenu>
+	);
+};
 
 type NodeNameProps = {
 	name: string;

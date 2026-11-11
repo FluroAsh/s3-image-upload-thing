@@ -107,5 +107,7 @@ export const useCollectionMove = () => {
 		pending: create.isPending || setMembers.isPending,
 		/** The failed write's error while no dialog is open to show it. */
 		error: naming || target ? null : (create.error ?? setMembers.error),
+		/** Clears a failed write's error once its message has been read. */
+		dismiss: close,
 	};
 };

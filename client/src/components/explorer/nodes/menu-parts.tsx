@@ -10,6 +10,7 @@ import { useCollections } from "@/lib/query";
 import { holdingSet } from "~/shared/collections";
 
 import type { CollectionAssign } from "../use-collection-move";
+import { useAfterMenuClose } from "./row";
 
 /** Copies `text` and reads "Copied" for a moment; the menu stays open so the label is seen. */
 export const CopyItem = ({ label, text }: { label: string; text: string | undefined }) => {
@@ -42,6 +43,7 @@ type CollectionSubmenuProps = {
 /** Collections to add the sets to, a tick on the one holding the set, then New collection… and Remove. */
 export const CollectionSubmenu = ({ label, sets, assign, removable }: CollectionSubmenuProps) => {
 	const { data } = useCollections();
+	const afterMenuClose = useAfterMenuClose();
 	const held = removable ? holdingSet(data, sets[0])?.collection : undefined;
 
 	return (
@@ -52,17 +54,17 @@ export const CollectionSubmenu = ({ label, sets, assign, removable }: Collection
 					<ContextMenuItem
 						key={slug}
 						checked={held?.slug === slug}
-						onSelect={() => held?.slug !== slug && assign.toCollection(sets, slug)}
+						onSelect={() => held?.slug !== slug && afterMenuClose(() => assign.toCollection(sets, slug))}
 					>
 						{name}
 					</ContextMenuItem>
 				))}
 				{data?.collections.length ? <ContextMenuSeparator /> : null}
-				<ContextMenuItem onSelect={() => assign.toNew(sets)}>New collection…</ContextMenuItem>
+				<ContextMenuItem onSelect={() => afterMenuClose(() => assign.toNew(sets))}>New collection…</ContextMenuItem>
 				{held && (
 					<>
 						<ContextMenuSeparator />
-						<ContextMenuItem danger onSelect={() => assign.toCollection(sets, null)}>
+						<ContextMenuItem danger onSelect={() => afterMenuClose(() => assign.toCollection(sets, null))}>
 							Remove from {held.name}
 						</ContextMenuItem>
 					</>
