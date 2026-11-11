@@ -2,7 +2,14 @@
 
 import { useMemo, useState } from "react";
 
-import { LucideChevronRight, LucideFile, LucideFolderClosed, LucideFolderOpen, LucideImages } from "lucide-react";
+import {
+	LucideAlertTriangle,
+	LucideChevronRight,
+	LucideFile,
+	LucideFolderClosed,
+	LucideFolderOpen,
+	LucideImages,
+} from "lucide-react";
 
 import { getFileIcon } from "@/lib/helpers";
 import { ExplorerProvider, useExplorer } from "@/lib/providers/explorer-provider";
@@ -93,6 +100,32 @@ type ImageVariantProps = {
  * collection of image variants for a given node (thumbnail, medium, large, etc.).
  */
 const ImageCollection = ({ variants, node }: ImageVariantProps) => {
+	const { remoteURL, activeFile, select } = useSetSelection(node, variants);
+
+	return (
+		<button
+			type="button"
+			aria-label={`Open image collection ${node.name}`}
+			className={cn(
+				"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
+				remoteURL && activeFile.fileName === node.name
+					? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
+					: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
+			)}
+			style={{ paddingLeft: getDepthPadding(node.depth) }}
+			onClick={select}
+		>
+			<div className="flex items-center gap-2">
+				<LucideImages className="size-4 text-sky-400 flex-shrink-0" />
+				<span className="text-sm truncate">{node.name}</span>
+			</div>
+			<span className="ml-auto text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
+		</button>
+	);
+};
+
+/** Opens a set in the details panel; the file tree and the attention list select a set the same way. */
+export const useSetSelection = (node: TreeNode, variants: TreeNode[]) => {
 	const {
 		actions: { setActiveFile },
 		state: { bucketName, bucketRegion, activeFile },
@@ -107,36 +140,15 @@ const ImageCollection = ({ variants, node }: ImageVariantProps) => {
 	const previewVariant = pickPreviewVariant(variants);
 	const remoteURL = (previewVariant && presignedUrls[previewVariant.id]) ?? "";
 
-	return (
-		<button
-			type="button"
-			aria-label={`Open image collection ${node.name}`}
-			className={cn(
-				"flex w-full items-center text-sm hover:cursor-pointer select-none transition-colors duration-200 rounded-md p-2 mx-1 my-0.5 border-0 bg-transparent",
-				remoteURL && activeFile.fileName === node.name
-					? "bg-sky-800/30 text-neutral-100 border border-sky-800/30"
-					: "text-neutral-100 hover:bg-slate-700 hover:text-neutral-100",
-			)}
-			style={{ paddingLeft: getDepthPadding(node.depth) }}
-			onClick={() => {
-				setActiveFile({
-					remoteURL,
-					fileName: node.name,
-					setPath: setPathOf(node.id),
-					variants: variants.map((variant) => ({
-						...variant,
-						presignedUrl: presignedUrls[variant.id],
-					})),
-				});
-			}}
-		>
-			<div className="flex items-center gap-2">
-				<LucideImages className="size-4 text-sky-400 flex-shrink-0" />
-				<span className="text-sm truncate">{node.name}</span>
-			</div>
-			<span className="ml-auto text-xs bg-slate-700 text-sky-400 px-2 py-0.5 rounded-full">{variants.length}</span>
-		</button>
-	);
+	const select = () =>
+		setActiveFile({
+			remoteURL,
+			fileName: node.name,
+			setPath: setPathOf(node.id),
+			variants: variants.map((variant) => ({ ...variant, presignedUrl: presignedUrls[variant.id] })),
+		});
+
+	return { remoteURL, activeFile, select };
 };
 
 const File = ({ node }: { node: TreeNode }) => {
@@ -184,34 +196,49 @@ const Folder = ({
 }) => {
 	const FolderIcon = isExpanded ? LucideFolderOpen : LucideFolderClosed;
 
-	return (
-		<button
-			type="button"
-			aria-expanded={isExpanded}
-			aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
-			className={cn(
-				"flex w-full items-center text-sm rounded-md p-2 mx-1 my-0.5",
-				"text-neutral-100 border-0 bg-transparent select-none transition-colors duration-200",
-				"hover:bg-slate-700 hover:text-neutral-100 hover:cursor-pointer",
-			)}
-			style={{ paddingLeft: getDepthPadding(node.depth) }}
-			onClick={() => toggleExpanded(node.id)}
-		>
-			<div className="flex items-center gap-2">
-				<span className="flex size-4 items-center justify-center">
-					<LucideChevronRight
-						className={cn(
-							"size-3.5 transition duration-75",
-							isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
-						)}
-					/>
-				</span>
-				<FolderIcon className="size-4 stroke-sky-400" />
-				<span className="text-sm font-medium truncate">{node.name}</span>
-			</div>
+	const {
+		actions: { setAttentionFolder },
+	} = useExplorer();
 
-			{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400">{node.childCount}</span>}
-		</button>
+	return (
+		<div className="flex items-center">
+			<button
+				type="button"
+				aria-expanded={isExpanded}
+				aria-label={`${isExpanded ? "Collapse" : "Expand"} folder ${node.name}`}
+				className={cn(
+					"flex flex-1 items-center text-sm rounded-md p-2 mx-1 my-0.5",
+					"text-neutral-100 border-0 bg-transparent select-none transition-colors duration-200",
+					"hover:bg-slate-700 hover:text-neutral-100 hover:cursor-pointer",
+				)}
+				style={{ paddingLeft: getDepthPadding(node.depth) }}
+				onClick={() => toggleExpanded(node.id)}
+			>
+				<div className="flex items-center gap-2">
+					<span className="flex size-4 items-center justify-center">
+						<LucideChevronRight
+							className={cn(
+								"size-3.5 transition duration-75",
+								isExpanded ? "stroke-slate-400 rotate-90" : "rotate-0 stroke-sky-400",
+							)}
+						/>
+					</span>
+					<FolderIcon className="size-4 stroke-sky-400" />
+					<span className="text-sm font-medium truncate">{node.name}</span>
+				</div>
+
+				{node.childCount > 0 && <span className="ml-auto text-xs text-slate-400">{node.childCount}</span>}
+			</button>
+			<button
+				type="button"
+				aria-label={`Show sets needing attention in ${node.name}`}
+				title="Sets needing attention"
+				className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-amber-400"
+				onClick={() => setAttentionFolder(setPathOf(node.id))}
+			>
+				<LucideAlertTriangle className="size-4" />
+			</button>
+		</div>
 	);
 };
 

@@ -16,6 +16,8 @@ type ActiveFile = {
 type ReducerState = {
 	bucketSearchTerm: string;
 	activeFile: ActiveFile;
+	/** Folder whose sets needing attention are listed in place of the file tree; `null` shows the tree. */
+	attentionFolder: string | null;
 };
 
 export type State = ReducerState & {
@@ -29,12 +31,17 @@ export type Action =
 			payload: string;
 	  }
 	| {
+			type: "SET_ATTENTION_FOLDER";
+			payload: string | null;
+	  }
+	| {
 			type: "SET_ACTIVE_FILE";
 			payload: ActiveFile;
 	  };
 
 const initialState: ReducerState = {
 	bucketSearchTerm: "",
+	attentionFolder: null,
 	activeFile: {
 		remoteURL: "",
 		fileName: "",
@@ -48,6 +55,8 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
 			return { ...state, bucketSearchTerm: action.payload };
 		case "SET_ACTIVE_FILE":
 			return { ...state, activeFile: action.payload };
+		case "SET_ATTENTION_FOLDER":
+			return { ...state, attentionFolder: action.payload };
 		default:
 			return state;
 	}
@@ -56,6 +65,7 @@ const reducer = (state: ReducerState, action: Action): ReducerState => {
 export type Actions = {
 	setBucketSearchTerm: (searchTerm: string) => void;
 	setActiveFile: (file: ActiveFile) => void;
+	setAttentionFolder: (folder: string | null) => void;
 	resetActiveState: () => void;
 };
 
@@ -70,6 +80,7 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 	if (shownBucketKey !== bucketKey) {
 		setShownBucketKey(bucketKey);
 		dispatch({ type: "SET_ACTIVE_FILE", payload: initialState.activeFile });
+		dispatch({ type: "SET_ATTENTION_FOLDER", payload: null });
 	}
 
 	const actions: Actions = {
@@ -83,6 +94,7 @@ export const ExplorerProvider = ({ children }: { children: React.ReactNode }) =>
 				type: "SET_ACTIVE_FILE",
 				payload: { remoteURL, fileName, variants: variants ?? [], setPath },
 			}),
+		setAttentionFolder: (folder) => dispatch({ type: "SET_ATTENTION_FOLDER", payload: folder }),
 		resetActiveState: () =>
 			dispatch({
 				type: "SET_ACTIVE_FILE",

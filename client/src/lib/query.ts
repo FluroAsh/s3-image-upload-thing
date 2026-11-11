@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
@@ -15,9 +15,10 @@ import {
 	putSetMembers,
 } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
-import { getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
+import { getAttention, getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type {
+	AttentionResponse,
 	BucketLocation,
 	BucketsResponse,
 	CollectionsFile,
@@ -92,6 +93,19 @@ export const useManifest = (set: string) => {
 	});
 };
 
+export const useAttention = (folder: string, all: boolean) => {
+	const { bucketName, bucketRegion } = useExplorer().state;
+	return useInfiniteQuery<AttentionResponse, ApiError>({
+		queryKey: ["attention", bucketName, folder, all],
+		queryFn: ({ pageParam }) =>
+			getAttention(folder, { all, cursor: pageParam as string | undefined }, { bucketName, bucketRegion }),
+		initialPageParam: undefined,
+		getNextPageParam: ({ nextCursor }) => nextCursor ?? undefined,
+		enabled: !!bucketName && !!bucketRegion,
+		retry: false,
+	});
+};
+
 const useSetSizesWrite = <Variables>(
 	write: (variables: Variables, location: BucketLocation) => Promise<GenerateSizesResponse>,
 ) => {
@@ -105,6 +119,7 @@ const useSetSizesWrite = <Variables>(
 			Promise.all([
 				qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
 				qc.invalidateQueries({ queryKey: ["fileTree", bucketName] }),
+				qc.invalidateQueries({ queryKey: ["attention", bucketName] }),
 			]),
 	});
 };

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
 import { attachOriginalHandler } from "./handlers/attach-original";
+import { attentionHandler } from "./handlers/attention";
 import {
 	createCollectionHandler,
 	deleteCollectionHandler,
@@ -38,6 +39,8 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 
 /** A set path holds slashes, so the param takes the rest of the path. */
 storage.get("/manifests/:set{.+}", getManifestHandler);
+
+storage.get("/attention", attentionHandler);
 
 storage.post("/sizes/:set{.+}", generateSizesHandler);
 storage.post("/original/:set{.+}", attachOriginalHandler);
