@@ -1,145 +1,155 @@
-import { type MutableRefObject, useState } from "react";
+import { useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
+import { LucideChevronRight, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
 
+import { formatCount, isSetFolder } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 import type { FileTreeResponse, TreeNode } from "~/shared/types";
 
-import { setPathOf } from "../../utils";
-import { Folder } from "./folder";
+import { useUpload } from "../provider";
 
-const isFolder = (node: TreeNode) => node.isFolder;
+const isFolder = ({ isFolder }: TreeNode) => isFolder;
 
-const findCurrentFolders = (childMap: Map<string, TreeNode[]>, activeNodeId: string, searchQuery: string) => {
-	const folders = (childMap.get(activeNodeId) ?? []).filter(isFolder);
+const Breadcrumb = ({ bucketName }: { bucketName: string }) => {
+	const { destination, setDestination } = useUpload();
+	const segments = destination ? destination.split("/") : [];
+	const crumbs = [bucketName, ...segments];
 
-	return searchQuery ? folders.filter((node) => node.name.toLowerCase().includes(searchQuery.toLowerCase())) : folders;
+	return (
+		<nav aria-label="Destination" className="flex min-w-0 flex-1 items-center gap-1 truncate font-mono text-secondary">
+			{crumbs.map((crumb, index) => {
+				const last = index === crumbs.length - 1;
+				return (
+					<span key={segments.slice(0, index).join("/") || "root"} className="flex shrink-0 items-center gap-1">
+						{last ? (
+							<span aria-current="page" className="text-fg">
+								{crumb}
+							</span>
+						) : (
+							<button
+								type="button"
+								className="text-fg-2 hover:text-fg"
+								onClick={() => setDestination(segments.slice(0, index).join("/"))}
+							>
+								{crumb}
+							</button>
+						)}
+						{!last && <span className="text-fg-2">/</span>}
+					</span>
+				);
+			})}
+		</nav>
+	);
 };
 
-export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObject<string> }) => {
+export const FolderSelect = () => {
 	const qc = useQueryClient();
-	const { bucketName: activeBucketName, bucketRegion } = useExplorer().state;
-	const { childMap } = useFileTree(activeBucketName, bucketRegion);
+	const { bucketName, bucketRegion } = useExplorer().state;
+	const { childMap } = useFileTree(bucketName, bucketRegion);
+	const { destination, setDestination } = useUpload();
 
-	const [searchQuery, setSearchQuery] = useState<string>("");
+	const [filter, setFilter] = useState("");
 	const [naming, setNaming] = useState(false);
-	const [folderStack, setFolderStack] = useState<TreeNode[]>([]);
 
-	const activeFolder = folderStack[folderStack.length - 1] || undefined;
-	/** "" is the root parent. */
-	const activeNodeId = activeFolder?.id ?? "";
+	const folderId = destination ? `${destination}/` : "";
+	const subFolders = (id: string) =>
+		(childMap.get(id) ?? []).filter((node) => isFolder(node) && !isSetFolder(node, childMap.get(node.id)));
+	const folders = subFolders(folderId).filter(({ name }) => name.toLowerCase().includes(filter.toLowerCase()));
+	const currentName = destination.split("/").pop() || bucketName;
 
-	const currentFolders = findCurrentFolders(childMap, activeNodeId, searchQuery);
-
-	const handleBack = () => {
-		setFolderStack((prev) => {
-			const newStack = prev.slice(0, -1);
-			folderPathRef.current = newStack.map((n) => n.name).join("/");
-			return newStack;
-		});
+	const open = (path: string) => {
+		setFilter("");
+		setDestination(path);
 	};
 
-	const handleFolderSelect = (node: TreeNode) => {
-		setFolderStack((prev) => {
-			const newStack = [...prev, node];
-			folderPathRef.current = newStack.map((n) => n.name).join("/");
-			return newStack;
-		});
-	};
-
-	const handleCreateFolder = (newFolderName: string) => {
+	const handleCreateFolder = (name: string) => {
 		const newFolder: TreeNode = {
-			id: `${activeNodeId}${newFolderName}/`,
-			parentId: activeNodeId,
-			name: newFolderName,
+			id: `${folderId}${name}/`,
+			parentId: folderId,
+			name,
 			isFolder: true,
-			depth: activeFolder ? activeFolder.depth + 1 : 0,
+			depth: destination ? destination.split("/").length : 0,
 			childCount: 0,
 			size: "",
 			presignedUrl: "",
 		};
 
-		qc.setQueryData<FileTreeResponse>(["fileTree", activeBucketName], (oldData) =>
+		qc.setQueryData<FileTreeResponse>(["fileTree", bucketName], (oldData) =>
 			oldData ? { ...oldData, tree: [...oldData.tree, newFolder] } : { tree: [newFolder], partial: false },
 		);
-
-		setFolderStack((prev) => [...prev, newFolder]);
-		folderPathRef.current = [...folderStack.map((n) => n.name), newFolderName].join("/");
+		open(destination ? `${destination}/${name}` : name);
 		setNaming(false);
 	};
 
 	return (
-		<div className="mb-4">
-			<div className="mb-4 flex justify-between items-center">
-				<div className="text-fg-1">
-					<Chip>{activeNodeId ? activeNodeId : activeBucketName}</Chip>
-				</div>
-
-				<Button onClick={() => setNaming(true)}>
-					<LucideFolderPlus className="size-4" />
-					New Folder
-				</Button>
-			</div>
-
-			<div className="flex gap-x-2 mb-4">
-				<div className="relative w-full">
-					<Input
-						type="text"
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						className="pl-8"
-						placeholder="Search folders..."
-					/>
-					<LucideSearch className="absolute top-1/2 left-2 size-4 text-fg-2 transform -translate-y-1/2" />
-				</div>
-
-				<Button onClick={handleBack}>
-					<LucideArrowLeft className="size-4" />
-					Back
-				</Button>
-			</div>
-
-			{currentFolders.length > 0 ? (
-				<div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-line-strong">
-					{currentFolders.map((folderNode) => (
-						<Folder key={folderNode.id} name={folderNode.name} onClick={() => handleFolderSelect(folderNode)} />
-					))}
-				</div>
-			) : (
-				<div className="mb-4">
-					<div className="p-4 rounded-md border border-line-strong h-[300px] grid place-items-center">
-						<div>
-							<LucideFolder className="size-12 mx-auto mb-4 stroke-fg-2" />
-							{activeFolder ? (
-								<span className="text-fg-1">
-									Looks like
-									<Chip className="mx-2">{activeFolder.name}</Chip>
-									is empty!
-								</span>
-							) : (
-								<span className="text-fg-1">No folders found in {activeBucketName}</span>
-							)}
-						</div>
+		<section aria-label="Destination" className="mb-4">
+			<h3 className="mb-1.5 flex h-6 items-center text-caption font-medium uppercase tracking-label text-fg-2">
+				Destination
+			</h3>
+			<div className="rounded-md border border-line bg-panel">
+				<div className="flex h-9 items-center gap-2 border-b border-line px-2">
+					<Breadcrumb bucketName={bucketName} />
+					<div className="relative w-[150px] shrink-0">
+						<LucideSearch className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-fg-2" />
+						<Input
+							value={filter}
+							onChange={(e) => setFilter(e.target.value)}
+							className="pl-6"
+							placeholder="Filter folders…"
+							aria-label="Filter folders"
+						/>
 					</div>
+					<Button variant="ghost" onClick={() => setNaming(true)}>
+						<LucideFolderPlus className="size-3.5" />
+						New folder
+					</Button>
 				</div>
-			)}
+
+				{folders.length > 0 ? (
+					<ul className="max-h-[140px] overflow-y-auto">
+						{folders.map((node) => {
+							const count = subFolders(node.id).length;
+							return (
+								<li key={node.id}>
+									<button
+										type="button"
+										className="flex h-row w-full items-center gap-2 px-2 text-left text-body text-fg hover:bg-raised"
+										onClick={() => open(node.id.replace(/\/$/, ""))}
+									>
+										<LucideFolder className="size-3.5 shrink-0 text-fg-1" />
+										<span className="flex-1 truncate">{node.name}</span>
+										{count > 0 && (
+											<span className="font-mono text-caption text-fg-2">{formatCount(count, "folder", false)}</span>
+										)}
+										<LucideChevronRight className="size-3 shrink-0 text-fg-2" />
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+				) : (
+					<p className="px-2 py-3 text-center text-secondary text-fg-1">
+						{filter ? `No folders match "${filter}".` : `No sub-folders in ${currentName}. Files upload here.`}
+					</p>
+				)}
+			</div>
+
 			<PromptDialog
 				open={naming}
 				onOpenChange={setNaming}
 				title="New folder"
-				subtitle={`in ${setPathOf(activeNodeId) || activeBucketName}`}
+				subtitle={`in ${destination || bucketName}`}
 				label="Name"
 				hint="Created on first upload"
 				confirmLabel="Create"
 				validate={(name) => (name.includes("/") ? 'A folder name can\'t contain "/".' : undefined)}
 				onSubmit={handleCreateFolder}
 			/>
-		</div>
+		</section>
 	);
 };
