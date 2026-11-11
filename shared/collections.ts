@@ -24,3 +24,12 @@ export const setsNotIn = (collection: Collection, picked: Iterable<string>) => {
 	const held = new Set(collection.photos.map((p) => p.set));
 	return Array.from(picked).filter((set) => !held.has(set));
 };
+
+/** The URL-safe id the server derives from a collection name; the client previews it with the same function. */
+export const slugOf = (name: string): string =>
+	name
+		.normalize("NFKD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-|-$/g, "");

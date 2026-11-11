@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
-import { holdingSet, setsToMove } from "~/shared/collections";
+import { holdingSet, setsToMove, slugOf } from "~/shared/collections";
 import type {
 	BucketLocation,
 	Collection,
@@ -39,14 +39,6 @@ const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
 	if (typeof body !== "object" || body === null) throw badRequest("Body must be a JSON object");
 	return body;
 };
-
-const slugOf = (name: string): string =>
-	name
-		.normalize("NFKD")
-		.replace(/[̀-ͯ]/g, "")
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
-		.replace(/^-|-$/g, "");
 
 const requireName = (name: unknown): string => {
 	if (typeof name !== "string" || !slugOf(name)) throw badRequest("Name must be text with a letter or digit");

@@ -47,7 +47,9 @@ export const CreateScreen = () => {
 			<Input aria-label="Name" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
 			<SetPicker picked={picked} onChange={setPicked} />
 
-			{create.error && <p className="text-body text-err">{serverErrorMessage(create.error, "Could not create.")}</p>}
+			{create.error && !confirming && (
+				<p className="text-body text-err">{serverErrorMessage(create.error, "Could not create.")}</p>
+			)}
 
 			<Button type="submit" variant="primary" disabled={!name.trim() || !picked.size} pending={create.isPending}>
 				Create

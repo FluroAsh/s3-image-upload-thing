@@ -8,7 +8,7 @@ import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
 import { holdingSet, setsToMove } from "~/shared/collections";
 
-import { MoveSetsDialog, RemoveFromCollectionDialog } from "./collection-dialogs";
+import { MoveSetsDialog, RemoveFromCollectionDialog, slugHint } from "./collection-dialogs";
 import { InspectorSection } from "./inspector";
 import { PhotoTextFields } from "./photo-text-fields";
 import { serverErrorMessage } from "./utils";
@@ -36,7 +36,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const [naming, setNaming] = useState(false);
 	const [target, setTarget] = useState<Target>();
 
-	const moving = target ? setsToMove(data, [setPath], target.newName === undefined ? target.into : null) : [];
+	const moving = target ? setsToMove(data, [setPath], target.into) : [];
 	const active = target?.newName === undefined ? setMembers : create;
 
 	const close = () => {
@@ -52,7 +52,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 			: create.mutate({ name: newName, sets: [setPath] }, { onSuccess: close });
 
 	const request = (next: Target) => {
-		if (!setsToMove(data, [setPath], next.newName === undefined ? next.into : null).length) return write(next);
+		if (!setsToMove(data, [setPath], next.into).length) return write(next);
 		setNaming(false);
 		setTarget(next);
 	};
@@ -105,7 +105,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 							<option value={NEW}>New collection…</option>
 						</Select>
 					</div>
-					{collectionError && (
+					{collectionError && !naming && !target && (
 						<StateMessage
 							size="inline"
 							tone="err"
@@ -129,9 +129,10 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 
 			<PromptDialog
 				open={naming}
-				onOpenChange={(open) => !open && close()}
+				onOpenChange={close}
 				title="New collection"
 				label="Name"
+				hint={slugHint}
 				confirmLabel="Create"
 				pendingLabel="Creating..."
 				pending={create.isPending}

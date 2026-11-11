@@ -32,7 +32,8 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 	const [folderStack, setFolderStack] = useState<TreeNode[]>([]);
 
 	const activeFolder = folderStack[folderStack.length - 1] || undefined;
-	const activeNodeId = activeFolder?.id ?? ""; // "" is the root parent
+	/** "" is the root parent. */
+	const activeNodeId = activeFolder?.id ?? "";
 
 	const currentFolders = findCurrentFolders(childMap, activeNodeId, searchQuery);
 
@@ -54,7 +55,7 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 
 	const handleCreateFolder = (newFolderName: string) => {
 		const newFolder: TreeNode = {
-			id: activeNodeId ? `${activeNodeId}/${newFolderName}` : `${newFolderName}/`,
+			id: `${activeNodeId}${newFolderName}/`,
 			parentId: activeNodeId,
 			name: newFolderName,
 			isFolder: true,

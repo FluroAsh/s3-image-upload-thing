@@ -133,7 +133,7 @@ const PhotoEditor = ({
 					Remove
 				</Button>
 			</div>
-			{error && (
+			{error && !(removing && error === members.error) && (
 				<StateMessage
 					size="inline"
 					tone="err"

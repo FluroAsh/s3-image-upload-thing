@@ -16,7 +16,7 @@ import { useCollections, useDeleteCollection, useUpdateCollection } from "@/lib/
 import { coverOf } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
-import { DeleteCollectionDialog } from "../collection-dialogs";
+import { DeleteCollectionDialog, slugHint } from "../collection-dialogs";
 import { PartialNotice } from "../partial-notice";
 import { formatCount, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
@@ -74,21 +74,20 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 			</Button>
 			<PromptDialog
 				open={dialog === "rename"}
-				onOpenChange={(open) => !open && close()}
+				onOpenChange={close}
 				title="Rename collection"
 				label="Name"
+				hint={slugHint}
 				initialValue={collection.name}
 				confirmLabel="Rename"
 				pendingLabel="Renaming..."
 				pending={rename.isPending}
-				error={rename.error ? serverErrorMessage(rename.error) : undefined}
-				onSubmit={(name) =>
-					name === collection.name ? close() : rename.mutate({ slug: collection.slug, name }, { onSuccess: close })
-				}
+				error={rename.error ? `Could not rename · ${serverErrorMessage(rename.error)}` : undefined}
+				onSubmit={(name) => rename.mutate({ slug: collection.slug, name }, { onSuccess: close })}
 			/>
 			<DeleteCollectionDialog
 				open={dialog === "delete"}
-				onOpenChange={(open) => !open && close()}
+				onOpenChange={close}
 				name={collection.name}
 				photoCount={collection.photos.length}
 				pending={remove.isPending}
