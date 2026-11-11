@@ -1,155 +1,108 @@
-import { LucideExternalLink, LucideFile, LucideImage, LucideLink } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
+
+import { LucideFile } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StateMessage } from "@/components/ui/state-message";
 import { useActiveFile } from "@/hooks/useActiveFile";
-import { isImageFile, isVideoFile } from "@/lib/helpers";
-import type { TreeNode } from "~/shared/types";
+import { useManifest } from "@/lib/query";
+import type { Manifest } from "~/shared/types";
 
+import { DetailsHeader } from "./details-header";
+import { Preview } from "./details-preview";
+import { Field, formatBytes } from "./inspector";
 import { CollectionSection } from "./panel.collection";
-import { SetInfo } from "./set-info";
-import { getVariantType } from "./utils";
+import { Sizes } from "./sizes";
+import { fileType } from "./utils";
 
-type ActiveVariantProps = {
-	variant: TreeNode;
-	remoteURL: string;
-};
+const CREATED_FORMAT = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
 
-const ActiveVariant = ({ variant, remoteURL }: ActiveVariantProps) => {
+const SetFields = ({ set, publicUrl }: { set: string; publicUrl: string }) => {
+	const { data, isPending } = useManifest(set);
+	/** Legacy sets lack a manifest; their fields read as unknown rather than as errors. */
+	const value = (width: string, read: (manifest: Manifest) => ReactNode) =>
+		isPending ? <Skeleton className={width} /> : data ? read(data) : "unknown";
+
 	return (
-		<li className="group">
-			<a
-				target="_blank"
-				className="flex items-center justify-between p-3 rounded-lg bg-raised hover:bg-pressed border border-line hover:border-accent/50 transition-colors duration-100"
-				href={remoteURL}
-			>
-				<div className="flex items-center gap-3">
-					<div className="size-2 rounded-full bg-accent"></div>
-					<div className="flex flex-col">
-						<span className="text-body font-medium text-fg">{getVariantType(variant.name)}</span>
-						<span className="text-secondary text-fg-1">{variant.size}</span>
-					</div>
-				</div>
-				<LucideExternalLink className="size-4 text-fg-1 group-hover:text-accent transition-colors" />
-			</a>
-		</li>
+		<dl>
+			<Field label="Public URL" title={publicUrl}>
+				{publicUrl}
+			</Field>
+			<Field label="Original">
+				{value("w-28", ({ source }) =>
+					source
+						? `${source.width}×${source.height} · ${formatBytes(source.bytes)} · ${source.public ? "public" : "private"}`
+						: "not kept",
+				)}
+			</Field>
+			<Field label="Inline blur">
+				{value("w-12", ({ placeholder }) =>
+					placeholder ? (
+						<span className="inline-flex items-center gap-1.5">
+							<img src={placeholder} alt="" className="size-4 rounded-sm" />
+							yes
+						</span>
+					) : (
+						"no"
+					),
+				)}
+			</Field>
+			<Field label="Created">{value("w-16", ({ createdAt }) => CREATED_FORMAT.format(new Date(createdAt)))}</Field>
+		</dl>
 	);
 };
-
-const PREVIEW_CONTAINER_SIZE = 600;
 
 export const DetailsPanel = () => {
 	const active = useActiveFile();
 
 	if (!active) {
 		return (
-			<div id="explorer-details-panel" className="bg-panel border-l border-line flex-1">
+			<div id="explorer-details-panel" className="flex-1 border-l border-line bg-panel">
 				<StateMessage
 					className="size-full"
 					icon={LucideFile}
 					title="No file selected"
-					message="Select a file or image from the explorer to view its details and preview"
+					message="Select a file or image set in the tree to see its details."
 				/>
 			</div>
 		);
 	}
 
-	const { remoteURL, name: fileName, variants, setPath, previewNode } = active;
-	const isImage = isImageFile(previewNode?.name ?? null);
-	const isVideo = isVideoFile(previewNode?.name ?? null);
-	const Icon = isImage ? LucideImage : LucideFile;
-	const previewURLText = remoteURL.split("?")[0];
+	const { remoteURL, name, folder, size, setPath, variants } = active;
+	const publicUrl = remoteURL.split("?")[0];
 
 	return (
-		<ScrollArea
+		<section
 			id="explorer-details-panel"
-			className="bg-panel border-l border-line flex-1 overflow-y-auto overflow-x-hidden"
 			aria-label="File details"
+			className="flex min-w-0 flex-1 flex-col border-l border-line bg-panel"
 		>
-			<div className="border-b border-line p-6">
-				<div className="flex items-center gap-3">
-					<div className="size-10 rounded-lg bg-accent/12 flex items-center justify-center">
-						<Icon className="size-6 stroke-accent" />
-					</div>
-					<div>
-						<h2 className="text-lg font-semibold text-fg">{fileName || "Active File"}</h2>
-						<p className="text-body text-fg-1">File Preview & Details</p>
-					</div>
-				</div>
-			</div>
-
-			{remoteURL && (
-				<div className="p-6 border-b border-line">
-					<div className="flex items-center gap-2 mb-3">
-						<LucideLink className="size-4 text-accent" />
-						<h3 className="text-body font-medium text-fg">Remote URL</h3>
-					</div>
-					<a
-						target="_blank"
-						rel="noopener noreferrer"
-						className="inline-flex items-center gap-2 p-3 rounded-lg bg-raised hover:bg-pressed border border-line-strong hover:border-accent/50 transition-colors duration-100 group w-full"
-						href={remoteURL}
-					>
-						<span className="text-body text-fg break-all flex-1">{previewURLText}</span>
-						<LucideExternalLink className="size-4 text-accent transition-colors flex-shrink-0" />
-					</a>
-				</div>
-			)}
-
-			{setPath && (
-				<>
-					<div className="p-6 border-b border-line">
-						<h3 className="mb-3 text-body font-medium text-fg">Sizes</h3>
-						<SetInfo key={setPath} set={setPath} imageUrl={remoteURL} />
-					</div>
-					<CollectionSection setPath={setPath} />
-				</>
-			)}
-
-			{remoteURL && (isImage || isVideo) && (
-				<div className="p-6 border-b border-line">
-					<div className="flex items-center gap-2 mb-4">
-						<LucideImage className="size-4 text-accent" />
-						<h3 className="text-body font-medium text-fg">{isVideo ? "Video Preview" : "Preview"}</h3>
-					</div>
-					<div className="relative rounded-lg overflow-hidden border border-line-strong bg-raised">
-						{isImage ? (
-							<div
-								className="mx-auto flex items-center justify-center "
-								style={{ height: `${PREVIEW_CONTAINER_SIZE}px` }}
-							>
-								<img src={remoteURL} alt={fileName || "Preview"} className="max-w-full max-h-full object-contain" />
+			<DetailsHeader name={name} folder={folder} url={remoteURL} publicUrl={publicUrl} set={setPath} />
+			<div className="flex min-h-0 flex-1">
+				<Preview file={active} />
+				<ScrollArea className="w-80 shrink-0 border-l border-line">
+					{setPath ? (
+						<Fragment key={setPath}>
+							<div className="border-b border-line px-3 py-2">
+								<SetFields set={setPath} publicUrl={publicUrl} />
 							</div>
-						) : (
-							// biome-ignore lint/a11y/useMediaCaption: User-uploaded videos don't currently have captions
-							<video
-								src={remoteURL}
-								controls
-								className="w-full"
-								style={{ maxHeight: `${PREVIEW_CONTAINER_SIZE}px` }}
-								onLoadedData={(e) => {
-									e.currentTarget.volume = 0.25;
-								}}
-							/>
-						)}
-					</div>
-				</div>
-			)}
-
-			{variants && variants.length > 0 && (
-				<div className="p-6">
-					<div className="flex items-center gap-2 mb-4">
-						<div className="size-4 rounded-sm bg-accent"></div>
-						<h3 className="text-body font-medium text-fg">Available Variants</h3>
-						<span className="font-mono text-caption text-fg-1">{variants.length}</span>
-					</div>
-					<ul className="space-y-2">
-						{variants.map((variant) => (
-							<ActiveVariant key={`variant-${variant.name}`} variant={variant} remoteURL={variant.presignedUrl ?? ""} />
-						))}
-					</ul>
-				</div>
-			)}
-		</ScrollArea>
+							<Sizes set={setPath} imageUrl={remoteURL} variants={variants} />
+							<CollectionSection setPath={setPath} />
+						</Fragment>
+					) : (
+						<div className="px-3 py-2">
+							<dl>
+								<Field label="Public URL" title={publicUrl}>
+									{publicUrl}
+								</Field>
+								<Field label="Size">{size ?? "unknown"}</Field>
+								<Field label="Type">{fileType(name)}</Field>
+							</dl>
+						</div>
+					)}
+				</ScrollArea>
+			</div>
+		</section>
 	);
 };

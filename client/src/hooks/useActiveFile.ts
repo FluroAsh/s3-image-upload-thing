@@ -33,3 +33,5 @@ export const useActiveFile = () => {
 		variants: variants.map((variant) => ({ ...variant, presignedUrl: urls[variant.id] })),
 	};
 };
+
+export type ActiveFile = NonNullable<ReturnType<typeof useActiveFile>>;

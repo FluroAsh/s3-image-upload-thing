@@ -1,6 +1,7 @@
 import type { ApiError } from "@/lib/ofetch";
-import { INLINE_VARIANTS } from "~/shared/constants/image-variants";
-import type { ImageVariant, TreeNode } from "~/shared/types";
+import { IMAGE_VARIANTS, INLINE_VARIANTS } from "~/shared/constants/image-variants";
+import { type SizeState, sizeStatuses } from "~/shared/image-sizes";
+import type { ImageVariant, Manifest, TreeNode } from "~/shared/types";
 
 const DEPTH_INDENT_PX = 16;
 const DEPTH_BASE_OFFSET_PX = 8;
@@ -9,9 +10,21 @@ export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + D
 
 export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 
-export const getVariantType = (fileName: string) => {
-	const variant = fileName.split("_")[0];
-	return variant ? `${variant[0].toUpperCase()}${variant.slice(1)}` : "";
+/** The size a variant file is named for, e.g. `small_photo.webp`; falls back to the text before the first underscore for files outside the table. */
+export const variantOf = (fileName: string): string =>
+	IMAGE_VARIANTS.find((variant) => fileName.startsWith(`${variant}_`)) ?? fileName.split("_")[0];
+
+/** The file's extension in capitals, which names its type; `"unknown"` without one. */
+export const fileType = (fileName: string): string => {
+	const extension = fileName.includes(".") ? fileName.split(".").pop() : "";
+	return extension ? extension.toUpperCase() : "unknown";
+};
+
+/** The sizes the manifest expects to be stored, with how many are missing or mismatched. */
+export const summariseSizes = (manifest: Manifest) => {
+	const statuses = sizeStatuses(manifest).filter(({ state }) => state !== "notApplicable");
+	const count = (wanted: SizeState) => statuses.filter(({ state }) => state === wanted).length;
+	return { statuses, missing: count("missing"), mismatched: count("mismatched") };
 };
 
 /** Largest inline size first, as `full` is a far bigger download; the icon-sized thumbnail beats only the blurred placeholder. */
