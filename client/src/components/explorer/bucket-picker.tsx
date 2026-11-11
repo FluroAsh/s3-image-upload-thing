@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback } from "react";
+
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { LucideCheck, LucideChevronDown, LucideDatabase } from "lucide-react";
 import { useQueryStates } from "nuqs";
@@ -8,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets } from "@/lib/query";
 import { dashboardSearchParams } from "@/lib/search-params";
-import { cn } from "@/lib/utils";
 import type { Bucket } from "~/shared/types";
 
 import { formatCount, formatSize } from "./utils";
@@ -25,16 +26,32 @@ const bucketDetails = (bucket: Bucket) =>
 		.filter(Boolean)
 		.join(" · ");
 
+const bucketKey = (bucket: Pick<Bucket, "Name" | "BucketRegion">) => `${bucket.Name}|${bucket.BucketRegion}`;
+
 export const BucketPicker = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const [, setParams] = useQueryStates(dashboardSearchParams);
 	const { data } = useBuckets();
 	const buckets = data?.buckets ?? [];
+	const activeKey = bucketKey({ Name: bucketName, BucketRegion: bucketRegion });
+
+	const selectBucket = (key: string) => {
+		const bucket = buckets.find((candidate) => bucketKey(candidate) === key);
+		if (bucket) setParams({ bucket: bucket.Name, region: bucket.BucketRegion });
+	};
+
+	/** Radix focuses the first item after mount, so the active bucket takes focus a tick later. */
+	const focusOnMount = useCallback((item: HTMLElement | null) => {
+		if (item) setTimeout(() => item.focus());
+	}, []);
 
 	return (
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger asChild>
-				<Button aria-label="Choose bucket" className="gap-2 data-[state=open]:border-accent">
+				<Button
+					aria-label={`Choose bucket: ${bucketName} ${bucketRegion}`}
+					className="gap-2 data-[state=open]:bg-pressed"
+				>
 					<LucideDatabase className="size-3.5 text-fg-1" />
 					<span className="font-mono">{bucketName}</span>
 					<span className="font-mono text-fg-2">{bucketRegion}</span>
@@ -46,29 +63,27 @@ export const BucketPicker = () => {
 				<DropdownMenu.Content
 					align="start"
 					sideOffset={4}
-					className="z-50 w-[420px] max-w-[calc(100vw-16px)] overflow-hidden rounded-lg border border-line-strong bg-panel text-fg shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+					className="z-50 w-[560px] max-w-[calc(100vw-16px)] overflow-hidden rounded-lg border border-line-strong bg-panel text-fg shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
 				>
 					<div className="max-h-[60vh] overflow-y-auto p-1">
-						{buckets.map((bucket) => {
-							const isActive = bucket.Name === bucketName && bucket.BucketRegion === bucketRegion;
-
-							return (
-								<DropdownMenu.Item
-									key={`${bucket.Name}-${bucket.BucketRegion}`}
-									onSelect={() => setParams({ bucket: bucket.Name, region: bucket.BucketRegion })}
-									className={cn(
-										"flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 data-[highlighted]:bg-pressed",
-										isActive && "bg-raised",
-									)}
+						<DropdownMenu.RadioGroup value={activeKey} onValueChange={selectBucket}>
+							{buckets.map((bucket) => (
+								<DropdownMenu.RadioItem
+									key={bucketKey(bucket)}
+									ref={bucketKey(bucket) === activeKey ? focusOnMount : undefined}
+									value={bucketKey(bucket)}
+									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 data-[highlighted]:bg-pressed data-[state=checked]:bg-raised"
 								>
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-mono text-body text-fg">{bucket.Name}</div>
 										<div className="truncate font-mono text-caption text-fg-2">{bucketDetails(bucket)}</div>
 									</div>
-									{isActive && <LucideCheck aria-label="Active bucket" className="size-3.5 shrink-0 text-accent" />}
-								</DropdownMenu.Item>
-							);
-						})}
+									<DropdownMenu.ItemIndicator>
+										<LucideCheck className="size-3.5 shrink-0 text-fg" />
+									</DropdownMenu.ItemIndicator>
+								</DropdownMenu.RadioItem>
+							))}
+						</DropdownMenu.RadioGroup>
 					</div>
 					<p className="border-t border-line px-3 py-2 text-caption text-fg-2">
 						{buckets.length} {buckets.length === 1 ? "bucket" : "buckets"} in this account
