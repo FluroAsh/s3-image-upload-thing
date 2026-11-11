@@ -75,6 +75,19 @@ describe("buildRows", () => {
 		expect(rows.find((row) => row.node.id === "2026/sydney/")).toMatchObject({ expanded: true, count: 2 });
 	});
 
+	it("lists a matching folder's contents, collapsed until expanded", () => {
+		expect(ids(buildRows(childMap, {}, "sydney").rows)).toEqual(["2026/", "2026/sydney/"]);
+		const { rows } = buildRows(childMap, { "2026/sydney/": true }, "sydney");
+		expect(ids(rows)).toEqual([
+			"2026/",
+			"2026/sydney/",
+			"2026/sydney/manly-ferry/",
+			"2026/sydney/ferry-timelapse.mp4",
+			"2026/sydney/notes.txt",
+		]);
+		expect(rows.find((row) => row.node.id === "2026/sydney/")).toMatchObject({ locked: false, expanded: true });
+	});
+
 	it("returns nothing when no name matches", () => {
 		expect(buildRows(childMap, {}, "xyz")).toEqual({ rows: [], matches: 0 });
 	});
@@ -101,8 +114,9 @@ describe("navigate", () => {
 		expect(navigate(rows, "2025/", "ArrowLeft")).toBeUndefined();
 	});
 
-	it("moves to the parent instead of collapsing while filtering", () => {
-		expect(navigate(rows, "2026/sydney/", "ArrowLeft", true)).toEqual({ type: "focus", id: "2026/" });
-		expect(navigate(rows, "2026/", "ArrowLeft", true)).toBeUndefined();
+	it("moves to the parent instead of collapsing a folder the filter holds open", () => {
+		const filtered = buildRows(childMap, {}, "ferry").rows;
+		expect(navigate(filtered, "2026/sydney/", "ArrowLeft")).toEqual({ type: "focus", id: "2026/" });
+		expect(navigate(filtered, "2026/", "ArrowLeft")).toBeUndefined();
 	});
 });

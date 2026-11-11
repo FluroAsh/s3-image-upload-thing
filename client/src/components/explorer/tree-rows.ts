@@ -13,6 +13,8 @@ export type TreeRowData = {
 	variants: TreeNode[];
 	/** Whether a folder's children are listed below it. */
 	expanded: boolean;
+	/** Held open by the filter because a match sits below it, so it can't collapse. */
+	locked: boolean;
 	/** Children for a folder (matches below it while filtering) or sizes for a set. */
 	count: number;
 };
@@ -21,44 +23,48 @@ type Visit = { rows: TreeRowData[]; hits: number };
 
 const NONE: Visit = { rows: [], hits: 0 };
 
-/** Flattens the loaded tree into the visible rows; a filter keeps matches and their ancestors and opens every folder. */
+/** Flattens the loaded tree into the visible rows; a filter keeps matches and opens their ancestors, and a matching folder lists all its contents. */
 export const buildRows = (childMap: Map<string, TreeNode[]>, expanded: Record<string, boolean>, query: string) => {
 	const needle = query.trim().toLowerCase();
 	const filtering = needle !== "";
 
-	const visit = (node: TreeNode): Visit => {
+	const visit = (node: TreeNode, inMatch: boolean): Visit => {
 		const hit = filtering && node.name.toLowerCase().includes(needle) ? 1 : 0;
 		const children = childMap.get(node.id) ?? [];
+		const filtered = filtering && !inMatch;
 
 		if (!node.isFolder || isSetFolder(node, children)) {
-			if (filtering && !hit) return NONE;
+			if (filtered && !hit) return NONE;
 			const isSet = node.isFolder;
 			const row: TreeRowData = {
 				node,
 				kind: isSet ? "set" : "file",
 				variants: isSet ? children : [],
 				expanded: false,
+				locked: false,
 				count: children.length,
 			};
 			return { rows: [row], hits: hit };
 		}
 
-		const open = filtering || !!expanded[node.id];
-		const below = open ? children.map(visit) : [];
+		const locked = filtered && !hit;
+		const open = locked || !!expanded[node.id];
+		const below = open ? children.map((child) => visit(child, !filtered || !!hit)) : [];
 		const hitsBelow = below.reduce((sum, child) => sum + child.hits, 0);
-		if (filtering && !hit && !hitsBelow) return NONE;
+		if (locked && !hitsBelow) return NONE;
 
 		const row: TreeRowData = {
 			node,
 			kind: "folder",
 			variants: [],
 			expanded: open,
-			count: filtering ? hitsBelow : node.childCount,
+			locked,
+			count: locked ? hitsBelow : node.childCount,
 		};
 		return { rows: [row, ...below.flatMap((child) => child.rows)], hits: hit + hitsBelow };
 	};
 
-	const roots = (childMap.get("") ?? []).map(visit);
+	const roots = (childMap.get("") ?? []).map((root) => visit(root, false));
 	return { rows: roots.flatMap((root) => root.rows), matches: roots.reduce((sum, root) => sum + root.hits, 0) };
 };
 
@@ -70,8 +76,8 @@ export const isTreeKey = (key: string): key is TreeKey => (TREE_KEYS as readonly
 
 export type TreeMove = { type: "focus"; id: string } | { type: "toggle"; id: string };
 
-/** What a navigation key does from the focused row; `undefined` when it has no effect there. While filtering, Left never collapses, as the filter keeps every folder open. */
-export const navigate = (rows: TreeRowData[], id: string, key: TreeKey, filtering = false): TreeMove | undefined => {
+/** What a navigation key does from the focused row; `undefined` when it has no effect there. */
+export const navigate = (rows: TreeRowData[], id: string, key: TreeKey): TreeMove | undefined => {
 	const index = rows.findIndex((row) => row.node.id === id);
 	const row = rows[index];
 	if (!row) return;
@@ -95,7 +101,7 @@ export const navigate = (rows: TreeRowData[], id: string, key: TreeKey, filterin
 			return focus(next?.node.parentId === id ? next : undefined);
 		}
 		case "ArrowLeft":
-			if (!filtering && row.kind === "folder" && row.expanded) return { type: "toggle", id };
+			if (row.kind === "folder" && row.expanded && !row.locked) return { type: "toggle", id };
 			return focus(rows.find((candidate) => candidate.node.id === row.node.parentId));
 	}
 };

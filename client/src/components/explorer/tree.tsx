@@ -21,7 +21,6 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 	} = useExplorer();
 	const [focusedId, setFocusedId] = useState<string>();
 	const listRef = useRef<HTMLDivElement>(null);
-	const filtering = query.trim() !== "";
 	const tabbableId = rows.some((row) => row.node.id === focusedId) ? focusedId : rows[0]?.node.id;
 
 	const focusRow = (id: string) => {
@@ -40,7 +39,7 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 		}
 		if (!isTreeKey(event.key)) return;
 
-		const move = navigate(rows, id, event.key, filtering);
+		const move = navigate(rows, id, event.key);
 		event.preventDefault();
 		if (move?.type === "focus") focusRow(move.id);
 		else if (move) onToggle(move.id);
