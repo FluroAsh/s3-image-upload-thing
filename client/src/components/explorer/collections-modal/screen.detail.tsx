@@ -145,7 +145,7 @@ const PhotoEditor = ({
 				/>
 			)}
 			<div className="border-t border-slate-700 pt-2">
-				<SetInfo set={photo.set} />
+				<SetInfo key={photo.set} set={photo.set} />
 			</div>
 		</div>
 	);

@@ -1,3 +1,5 @@
+import type { ImageVariant } from "./image";
+
 export type ManifestSource = {
   /** Bucket key of the image the variants were made from. */
   key: string;
@@ -49,4 +51,9 @@ export type Manifest = {
   source: ManifestSource | null;
   /** Keyed by the name found in the key, so names outside the current variant table are kept. */
   variants: Record<string, ManifestVariant>;
+};
+
+export type GenerateSizesResponse = {
+  /** Sizes written by the request, smallest first; empty when none was missing. */
+  generated: ImageVariant[];
 };
