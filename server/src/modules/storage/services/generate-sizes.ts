@@ -13,20 +13,25 @@ import { getObject, getObjectOrNull, putVariant, storeManifest } from "./s3-oper
  * Resolves the sizes written, empty when none was missing. Remakes each missing size from the kept original, create-only, and rewrites the manifest last with only what was stored.
  * A size whose write fails is left out of the manifest, which is still written for the others before the error is thrown.
  */
-export const generateMissingSizes = async (manifest: Manifest, location: BucketLocation): Promise<ImageVariant[]> => {
+export const generateMissingSizes = async (
+	manifest: Manifest,
+	location: BucketLocation,
+	/** The source's bytes when the caller already holds them, so they are not read back. */
+	heldOriginal?: Buffer,
+): Promise<ImageVariant[]> => {
 	const missing = sizeStatuses(manifest)
 		.filter(({ state }) => state === "missing")
 		.map(({ name }) => name);
 	if (missing.length === 0) return [];
 
 	if (!manifest.source) throw new HTTPException(409, { message: "This set keeps no original to make sizes from" });
-	const original = await getObjectOrNull(manifest.source.key, location);
+	const original = heldOriginal ?? (await getObjectOrNull(manifest.source.key, location))?.body;
 	if (!original) throw new HTTPException(409, { message: "The kept original is missing from the bucket" });
 
 	const settled = await Promise.allSettled(
 		missing.map(async (name): Promise<[ImageVariant, Omit<ManifestVariant, "format">, Buffer] | null> => {
 			const key = variantKey(manifest, name);
-			const made = await encodeVariant(name, original.body);
+			const made = await encodeVariant(name, original);
 			const etag = await putVariant(key, made.data, location, { createOnly: true });
 			if (etag)
 				return [

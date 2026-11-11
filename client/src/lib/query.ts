@@ -15,7 +15,7 @@ import {
 	putSetMembers,
 } from "@/services/collections";
 import { postUploadImages } from "@/services/images";
-import { getManifest, postGenerateSizes } from "@/services/manifests";
+import { getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type {
 	BucketLocation,
@@ -92,12 +92,14 @@ export const useManifest = (set: string) => {
 	});
 };
 
-export const useGenerateSizes = (set: string) => {
+const useSetSizesWrite = <Variables>(
+	write: (variables: Variables, location: BucketLocation) => Promise<GenerateSizesResponse>,
+) => {
 	const qc = useQueryClient();
 	const { bucketName, bucketRegion } = useExplorer().state;
 
-	return useMutation<GenerateSizesResponse, ApiError>({
-		mutationFn: () => postGenerateSizes(set, { bucketName, bucketRegion }),
+	return useMutation<GenerateSizesResponse, ApiError, Variables>({
+		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
 		/** Also on failure: a part-way run still stored some sizes. */
 		onSettled: () =>
 			Promise.all([
@@ -106,6 +108,12 @@ export const useGenerateSizes = (set: string) => {
 			]),
 	});
 };
+
+export const useGenerateSizes = (set: string) =>
+	useSetSizesWrite<void>((_, location) => postGenerateSizes(set, location));
+
+export const useAttachOriginal = (set: string) =>
+	useSetSizesWrite<File>((file, location) => postOriginal(set, file, location));
 
 /** Refetches collections after a write, so every reader shows what the server saved. */
 const useCollectionsWrite = <Response, Variables>(

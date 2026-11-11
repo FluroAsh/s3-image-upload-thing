@@ -1,6 +1,4 @@
-import * as path from "node:path";
-
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 
 import type { ImageVariants, ProcessedImage } from "@/shared/types/image";
 import { errorMessage } from "@/shared/utils/helpers";
@@ -12,6 +10,8 @@ import {
 	buildManifest,
 	describeSource,
 	hasRefusedUploadPrefix,
+	originalContentType,
+	originalExtension,
 	placeholderDataUri,
 	type SetIdentity,
 	setKeyPrefix,
@@ -57,15 +57,14 @@ const storeImageSet = async (
 	image: ImageVariants,
 	set: SetIdentity,
 	location: BucketLocation,
+	metadata: Metadata,
 ): Promise<FileVariant[] | null> => {
 	const body = ensureBuffer(image.source.buffer);
-	/** A name without an extension would give a key the CDN's `original.*` deny rule does not match. */
-	const extension = path.extname(image.fileName).slice(1) || (await sharp(body).metadata()).format;
-	const source = await describeSource(sourceKey(set, extension), body);
+	const source = describeSource(sourceKey(set, originalExtension(metadata)), body, metadata);
 	const { copyOriginalFrom } = image.source;
 	const original = copyOriginalFrom
 		? { key: source.key, copyFrom: copyOriginalFrom.key, ifMatch: copyOriginalFrom.etag }
-		: { key: source.key, body, contentType: image.fileType };
+		: { key: source.key, body, contentType: originalContentType(metadata) };
 	if (!(await storeOriginal(original, location))) return null;
 
 	try {
@@ -95,13 +94,10 @@ const existsReason = (name: string) => `An image set named "${name}" already exi
 
 const refused = (file: string, reason: string): UploadFileResult => ({ file, status: "refused", reason });
 
-const isImage = (body: Buffer) =>
+const readMetadata = (body: Buffer) =>
 	sharp(body)
 		.metadata()
-		.then(
-			() => true,
-			() => false,
-		);
+		.catch(() => null);
 
 /** One file's whole upload, so a refusal or an error ends only this file and the rest of the batch carries on. */
 const uploadFile = async (
@@ -113,10 +109,11 @@ const uploadFile = async (
 	try {
 		const prefix = setKeyPrefix(set);
 		if (hasRefusedUploadPrefix(prefix)) return refused(file, `Path "${prefix}" is reserved`);
-		if (!(await isImage(ensureBuffer(image.buffer)))) return refused(file, "Not a valid image");
+		const metadata = await readMetadata(ensureBuffer(image.buffer));
+		if (!metadata) return refused(file, "Not a valid image");
 		if (await imageSetExists(set, location)) return refused(file, existsReason(set.name));
 
-		const variants = await storeImageSet(await processImage(image), set, location);
+		const variants = await storeImageSet(await processImage(image), set, location, metadata);
 		if (!variants) return refused(file, existsReason(set.name));
 		return { file, status: "stored", variants };
 	} catch (error) {

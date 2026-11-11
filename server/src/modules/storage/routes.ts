@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
+import { attachOriginalHandler } from "./handlers/attach-original";
 import {
 	createCollectionHandler,
 	deleteCollectionHandler,
@@ -19,7 +20,8 @@ import { uploadImagesHandler } from "./handlers/upload";
 
 const storage = new Hono();
 
-const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
+/** Virtually unlimited size (DO NOT use this in Prod). */
+const maxSize = Number.MAX_SAFE_INTEGER;
 
 storage.use(
 	bodyLimit({
@@ -38,6 +40,7 @@ storage.post("/presigned-urls", presignedUrlsHandler);
 storage.get("/manifests/:set{.+}", getManifestHandler);
 
 storage.post("/sizes/:set{.+}", generateSizesHandler);
+storage.post("/original/:set{.+}", attachOriginalHandler);
 
 storage.get("/collections", listCollectionsHandler);
 storage.post("/collections", createCollectionHandler);
