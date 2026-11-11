@@ -1,8 +1,7 @@
+import { pickPreviewVariant } from "@/components/explorer/utils";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { usePresignedUrls } from "@/lib/query";
 import type { TreeNode } from "~/shared/types";
-
-import { pickPreviewVariant } from "@/components/explorer/utils";
 
 type SetSelectionProps = {
 	/** Path of the set folder without a trailing slash. */

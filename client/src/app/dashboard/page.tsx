@@ -34,7 +34,7 @@ export default async function Page({
 		return (
 			<StateMessage
 				className="h-screen"
-				tone="error"
+				tone="err"
 				icon={LucideAlertTriangle}
 				title="Unable to retrieve buckets"
 				message={error ? serverErrorMessage(error, "The server could not be reached. Try again shortly.") : undefined}

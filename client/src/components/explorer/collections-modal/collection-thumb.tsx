@@ -23,7 +23,7 @@ export const CollectionThumb = ({
 	const url = variant && data?.[variant.id];
 
 	return (
-		<div className={cn("shrink-0 rounded-md bg-slate-700 overflow-hidden", className)}>
+		<div className={cn("shrink-0 rounded-md bg-raised overflow-hidden", className)}>
 			{url && <img src={url} alt="" className="size-full object-cover" />}
 		</div>
 	);

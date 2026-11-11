@@ -3,6 +3,9 @@ import { type MutableRefObject, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LucideArrowLeft, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { Input } from "@/components/ui/input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 import type { FileTreeResponse, TreeNode } from "~/shared/types";
@@ -70,69 +73,55 @@ export const FolderSelect = ({ folderPathRef }: { folderPathRef: MutableRefObjec
 	};
 
 	return (
-		// Header
 		<div className="mb-4">
 			<div className="mb-4 flex justify-between items-center">
-				<div className="text-neutral-300">
-					<span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white">
-						{activeNodeId ? activeNodeId : activeBucketName}
-					</span>
+				<div className="text-fg-1">
+					<Chip>{activeNodeId ? activeNodeId : activeBucketName}</Chip>
 				</div>
 
-				<button
-					type="button"
-					className="flex items-center justify-center bg-neutral-500 text-neutral-100 py-2 px-4 rounded-md"
-					onClick={handleCreateFolder}
-				>
+				<Button onClick={handleCreateFolder}>
 					<LucideFolderPlus className="size-4" />
-					<span className="ml-2 text-sm">New Folder</span>
-				</button>
+					New Folder
+				</Button>
 			</div>
 
-			{/* Search/Navigation */}
 			<div className="flex gap-x-2 mb-4">
 				<div className="relative w-full">
-					<input
+					<Input
 						type="text"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
-						className="pl-[32px] w-full p-2 rounded-md border border-neutral-500 text-neutral-600 focus:outline-none focus:border-neutral-300"
+						className="pl-8"
 						placeholder="Search folders..."
 					/>
-					<LucideSearch className="absolute top-1/2 left-2 size-4 text-neutral-500 transform -translate-y-1/2" />
+					<LucideSearch className="absolute top-1/2 left-2 size-4 text-fg-2 transform -translate-y-1/2" />
 				</div>
 
-				<button
-					type="button"
-					className="flex gap-x-2 items-center bg-neutral-500 text-neutral-100 px-4 py-2 rounded-md"
-					onClick={handleBack}
-				>
-					<LucideArrowLeft className="size-4 mr-2" />
-					<span className="text-sm">Back</span>
-				</button>
+				<Button onClick={handleBack}>
+					<LucideArrowLeft className="size-4" />
+					Back
+				</Button>
 			</div>
 
 			{currentFolders.length > 0 ? (
-				<div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-neutral-500">
+				<div className="grid grid-cols-5 gap-4 overflow-x-hidden h-[300px] p-4 rounded-md border border-line-strong">
 					{currentFolders.map((folderNode) => (
 						<Folder key={folderNode.id} name={folderNode.name} onClick={() => handleFolderSelect(folderNode)} />
 					))}
 				</div>
 			) : (
 				<div className="mb-4">
-					<div className="p-4 rounded-md border border-neutral-500 h-[300px] grid place-items-center">
+					<div className="p-4 rounded-md border border-line-strong h-[300px] grid place-items-center">
 						<div>
-							<LucideFolder className="size-12 mx-auto mb-4 stroke-neutral-500" />
+							<LucideFolder className="size-12 mx-auto mb-4 stroke-fg-2" />
 							{activeFolder ? (
-								<span className="text-neutral-300">
+								<span className="text-fg-1">
 									Looks like
-									<span className="font-mono bg-neutral-800 px-2 py-1 rounded text-xs text-white mx-2">
-										{activeFolder.name}
-									</span>
+									<Chip className="mx-2">{activeFolder.name}</Chip>
 									is empty!
 								</span>
 							) : (
-								<span className="text-neutral-300">No folders found in {activeBucketName}</span>
+								<span className="text-fg-1">No folders found in {activeBucketName}</span>
 							)}
 						</div>
 					</div>

@@ -7,14 +7,14 @@ import { GlobalProviders } from "@/lib/providers/global-providers";
 
 const geistMono = Geist_Mono({
 	variable: "--font-geist-mono",
-	weight: ["100", "900"],
+	weight: ["400", "500"],
 	fallback: ["Arial", "sans-serif"],
 	subsets: ["latin"],
 });
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
-	weight: ["100", "500", "900"],
+	weight: ["400", "500", "600"],
 	fallback: ["Arial", "sans-serif"],
 	subsets: ["latin"],
 });
@@ -33,12 +33,10 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" className="dark">
+		<html lang="en">
 			<body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
 				<div className="min-h-screen w-screen grid grid-rows-[auto_1fr_auto]">
-					{/* <header className="bg-sky-600 text-center">Placeholder Header</header> */}
 					<GlobalProviders>{children}</GlobalProviders>
-					{/* <footer className="bg-red-600 text-center">Placeholder Footer</footer> */}
 				</div>
 			</body>
 		</html>

@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 
 import { LucideAlertTriangle } from "lucide-react";
 
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
+import { StateMessage } from "@/components/ui/state-message";
 import { useAttachOriginal, useGenerateSizes, useManifest } from "@/lib/query";
+import { cn } from "@/lib/utils";
 import { sizeStatuses } from "~/shared/image-sizes";
 import type { Manifest } from "~/shared/types";
 
-import { StateMessage } from "../ui/state-message";
 import { serverErrorMessage } from "./utils";
 
 const BYTE_UNITS = ["B", "kB", "MB", "GB"];
@@ -40,7 +43,7 @@ const OriginalUpload = ({
 
 	if (!file) {
 		return (
-			<label className="cursor-pointer rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600">
+			<label className={cn(buttonVariants(), "cursor-pointer")}>
 				Upload original
 				<input
 					type="file"
@@ -61,38 +64,37 @@ const OriginalUpload = ({
 		<div className="flex w-full flex-col gap-2">
 			<div className="flex gap-3">
 				<figure className="flex-1">
-					<img src={imageUrl} alt="Existing" className="max-h-48 w-full rounded object-contain" />
+					<img src={imageUrl} alt="Existing" className="max-h-48 w-full rounded-sm object-contain" />
 					<figcaption>Existing image</figcaption>
 				</figure>
 				<figure className="flex-1">
-					{previewUrl && <img src={previewUrl} alt="Chosen file" className="max-h-48 w-full rounded object-contain" />}
+					{previewUrl && (
+						<img src={previewUrl} alt="Chosen file" className="max-h-48 w-full rounded-sm object-contain" />
+					)}
 					<figcaption>{file.name}</figcaption>
 				</figure>
 			</div>
 			<span>Is this the same image as the existing one? Sizes are made from it.</span>
 			<span className="flex gap-2">
-				<button
-					type="button"
-					disabled={attach.isPending}
+				<Button
+					pending={attach.isPending}
 					onClick={() => {
 						onStart();
 						attach.mutate(file, { onSuccess: () => setFile(null) });
 					}}
-					className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 disabled:opacity-50"
 				>
 					{attach.isPending ? "Uploading..." : "Confirm and upload"}
-				</button>
-				<button
-					type="button"
+				</Button>
+				<Button
+					variant="ghost"
 					disabled={attach.isPending}
 					onClick={() => {
 						attach.reset();
 						setFile(null);
 					}}
-					className="rounded px-1.5 py-0.5 text-slate-400 hover:text-slate-200 disabled:opacity-50"
 				>
 					Cancel
-				</button>
+				</Button>
 			</span>
 		</div>
 	);
@@ -112,66 +114,56 @@ const Info = ({ manifest, set, imageUrl }: { manifest: Manifest; set: string; im
 				{statuses.map(({ name, state, variant, reason }) => {
 					if (variant) {
 						return (
-							<span
+							<Chip
 								key={name}
+								tone={state === "mismatched" ? "mismatched" : "default"}
 								title={`${variant.width}×${variant.height} · ${formatBytes(variant.bytes)} · ${variant.format}${reason ? ` · ${reason}` : ""}`}
-								className={`rounded px-1.5 py-0.5 ${state === "mismatched" ? "border border-dotted border-amber-700/60 bg-slate-800 text-slate-400" : "bg-slate-700 text-slate-300"}`}
 							>
 								{name} {variant.width}
 								{state === "mismatched" && " (mismatched)"}
-							</span>
+							</Chip>
 						);
 					}
 					if (state === "notApplicable") return null;
 					return (
-						<span
-							key={name}
-							title="This size is missing"
-							className="rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
-						>
+						<Chip key={name} tone="missing" title="This size is missing">
 							{name}
-						</span>
+						</Chip>
 					);
 				})}
 				{source ? (
-					<span
+					<Chip
 						title={`${source.width}×${source.height} · ${formatBytes(source.bytes)} · ${source.public ? "public" : "private"}`}
-						className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-300"
 					>
 						original {source.width}
-					</span>
+					</Chip>
 				) : (
-					<span
-						title="Original not kept"
-						className="rounded border border-dashed border-slate-600 px-1.5 py-0.5 text-slate-500"
-					>
+					<Chip tone="missing" title="Original not kept">
 						original
-					</span>
+					</Chip>
 				)}
 			</span>
 			{placeholder ? (
 				<span className="inline-flex items-center gap-1">
-					<img src={placeholder} alt="" className="size-5 rounded" />
+					<img src={placeholder} alt="" className="size-5 rounded-sm" />
 					Inline blur
 				</span>
 			) : (
-				<span className="text-slate-500">No inline blur</span>
+				<span className="text-fg-2">No inline blur</span>
 			)}
 			{canGenerate && (
-				<button
-					type="button"
-					disabled={generate.isPending}
+				<Button
+					pending={generate.isPending}
 					onClick={() => {
 						attach.reset();
 						generate.mutate();
 					}}
-					className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 disabled:opacity-50"
 				>
 					{generate.isPending ? "Generating..." : "Generate missing sizes"}
-				</button>
+				</Button>
 			)}
 			{!source && imageUrl && <OriginalUpload attach={attach} imageUrl={imageUrl} onStart={generate.reset} />}
-			{error && <span className="text-red-400">{serverErrorMessage(error)}</span>}
+			{error && <span className="text-err">{serverErrorMessage(error)}</span>}
 			<span>{DATE_FORMAT.format(new Date(manifest.createdAt))}</span>
 		</div>
 	);
@@ -182,16 +174,16 @@ export const SetInfo = ({ set, imageUrl }: { set: string; imageUrl?: string }) =
 	const { data, error, isPending } = useManifest(set);
 
 	return (
-		<div className="text-xs text-slate-400">
+		<div className="text-secondary text-fg-1">
 			{isPending ? (
 				"Loading set info..."
 			) : error ? (
 				error.status === 404 || error.status === 422 ? (
-					<span className="text-slate-500">{error.status === 404 ? "No manifest" : "Unreadable manifest"}</span>
+					<span className="text-fg-2">{error.status === 404 ? "No manifest" : "Unreadable manifest"}</span>
 				) : (
 					<StateMessage
 						size="inline"
-						tone="error"
+						tone="err"
 						icon={LucideAlertTriangle}
 						title="Could not load set info"
 						message={serverErrorMessage(error)}

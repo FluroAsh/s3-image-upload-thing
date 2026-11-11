@@ -10,15 +10,16 @@ import {
 	LucideTrash2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useReorderCollection, useSetMembers, useUpdateCollection, useUpdatePhoto } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
-import { StateMessage } from "../../ui/state-message";
 import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
 import { SetInfo } from "../set-info";
-import { PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
 import { CollectionThumb } from "./collection-thumb";
@@ -59,25 +60,25 @@ const PhotoTile = ({
 			}}
 			className={cn(
 				"relative size-[120px] cursor-grab rounded-md ring-2",
-				selected ? "ring-sky-500" : "ring-transparent",
+				selected ? "ring-accent" : "ring-transparent",
 			)}
 		>
 			{folder ? (
 				<CollectionThumb folder={folder} className="size-full" />
 			) : (
-				<div className="grid size-full place-items-center rounded-md bg-slate-700 p-2 text-center text-xs text-slate-400">
+				<div className="grid size-full place-items-center rounded-md bg-raised p-2 text-center text-secondary text-fg-1">
 					<LucideImageOff className="size-5" />
 					Missing
 				</div>
 			)}
 			{isCover && (
-				<span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded bg-sky-600 px-1.5 py-0.5 text-xs text-neutral-100">
+				<span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded-sm bg-accent px-1.5 py-0.5 text-secondary text-canvas">
 					<LucideStar className="size-3" />
 					Cover
 				</span>
 			)}
 			{!photo.alt && (
-				<span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 py-0.5 text-xs text-slate-900">
+				<span className="absolute bottom-1 left-1 rounded-sm bg-warn px-1.5 py-0.5 text-secondary text-canvas">
 					No alt
 				</span>
 			)}
@@ -105,8 +106,8 @@ const PhotoEditor = ({
 	};
 
 	return (
-		<div className="space-y-2 rounded-lg border border-slate-600 p-3">
-			<p className="truncate text-xs text-slate-400">{photo.set}</p>
+		<div className="space-y-2 rounded-lg border border-line-strong p-3">
+			<p className="truncate text-secondary text-fg-1">{photo.set}</p>
 			<div className="grid grid-cols-2 gap-2">
 				<PhotoTextFields
 					set={photo.set}
@@ -116,35 +117,29 @@ const PhotoEditor = ({
 				/>
 			</div>
 			<div className="flex items-center gap-2">
-				<button
-					type="button"
-					disabled={isCover || update.isPending}
+				<Button
+					disabled={isCover}
+					pending={update.isPending}
 					onClick={() => update.mutate({ slug: collection.slug, cover: photo.set })}
-					className="inline-flex items-center gap-2 rounded-md bg-slate-700 px-3 py-1.5 text-sm text-neutral-100 hover:bg-slate-600 disabled:opacity-50"
 				>
 					<LucideStar className="size-4" />
 					{isCover ? "Cover" : "Set as cover"}
-				</button>
-				<button
-					type="button"
-					disabled={members.isPending}
-					onClick={onRemove}
-					className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-red-400 hover:bg-slate-700"
-				>
+				</Button>
+				<Button variant="ghost" danger disabled={members.isPending} onClick={onRemove}>
 					<LucideTrash2 className="size-4" />
 					Remove
-				</button>
+				</Button>
 			</div>
 			{error && (
 				<StateMessage
 					size="inline"
-					tone="error"
+					tone="err"
 					icon={LucideAlertTriangle}
 					title="Could not save"
 					message={serverErrorMessage(error)}
 				/>
 			)}
-			<div className="border-t border-slate-700 pt-2">
+			<div className="border-t border-line pt-2">
 				<SetInfo key={photo.set} set={photo.set} />
 			</div>
 		</div>
@@ -169,13 +164,13 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 	if (!collection)
 		return error ? (
 			<StateMessage
-				tone="error"
+				tone="err"
 				icon={LucideAlertTriangle}
 				title="Failed to load collection"
 				message={serverErrorMessage(error)}
 			/>
 		) : (
-			<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collection..." />
+			<StateMessage spin icon={LucideLoader2} title="Loading collection..." />
 		);
 
 	/** Show the dropped order until the refetch lands. */
@@ -192,33 +187,25 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 	return (
 		<section className="space-y-3" aria-label={collection.name}>
 			<div className="flex items-center justify-between">
-				<button
-					type="button"
-					onClick={() => setScreen({ screen: "list" })}
-					className="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-neutral-100"
-				>
+				<Button variant="ghost" onClick={() => setScreen({ screen: "list" })}>
 					<LucideArrowLeft className="size-4" />
 					Back to collections
-				</button>
+				</Button>
 				{!adding && (
-					<button
-						type="button"
-						onClick={() => setAdding(true)}
-						className={cn("inline-flex items-center gap-2 px-3 py-1.5", PRIMARY_BUTTON_CLASS)}
-					>
+					<Button variant="primary" onClick={() => setAdding(true)}>
 						<LucidePlus className="size-4" />
 						Add sets
-					</button>
+					</Button>
 				)}
 			</div>
-			<h3 className="text-lg font-medium text-neutral-100">{collection.name}</h3>
+			<h3 className="text-lg font-medium text-fg">{collection.name}</h3>
 
 			{adding ? (
 				<AddSets collection={collection} onDone={() => setAdding(false)} />
 			) : (
 				<>
 					{reorder.error && (
-						<p className="text-sm text-red-500">{serverErrorMessage(reorder.error, "Could not reorder.")}</p>
+						<p className="text-body text-err">{serverErrorMessage(reorder.error, "Could not reorder.")}</p>
 					)}
 					<div className="max-h-[280px] overflow-y-auto">
 						<div className="grid grid-cols-[repeat(auto-fill,120px)] gap-3">
@@ -248,7 +235,7 @@ export const DetailScreen = ({ slug }: { slug: string }) => {
 					{current ? (
 						<PhotoEditor collection={collection} photo={current} isCover={current.set === cover} />
 					) : (
-						<p className="text-sm text-slate-400">Select a photo to edit it. Drag photos to reorder.</p>
+						<p className="text-body text-fg-1">Select a photo to edit it. Drag photos to reorder.</p>
 					)}
 				</>
 			)}

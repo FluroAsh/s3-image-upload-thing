@@ -7,14 +7,14 @@ import {
 	LucideTrash2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useDeleteCollection, useUpdateCollection } from "@/lib/query";
-import { cn } from "@/lib/utils";
 import { coverOf } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
-import { StateMessage } from "../../ui/state-message";
 import { PartialNotice } from "../partial-notice";
-import { formatCount, PRIMARY_BUTTON_CLASS, serverErrorMessage } from "../utils";
+import { formatCount, serverErrorMessage } from "../utils";
 import { CollectionThumb } from "./collection-thumb";
 import { useCollectionsModal } from "./provider";
 import { useBucketSets } from "./use-bucket-sets";
@@ -40,7 +40,7 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 
 	return (
 		/** The open button stretches over the whole row; the actions sit above it. */
-		<li className="relative flex cursor-pointer items-center gap-4 rounded-lg border border-slate-600 bg-slate-800 p-3 hover:bg-slate-700/60">
+		<li className="relative flex cursor-pointer items-center gap-4 rounded-lg border border-line-strong bg-panel p-3 hover:bg-raised">
 			<button
 				type="button"
 				onClick={() => setScreen({ screen: "detail", slug: collection.slug })}
@@ -48,31 +48,32 @@ const CollectionCard = ({ collection, sets }: { collection: Collection; sets: Ma
 			>
 				<CollectionThumb folder={shown ? sets.get(shown) : undefined} />
 				<div className="min-w-0 flex-1">
-					<h3 className="truncate text-sm font-medium text-neutral-100">{collection.name}</h3>
-					<p className="truncate text-xs text-slate-400">
+					<h3 className="truncate text-body font-medium text-fg">{collection.name}</h3>
+					<p className="truncate text-secondary text-fg-1">
 						{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
 					</p>
-					{error && <p className="text-xs text-red-500">{serverErrorMessage(error)}</p>}
+					{error && <p className="text-secondary text-err">{serverErrorMessage(error)}</p>}
 				</div>
 			</button>
-			<button
-				type="button"
+			<Button
+				variant="icon"
 				aria-label={`Rename ${collection.name}`}
 				disabled={rename.isPending}
 				onClick={onRename}
-				className="relative z-10 p-2 rounded-md text-slate-300 hover:bg-slate-700"
+				className="relative z-10"
 			>
 				<LucidePencil className="size-4" />
-			</button>
-			<button
-				type="button"
+			</Button>
+			<Button
+				variant="icon"
+				danger
 				aria-label={`Delete ${collection.name}`}
 				disabled={remove.isPending}
 				onClick={onDelete}
-				className="relative z-10 p-2 rounded-md text-red-400 hover:bg-slate-700"
+				className="relative z-10"
 			>
 				<LucideTrash2 className="size-4" />
-			</button>
+			</Button>
 		</li>
 	);
 };
@@ -81,15 +82,10 @@ const NewCollectionButton = ({ disabled = false }: { disabled?: boolean }) => {
 	const { setScreen } = useCollectionsModal();
 
 	return (
-		<button
-			type="button"
-			disabled={disabled}
-			onClick={() => setScreen({ screen: "create" })}
-			className={cn("inline-flex items-center gap-2 px-3 py-1.5", PRIMARY_BUTTON_CLASS)}
-		>
+		<Button variant="primary" disabled={disabled} onClick={() => setScreen({ screen: "create" })}>
 			<LucidePlus className="size-4" />
 			New collection
-		</button>
+		</Button>
 	);
 };
 
@@ -113,10 +109,10 @@ export const ListScreen = () => {
 
 			<div className="max-h-[440px] overflow-y-auto">
 				{loading ? (
-					<StateMessage tone="info" spin icon={LucideLoader2} title="Loading collections..." />
+					<StateMessage spin icon={LucideLoader2} title="Loading collections..." />
 				) : error ? (
 					<StateMessage
-						tone="error"
+						tone="err"
 						icon={LucideAlertTriangle}
 						title="Failed to load collections"
 						message={serverErrorMessage(error)}
