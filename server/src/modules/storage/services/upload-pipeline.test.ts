@@ -122,10 +122,10 @@ describe("runUploadPipeline", () => {
 		expect(Buffer.compare(puts()[0].Body as Buffer, jpeg)).toBe(0);
 	});
 
-	it("names an original uploaded without an extension after its format, so it still matches original.*", async () => {
+	it("names an original after its detected format whatever its file name says", async () => {
 		await upload("photo");
 
-		expect(puts()[0].Key).toBe("trip/photo/original.jpeg");
+		expect(puts()[0].Key).toBe("trip/photo/original.jpg");
 	});
 
 	it("records the original as the manifest's private source, measured after EXIF rotation", async () => {

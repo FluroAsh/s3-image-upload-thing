@@ -19,10 +19,17 @@ const formatBytes = (bytes: number): string => {
 const DATE_FORMAT = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 /** Shows the set's image beside the chosen file, because the server can only check the aspect ratio, not that it is the same edit. */
-const OriginalUpload = ({ set, imageUrl }: { set: string; imageUrl: string }) => {
+const OriginalUpload = ({
+	attach,
+	imageUrl,
+	onStart,
+}: {
+	attach: ReturnType<typeof useAttachOriginal>;
+	imageUrl: string;
+	onStart: () => void;
+}) => {
 	const [file, setFile] = useState<File | null>(null);
 	const [previewUrl, setPreviewUrl] = useState("");
-	const attach = useAttachOriginal(set);
 
 	useEffect(() => {
 		if (!file) return setPreviewUrl("");
@@ -33,22 +40,20 @@ const OriginalUpload = ({ set, imageUrl }: { set: string; imageUrl: string }) =>
 
 	if (!file) {
 		return (
-			<>
-				<label className="cursor-pointer rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600">
-					Upload original
-					<input
-						type="file"
-						accept="image/*"
-						className="sr-only"
-						onChange={(event) => {
-							attach.reset();
-							setFile(event.target.files?.[0] ?? null);
-							event.target.value = "";
-						}}
-					/>
-				</label>
-				{attach.error && <span className="text-red-400">{serverErrorMessage(attach.error)}</span>}
-			</>
+			<label className="cursor-pointer rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600">
+				Upload original
+				<input
+					type="file"
+					accept="image/*"
+					className="sr-only"
+					onChange={(event) => {
+						attach.reset();
+						onStart();
+						setFile(event.target.files?.[0] ?? null);
+						event.target.value = "";
+					}}
+				/>
+			</label>
 		);
 	}
 
@@ -69,7 +74,10 @@ const OriginalUpload = ({ set, imageUrl }: { set: string; imageUrl: string }) =>
 				<button
 					type="button"
 					disabled={attach.isPending}
-					onClick={() => attach.mutate(file, { onSuccess: () => setFile(null) })}
+					onClick={() => {
+						onStart();
+						attach.mutate(file, { onSuccess: () => setFile(null) });
+					}}
 					className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 disabled:opacity-50"
 				>
 					{attach.isPending ? "Uploading..." : "Confirm and upload"}
@@ -77,13 +85,15 @@ const OriginalUpload = ({ set, imageUrl }: { set: string; imageUrl: string }) =>
 				<button
 					type="button"
 					disabled={attach.isPending}
-					onClick={() => setFile(null)}
+					onClick={() => {
+						attach.reset();
+						setFile(null);
+					}}
 					className="rounded px-1.5 py-0.5 text-slate-400 hover:text-slate-200 disabled:opacity-50"
 				>
 					Cancel
 				</button>
 			</span>
-			{attach.error && <span className="text-red-400">{serverErrorMessage(attach.error)}</span>}
 		</div>
 	);
 };
@@ -92,6 +102,8 @@ const Info = ({ manifest, set, imageUrl }: { manifest: Manifest; set: string; im
 	const { placeholder, source } = manifest;
 	const statuses = sizeStatuses(manifest);
 	const generate = useGenerateSizes(set);
+	const attach = useAttachOriginal(set);
+	const error = attach.error ?? generate.error;
 	const canGenerate = source && statuses.some(({ state }) => state === "missing");
 
 	return (
@@ -149,14 +161,17 @@ const Info = ({ manifest, set, imageUrl }: { manifest: Manifest; set: string; im
 				<button
 					type="button"
 					disabled={generate.isPending}
-					onClick={() => generate.mutate()}
+					onClick={() => {
+						attach.reset();
+						generate.mutate();
+					}}
 					className="rounded bg-slate-700 px-1.5 py-0.5 text-slate-200 hover:bg-slate-600 disabled:opacity-50"
 				>
 					{generate.isPending ? "Generating..." : "Generate missing sizes"}
 				</button>
 			)}
-			{!source && imageUrl && <OriginalUpload set={set} imageUrl={imageUrl} />}
-			{generate.error && <span className="text-red-400">{serverErrorMessage(generate.error)}</span>}
+			{!source && imageUrl && <OriginalUpload attach={attach} imageUrl={imageUrl} onStart={generate.reset} />}
+			{error && <span className="text-red-400">{serverErrorMessage(error)}</span>}
 			<span>{DATE_FORMAT.format(new Date(manifest.createdAt))}</span>
 		</div>
 	);

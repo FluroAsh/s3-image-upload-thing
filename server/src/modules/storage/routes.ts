@@ -20,7 +20,8 @@ import { uploadImagesHandler } from "./handlers/upload";
 
 const storage = new Hono();
 
-const maxSize = Number.MAX_SAFE_INTEGER; // Virtually unlimited size (DO NOT use this in Prod)
+/** Virtually unlimited size (DO NOT use this in Prod). */
+const maxSize = Number.MAX_SAFE_INTEGER;
 
 storage.use(
 	bodyLimit({

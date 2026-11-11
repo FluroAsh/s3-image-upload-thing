@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import * as path from "node:path";
 
-import sharp from "sharp";
+import type { Metadata } from "sharp";
 
 import type { ImageVariant, Manifest, ManifestSource, ManifestVariant } from "~/shared/types";
 
@@ -135,13 +135,17 @@ export const isSetManifest = (key: string, siblings: ReadonlySet<string>): boole
 export const sourceKey = (set: SetIdentity, extension: string): string =>
 	`${setKeyPrefix(set)}${SOURCE_FILE_STEM}${extension.toLowerCase()}`;
 
-/** A name without an extension would give a key the CDN's `original.*` deny rule does not match, so the image's own format stands in. */
-export const originalExtension = async (fileName: string, body: Buffer): Promise<string> =>
-	path.extname(fileName).slice(1) || (await sharp(body).metadata()).format;
+/** Named after the detected format, never the file name, so a mislabelled upload cannot name a key the CDN's `original.*` deny rule misses; `jpeg` is `jpg` to match existing keys. */
+export const originalExtension = ({ format }: Pick<Metadata, "format">): string => (format === "jpeg" ? "jpg" : format);
+
+export const originalContentType = ({ format }: Pick<Metadata, "format">): string => `image/${format}`;
 
 /** Shared by the upload path and the backfill, so both measure an original the same way: after EXIF rotation, as displayed. */
-export const describeSource = async (key: string, body: Buffer): Promise<ManifestSource> => {
-	const { autoOrient } = await sharp(body).metadata();
+export const describeSource = (
+	key: string,
+	body: Buffer,
+	{ autoOrient }: Pick<Metadata, "autoOrient">,
+): ManifestSource => {
 	const sha256 = createHash("sha256").update(body).digest("hex");
 
 	return { key, public: false, sha256, bytes: body.length, ...autoOrient };
@@ -273,7 +277,7 @@ export const buildManifest = (params: BuildManifestParams): Manifest => {
 
 	if (!identity) throw new Error("An image set needs at least one object");
 
-	// Only `original.{ext}` inside the set's folder is denied to the CDN, so any other key would make `public: false` untrue.
+	/** Only `original.{ext}` inside the set's folder is denied to the CDN, so any other key would make `public: false` untrue. */
 	if (source) {
 		const classified = classifyKey(source.key, siblings);
 		if (!("source" in classified) || setId(classified.source) !== setId(identity)) {

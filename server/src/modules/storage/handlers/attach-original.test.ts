@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ORIGINAL_FIELD } from "~/shared/constants/upload";
 import type { Manifest } from "~/shared/types";
 
 import { jsonBody, s3 } from "../fake-s3";
@@ -39,7 +40,7 @@ const puts = () => s3.sent.filter(({ command }) => command === "PutObject");
 
 const send = async (image: Buffer, name = "photo.jpg") => {
 	const form = new FormData();
-	form.append("original", new File([new Uint8Array(image)], name, { type: "image/jpeg" }));
+	form.append(ORIGINAL_FIELD, new File([new Uint8Array(image)], name, { type: "image/jpeg" }));
 	return app.request(`/storage/original/trip/a${SCOPE}`, { method: "POST", body: form });
 };
 
@@ -102,6 +103,34 @@ describe("POST /storage/original/:set", () => {
 
 		expect(res.status).toBe(422);
 		expect(puts()).toHaveLength(0);
+	});
+
+	it("rejects an original smaller than the largest existing size with 422 and writes nothing", async () => {
+		const res = await send(await makeJpeg({ width: 400, height: 300 }));
+
+		expect(res.status).toBe(422);
+		expect(puts()).toHaveLength(0);
+	});
+
+	it("names the original after its detected format, not its file name", async () => {
+		const res = await send(await makeJpeg({ width: 1600, height: 1200 }), "photo.png");
+
+		expect(res.status).toBe(200);
+		expect(puts()[0].input).toMatchObject({ Key: "trip/a/original.jpg", ContentType: "image/jpeg" });
+	});
+
+	it("deletes the stored original and surfaces the error when the manifest write fails", async () => {
+		const respond = s3.respond;
+		s3.respond = async (sent) => {
+			if (sent.command === "PutObject" && sent.input.Key.endsWith("manifest.json")) throw new Error("manifest down");
+			return respond(sent);
+		};
+		const res = await send(await makeJpeg({ width: 1600, height: 1200 }));
+
+		expect(res.status).toBe(500);
+		expect(s3.sent.filter(({ command }) => command === "DeleteObject").map(({ input }) => input.Key)).toEqual([
+			"trip/a/original.jpg",
+		]);
 	});
 
 	it("rejects a file that is not an image with 422", async () => {

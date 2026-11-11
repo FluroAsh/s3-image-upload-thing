@@ -117,7 +117,13 @@ const sourceOf = async (
 	if (existing?.source?.key === set.source) return existing.source;
 
 	const { body } = await readListed(set.source, listed, io);
-	return aboutKey(set.source, describeSource(set.source, body));
+	const key = set.source;
+	return aboutKey(
+		key,
+		sharp(body)
+			.metadata()
+			.then((metadata) => describeSource(key, body, metadata)),
+	);
 };
 
 const backfillSet = async (

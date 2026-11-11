@@ -92,7 +92,6 @@ export const useManifest = (set: string) => {
 	});
 };
 
-/** Also on failure: a part-way run still stored some sizes. */
 const useSetSizesWrite = <Variables>(
 	write: (variables: Variables, location: BucketLocation) => Promise<GenerateSizesResponse>,
 ) => {
@@ -101,6 +100,7 @@ const useSetSizesWrite = <Variables>(
 
 	return useMutation<GenerateSizesResponse, ApiError, Variables>({
 		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
+		/** Also on failure: a part-way run still stored some sizes. */
 		onSettled: () =>
 			Promise.all([
 				qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
