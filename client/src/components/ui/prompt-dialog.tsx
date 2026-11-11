@@ -26,13 +26,13 @@ type PromptDialogProps = {
 	label: string;
 	/** Text the field starts with. Defaults to empty. */
 	initialValue?: string;
-	/** Muted line under the field while there is no error. */
-	hint?: string;
+	/** Muted line under the field while there is no error; a function receives the trimmed value. */
+	hint?: string | ((value: string) => string);
 	/** Label of the submit button. */
 	confirmLabel: string;
 	/** Label of the submit button while `pending`, e.g. "Renaming...". Defaults to `confirmLabel`. */
 	pendingLabel?: string;
-	/** Disables the field and buttons and spins the submit button while the mutation runs. */
+	/** Locks the field and disables the buttons while the mutation runs; the field stays focusable so Enter retries after an error. */
 	pending?: boolean;
 	/** Server error shown under the field; the submit button then reads "Retry". */
 	error?: string;
@@ -58,6 +58,7 @@ const PromptForm = ({
 	const trimmed = value.trim();
 	const invalidReason = trimmed ? validate?.(trimmed) : undefined;
 	const shownError = invalidReason ?? error;
+	const shownHint = typeof hint === "function" ? (trimmed ? hint(trimmed) : undefined) : hint;
 	const inputId = useId();
 	const errorId = useId();
 
@@ -65,7 +66,7 @@ const PromptForm = ({
 		<form
 			onSubmit={(event) => {
 				event.preventDefault();
-				if (trimmed && !invalidReason) onSubmit(trimmed);
+				if (!pending && trimmed && !invalidReason) onSubmit(trimmed);
 			}}
 		>
 			<div className="space-y-1.5 px-4 py-3">
@@ -79,7 +80,7 @@ const PromptForm = ({
 					value={value}
 					invalid={!!shownError}
 					aria-describedby={shownError ? errorId : undefined}
-					disabled={pending}
+					readOnly={pending}
 					onChange={(event) => setValue(event.target.value)}
 				/>
 				{shownError ? (
@@ -88,7 +89,7 @@ const PromptForm = ({
 						{shownError}
 					</p>
 				) : (
-					hint && <p className="text-caption text-fg-2">{hint}</p>
+					shownHint && <p className="text-caption text-fg-2">{shownHint}</p>
 				)}
 			</div>
 			<DialogFooter>

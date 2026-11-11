@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
-import { PhotoTextFields, TEXT_DELETED_NOTE } from "../photo-text-fields";
+import { RemoveFromCollectionDialog } from "../collection-dialogs";
+import { PhotoTextFields } from "../photo-text-fields";
 import { Sizes } from "../sizes";
 import { serverErrorMessage } from "../utils";
 import { AddSets } from "./add-sets";
@@ -100,9 +101,11 @@ const PhotoEditor = ({
 	const members = useSetMembers();
 	const error = updatePhoto.error ?? update.error ?? members.error;
 
-	const onRemove = () => {
-		if (window.confirm(`Remove this photo from the collection? ${TEXT_DELETED_NOTE}`))
-			members.mutate({ sets: [photo.set], collection: null });
+	const [removing, setRemoving] = useState(false);
+
+	const showRemove = (next: boolean) => {
+		members.reset();
+		setRemoving(next);
 	};
 
 	return (
@@ -125,12 +128,12 @@ const PhotoEditor = ({
 					<LucideStar className="size-4" />
 					{isCover ? "Cover" : "Set as cover"}
 				</Button>
-				<Button variant="ghost" danger disabled={members.isPending} onClick={onRemove}>
+				<Button variant="ghost" danger onClick={() => showRemove(true)}>
 					<LucideTrash2 className="size-4" />
 					Remove
 				</Button>
 			</div>
-			{error && (
+			{error && !(removing && error === members.error) && (
 				<StateMessage
 					size="inline"
 					tone="err"
@@ -142,6 +145,17 @@ const PhotoEditor = ({
 			<div className="border-t border-line pt-2">
 				<Sizes key={photo.set} set={photo.set} />
 			</div>
+			<RemoveFromCollectionDialog
+				open={removing}
+				onOpenChange={showRemove}
+				collection={collection.name}
+				set={photo.set}
+				pending={members.isPending}
+				error={members.error}
+				onConfirm={() =>
+					members.mutate({ sets: [photo.set], collection: null }, { onSuccess: () => showRemove(false) })
+				}
+			/>
 		</div>
 	);
 };

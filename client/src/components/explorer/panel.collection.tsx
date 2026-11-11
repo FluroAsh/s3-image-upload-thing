@@ -1,19 +1,28 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { LucideAlertTriangle, LucideLoader2 } from "lucide-react";
 
+import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { Select } from "@/components/ui/select";
 import { StateMessage } from "@/components/ui/state-message";
 import { useCollections, useCreateCollection, useSetMembers, useUpdatePhoto } from "@/lib/query";
 import { holdingSet, setsToMove } from "~/shared/collections";
 
+import { MoveSetsDialog, RemoveFromCollectionDialog, slugHint } from "./collection-dialogs";
 import { InspectorSection } from "./inspector";
-import { PhotoTextFields, TEXT_DELETED_NOTE } from "./photo-text-fields";
+import { PhotoTextFields } from "./photo-text-fields";
 import { serverErrorMessage } from "./utils";
 
 const NONE = "";
 /** A real slug can't hold underscores, so this never collides with one. */
 const NEW = "__new__";
+
+type Target = {
+	/** Slug of the collection to move the set into, or null to remove it from its collection. */
+	into: string | null;
+	/** Name of a collection to create for the set; set instead of `into`. */
+	newName?: string;
+};
 
 export const CollectionSection = ({ setPath }: { setPath: string }) => {
 	const { data, isLoading, error } = useCollections();
@@ -24,21 +33,33 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 
 	const saved = holdingSet(data, setPath);
 
+	const [naming, setNaming] = useState(false);
+	const [target, setTarget] = useState<Target>();
+
+	const moving = target ? setsToMove(data, [setPath], target.into) : [];
+	const active = target?.newName === undefined ? setMembers : create;
+
+	const close = () => {
+		create.reset();
+		setMembers.reset();
+		setNaming(false);
+		setTarget(undefined);
+	};
+
+	const write = ({ into, newName }: Target) =>
+		newName === undefined
+			? setMembers.mutate({ sets: [setPath], collection: into }, { onSuccess: close })
+			: create.mutate({ name: newName, sets: [setPath] }, { onSuccess: close });
+
+	const request = (next: Target) => {
+		if (!setsToMove(data, [setPath], next.into).length) return write(next);
+		setNaming(false);
+		setTarget(next);
+	};
+
 	const onCollectionChange = (value: string) => {
-		const target = value === NEW ? window.prompt("Name the new collection") : value;
-		if (target === null || (value === NEW && !target.trim())) return;
-
-		const into = target === NONE ? null : target;
-		const leaving = setsToMove(data, [setPath], into)[0]?.from;
-		/** Dropping a set from every collection deletes its alt text and caption, and the collection if it was the last set. */
-		const prompt =
-			into === null
-				? `Remove this set from "${leaving?.name}"? ${TEXT_DELETED_NOTE}`
-				: `Move this set out of "${leaving?.name}"?`;
-		if (leaving && !window.confirm(prompt)) return;
-
-		if (value === NEW) create.mutate({ name: target, sets: [setPath] });
-		else setMembers.mutate({ sets: [setPath], collection: into });
+		if (value === NEW) setNaming(true);
+		else request({ into: value === NONE ? null : value });
 	};
 
 	const updatedField =
@@ -84,7 +105,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 							<option value={NEW}>New collection…</option>
 						</Select>
 					</div>
-					{collectionError && (
+					{collectionError && !naming && !target && (
 						<StateMessage
 							size="inline"
 							tone="err"
@@ -105,6 +126,41 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 					<p className="text-caption text-fg-2">Saves on blur</p>
 				</div>
 			)}
+
+			<PromptDialog
+				open={naming}
+				onOpenChange={close}
+				title="New collection"
+				label="Name"
+				hint={slugHint}
+				confirmLabel="Create"
+				pendingLabel="Creating..."
+				pending={create.isPending}
+				error={create.error ? serverErrorMessage(create.error) : undefined}
+				onSubmit={(newName) => request({ into: null, newName })}
+			/>
+			{target &&
+				(target.into === null && target.newName === undefined ? (
+					<RemoveFromCollectionDialog
+						open
+						onOpenChange={close}
+						collection={moving[0]?.from.name ?? ""}
+						set={setPath}
+						pending={active.isPending}
+						error={active.error}
+						onConfirm={() => write(target)}
+					/>
+				) : (
+					<MoveSetsDialog
+						open
+						onOpenChange={close}
+						moving={moving}
+						into={target.newName ?? data?.collections.find((c) => c.slug === target.into)?.name ?? ""}
+						pending={active.isPending}
+						error={active.error}
+						onConfirm={() => write(target)}
+					/>
+				))}
 		</InspectorSection>
 	);
 };
