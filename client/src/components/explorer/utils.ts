@@ -112,3 +112,12 @@ export const toggleSets = (picked: ReadonlySet<string>, group: string[]) => {
 	}
 	return next;
 };
+
+export type Point = { x: number; y: number };
+export type Size = { width: number; height: number };
+
+/** Top-left of a box placed beside the cursor, flipped to its other side where it would leave the window. */
+export const placeBesideCursor = (cursor: Point, box: Size, viewport: Size, gap = 16): Point => ({
+	x: cursor.x + gap + box.width > viewport.width ? Math.max(0, cursor.x - gap - box.width) : cursor.x + gap,
+	y: cursor.y + gap + box.height > viewport.height ? Math.max(0, cursor.y - gap - box.height) : cursor.y + gap,
+});

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { LucideImages } from "lucide-react";
 
@@ -8,7 +8,8 @@ import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
-import { PREVIEW_ORDER, pickPreviewVariant } from "../utils";
+import { type Point, PREVIEW_ORDER, pickPreviewVariant } from "../utils";
+import { HoverPreview } from "./hover-preview";
 
 const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
@@ -56,12 +57,52 @@ export const CollectionThumb = ({
 	);
 };
 
-/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker. */
+const HOVER_DELAY_MS = 150;
+
+/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker, and previews it larger on hover. */
 export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 	const [ref, seen] = useInView();
+	const [open, setOpen] = useState(false);
+	const cursor = useRef<Point>({ x: 0, y: 0 });
+	const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const wrapper = useRef<HTMLDivElement | null>(null);
+
+	const hide = () => {
+		clearTimeout(timer.current);
+		setOpen(false);
+	};
+
+	useEffect(() => {
+		if (!open) return;
+		const close = () => setOpen(false);
+		window.addEventListener("scroll", close, true);
+		window.addEventListener("keydown", close);
+		return () => {
+			window.removeEventListener("scroll", close, true);
+			window.removeEventListener("keydown", close);
+		};
+	}, [open]);
+
+	useEffect(() => () => clearTimeout(timer.current), []);
+
+	const thumbUrl = wrapper.current?.querySelector("img")?.src;
 
 	return (
-		<div ref={ref} className="shrink-0">
+		<div
+			ref={(el) => {
+				ref(el);
+				wrapper.current = el;
+			}}
+			className="shrink-0"
+			onPointerEnter={(event) => {
+				cursor.current = { x: event.clientX, y: event.clientY };
+				timer.current = setTimeout(() => setOpen(true), HOVER_DELAY_MS);
+			}}
+			onPointerMove={(event) => {
+				cursor.current = { x: event.clientX, y: event.clientY };
+			}}
+			onPointerLeave={hide}
+		>
 			<CollectionThumb
 				folder={folder}
 				className="size-5 rounded-sm"
@@ -69,6 +110,7 @@ export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 				enabled={seen}
 				fallback={<SetIcon className="size-3.5" />}
 			/>
+			{open && thumbUrl && <HoverPreview folder={folder} thumbUrl={thumbUrl} start={cursor.current} />}
 		</div>
 	);
 };
