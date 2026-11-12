@@ -17,17 +17,14 @@ type TrayProps = {
 	onEmptied: () => void;
 };
 
-const Tile = ({
-	set,
-	folder,
-	onRemove,
-	onEmptied,
-}: {
+type TileProps = Pick<TrayProps, "onRemove" | "onEmptied"> & {
+	/** The set's path, as the picker keys it. */
 	set: string;
+	/** The set's folder in the tree, for its name and thumbnail. */
 	folder: TreeNode;
-	onRemove: TrayProps["onRemove"];
-	onEmptied: TrayProps["onEmptied"];
-}) => {
+};
+
+const Tile = ({ set, folder, onRemove, onEmptied }: TileProps) => {
 	const from = useHeldBy(set)?.name;
 
 	const remove = (li: HTMLElement | null) => {
