@@ -1,23 +1,41 @@
 import { LucideX } from "lucide-react";
 
 import { SECTION_LABEL } from "@/components/ui/section-label";
-import { useCollections } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { holdingSet } from "~/shared/collections";
 import type { TreeNode } from "~/shared/types";
 
 import { CollectionThumb, SetIcon } from "./collection-thumb";
+import { TILE_BADGE } from "./photo-tile";
+import { useHeldBy } from "./use-held-by";
 
 type TrayProps = {
 	/** Sets to be added, in tree order, each with its folder. */
 	picked: [string, TreeNode][];
 	/** Called with the set to untick. */
 	onRemove: (set: string) => void;
+	/** Called when the last tile is removed, so focus has somewhere to go. */
+	onEmptied: () => void;
 };
 
-const Tile = ({ set, folder, onRemove }: { set: string; folder: TreeNode; onRemove: TrayProps["onRemove"] }) => {
-	const { data } = useCollections();
-	const from = holdingSet(data, set)?.collection.name;
+const Tile = ({
+	set,
+	folder,
+	onRemove,
+	onEmptied,
+}: {
+	set: string;
+	folder: TreeNode;
+	onRemove: TrayProps["onRemove"];
+	onEmptied: TrayProps["onEmptied"];
+}) => {
+	const from = useHeldBy(set)?.name;
+
+	const remove = (li: HTMLElement | null) => {
+		const neighbour = li?.nextElementSibling ?? li?.previousElementSibling;
+		onRemove(set);
+		if (neighbour) neighbour.querySelector("button")?.focus();
+		else onEmptied();
+	};
 
 	return (
 		<li className="w-16 shrink-0">
@@ -25,26 +43,26 @@ const Tile = ({ set, folder, onRemove }: { set: string; folder: TreeNode; onRemo
 				type="button"
 				aria-label={`Remove ${folder.name}`}
 				title={folder.name}
-				onClick={() => onRemove(set)}
-				className="group grid w-full gap-[3px] rounded-md text-left text-fg-1 text-caption outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
+				onClick={(e) => remove(e.currentTarget.closest("li"))}
+				className="group grid w-full gap-1 rounded-md text-left text-fg-1 text-caption outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent"
 			>
 				<span className="relative block">
 					<CollectionThumb
 						folder={folder}
-						className="size-16"
-						only={["thumbnail"]}
+						className="size-16 data-[missing]:border data-[missing]:border-dashed data-[missing]:border-line-strong"
+						thumbnailOnly
 						fallback={<SetIcon className="size-5" />}
-						fallbackClassName="border border-dashed border-line-strong"
 					/>
 					{from && (
-						<span className="absolute bottom-[3px] left-[3px] inline-flex h-4 max-w-[58px] items-center gap-1 rounded-sm bg-black/80 px-1 font-mono text-[10px] text-fg-1">
+						<span className={cn(TILE_BADGE, "bottom-1 left-1 inline-flex max-w-14 items-center gap-1 text-fg-1")}>
 							<span className="size-1.5 shrink-0 rounded-full bg-warn" />
 							<span className="truncate">{from}</span>
 						</span>
 					)}
 					<span
 						className={cn(
-							"absolute top-[3px] right-[3px] hidden size-4 place-items-center rounded-sm bg-black/80 text-fg",
+							TILE_BADGE,
+							"top-1 right-1 hidden size-4 place-items-center px-0 text-fg",
 							"group-hover:grid group-focus-visible:grid",
 						)}
 					>
@@ -58,13 +76,13 @@ const Tile = ({ set, folder, onRemove }: { set: string; folder: TreeNode; onRemo
 };
 
 /** One row of 64px tiles for the sets about to be added; it keeps its height when empty so the modal does not jump on the first tick. */
-export const PickedTray = ({ picked, onRemove }: TrayProps) => (
+export const PickedTray = ({ picked, onRemove, onEmptied }: TrayProps) => (
 	<div className="space-y-1.5">
 		<div className={SECTION_LABEL}>Picked · {picked.length}</div>
 		{picked.length ? (
 			<ul className="flex h-24 gap-2 overflow-x-auto overflow-y-hidden p-0.5 [scrollbar-width:thin]">
 				{picked.map(([set, folder]) => (
-					<Tile key={set} set={set} folder={folder} onRemove={onRemove} />
+					<Tile key={set} set={set} folder={folder} onRemove={onRemove} onEmptied={onEmptied} />
 				))}
 			</ul>
 		) : (

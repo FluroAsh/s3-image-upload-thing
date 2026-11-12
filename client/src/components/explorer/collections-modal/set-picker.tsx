@@ -1,12 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { LucideDatabase, LucideFolderClosed } from "lucide-react";
 
 import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useCollections } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { holdingSet } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
 import { PartialNotice } from "../partial-notice";
@@ -20,9 +18,10 @@ import {
 	setsUnder,
 	toggleSets,
 } from "../utils";
-import { RowThumb, ThumbRootContext } from "./collection-thumb";
+import { RowThumb } from "./collection-thumb";
 import { PickedTray } from "./picked-tray";
 import { useBucketSets } from "./use-bucket-sets";
+import { useHeldBy } from "./use-held-by";
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -111,13 +110,12 @@ const Row = ({
 
 const Branch = ({ node, depth, shown, ...pick }: BranchProps & { node: TreeNode; depth: number }) => {
 	const { childMap, sets } = useBucketSets();
-	const { data } = useCollections();
 
 	const group = setsUnder(sets, node.id).filter((set) => shown.has(set));
+	const held = useHeldBy(node.isFolder && isSetFolder(node, childMap.get(node.id)) ? group[0] : undefined);
 	if (!node.isFolder || !group.length) return null;
 
 	if (isSetFolder(node, childMap.get(node.id))) {
-		const held = holdingSet(data, group[0])?.collection;
 		const note = pick.locked?.has(group[0]) ? { text: "already in" } : held && { text: `in ${held.name}`, warn: true };
 		return <Row {...pick} label={node.name} folder={node} group={group} depth={depth} note={note || undefined} />;
 	}
@@ -144,7 +142,7 @@ export const SetPicker = (pick: PickerProps) => {
 	const { bucketName } = useExplorer().state;
 	const { childMap, sets, data } = useBucketSets();
 	const [filter, setFilter] = useState("");
-	const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
+	const filterRef = useRef<HTMLInputElement>(null);
 
 	const needle = filterNeedle(filter);
 	const shown = useMemo(() => new Set([...sets.keys()].filter((set) => matchesFilter(set, needle))), [sets, needle]);
@@ -153,6 +151,7 @@ export const SetPicker = (pick: PickerProps) => {
 	return (
 		<div className="space-y-2">
 			<FilterInput
+				ref={filterRef}
 				wrapperClassName="w-full"
 				value={filter}
 				onChange={(e) => setFilter(e.target.value)}
@@ -160,32 +159,31 @@ export const SetPicker = (pick: PickerProps) => {
 				aria-label="Filter sets"
 			/>
 			{data?.partial && <PartialNotice count={data.tree.length} />}
-			<div ref={setScroller} className="max-h-[320px] overflow-y-auto rounded-md border border-line-strong p-1">
-				<ThumbRootContext.Provider value={scroller}>
-					{all.length ? (
-						<>
-							<Row
-								{...pick}
-								label={bucketName}
-								icon={LucideDatabase}
-								group={all}
-								depth={0}
-								count={formatCount(all.length, "set", false)}
-							/>
-							{(childMap.get("") ?? []).map((node) => (
-								<Branch key={node.id} {...pick} shown={shown} node={node} depth={1} />
-							))}
-						</>
-					) : (
-						<p className="px-2 py-3 text-center text-secondary text-fg-2">
-							{needle ? `No sets match “${filter.trim()}”` : "No sets in this bucket yet"}
-						</p>
-					)}
-				</ThumbRootContext.Provider>
+			<div className="max-h-[320px] overflow-y-auto rounded-md border border-line-strong p-1">
+				{all.length ? (
+					<>
+						<Row
+							{...pick}
+							label={bucketName}
+							icon={LucideDatabase}
+							group={all}
+							depth={0}
+							count={formatCount(all.length, "set", false)}
+						/>
+						{(childMap.get("") ?? []).map((node) => (
+							<Branch key={node.id} {...pick} shown={shown} node={node} depth={1} />
+						))}
+					</>
+				) : (
+					<p className="px-2 py-3 text-center text-secondary text-fg-2">
+						{needle ? `No sets match “${filter.trim()}”` : "No sets in this bucket yet"}
+					</p>
+				)}
 			</div>
 			<PickedTray
 				picked={pickedInTreeOrder(sets, pick.picked)}
 				onRemove={(set) => pick.onChange(toggleSets(pick.picked, [set]))}
+				onEmptied={() => filterRef.current?.focus()}
 			/>
 		</div>
 	);
