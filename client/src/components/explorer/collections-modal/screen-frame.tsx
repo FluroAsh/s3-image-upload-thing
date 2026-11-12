@@ -30,7 +30,14 @@ export const ScreenHeader = ({ title, subtitle, onBack, backLabel = "Back", chil
 	</DialogHeader>
 );
 
-export const ScreenFooter = ({ info, children }: { info?: React.ReactNode; children: React.ReactNode }) => (
+type ScreenFooterProps = {
+	/** Mono status text at the left of the footer, such as a count or a hint. */
+	info?: React.ReactNode;
+	/** Buttons at the right of the footer. */
+	children: React.ReactNode;
+};
+
+export const ScreenFooter = ({ info, children }: ScreenFooterProps) => (
 	<DialogFooter>
 		<span className="mr-auto truncate font-mono text-secondary text-fg-2">{info}</span>
 		{children}

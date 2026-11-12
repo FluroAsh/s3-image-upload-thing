@@ -64,7 +64,7 @@ export const CreateScreen = () => {
 					/>
 				)}
 			</DialogBody>
-			<ScreenFooter info={pickedSummary(sets.length, moving.length)}>
+			<ScreenFooter info={pickedSummary(sets.length, moving)}>
 				<Button onClick={back}>Cancel</Button>
 				<Button type="submit" variant="primary" disabled={!name.trim() || !picked.size} pending={create.isPending}>
 					Create

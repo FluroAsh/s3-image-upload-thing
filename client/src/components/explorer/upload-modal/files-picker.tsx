@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { LucidePlus, LucideUpload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { SECTION_LABEL } from "@/components/ui/section-label";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
 import { uploadWarnings } from "@/lib/upload-files";
@@ -41,7 +42,7 @@ export const FilesPicker = () => {
 			}}
 		>
 			<div className="mb-1.5 flex h-6 items-center justify-between">
-				<h3 className="text-caption font-medium uppercase tracking-label text-fg-2">Files</h3>
+				<h3 className={SECTION_LABEL}>Files</h3>
 				{files.length > 0 && (
 					<Button variant="ghost" onClick={browse}>
 						<LucidePlus className="size-3.5" />

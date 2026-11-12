@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 
 type PromptDialogProps = {
 	/** Whether the dialog is shown. */
@@ -105,14 +106,23 @@ const PromptForm = ({
 };
 
 /** A one-field form; the field lives inside the dialog content so it resets each time the dialog closes. */
-export const PromptDialog = ({ open, onOpenChange, title, subtitle, ...form }: PromptDialogProps) => (
-	<Dialog open={open} onOpenChange={(next) => !form.pending && onOpenChange(next)}>
-		<DialogContent size="small" showClose={false} {...(subtitle ? {} : { "aria-describedby": undefined })}>
-			<DialogHeader className="pr-4">
-				<DialogTitle>{title}</DialogTitle>
-				{subtitle && <DialogDescription className="font-mono text-secondary text-fg-2">{subtitle}</DialogDescription>}
-			</DialogHeader>
-			<PromptForm onOpenChange={onOpenChange} {...form} />
-		</DialogContent>
-	</Dialog>
-);
+export const PromptDialog = ({ open, onOpenChange, title, subtitle, ...form }: PromptDialogProps) => {
+	const restoreFocus = useRestoreFocus(open);
+
+	return (
+		<Dialog open={open} onOpenChange={(next) => !form.pending && onOpenChange(next)}>
+			<DialogContent
+				size="small"
+				showClose={false}
+				onCloseAutoFocus={restoreFocus}
+				{...(subtitle ? {} : { "aria-describedby": undefined })}
+			>
+				<DialogHeader className="pr-4">
+					<DialogTitle>{title}</DialogTitle>
+					{subtitle && <DialogDescription className="font-mono text-secondary text-fg-2">{subtitle}</DialogDescription>}
+				</DialogHeader>
+				<PromptForm onOpenChange={onOpenChange} {...form} />
+			</DialogContent>
+		</Dialog>
+	);
+};

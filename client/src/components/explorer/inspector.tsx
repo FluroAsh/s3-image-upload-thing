@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { SECTION_LABEL } from "@/components/ui/section-label";
+
 const BYTE_UNITS = ["B", "kB", "MB", "GB"];
 
 export const formatBytes = (bytes: number): string => {
@@ -19,7 +21,7 @@ export const InspectorSection = ({
 }) => (
 	<section className="border-b border-line px-3 py-3 last:border-b-0">
 		<div className="mb-1.5 flex h-chip items-center justify-between">
-			<h3 className="text-caption font-medium uppercase tracking-label text-fg-2">{title}</h3>
+			<h3 className={SECTION_LABEL}>{title}</h3>
 			{aside}
 		</div>
 		{children}

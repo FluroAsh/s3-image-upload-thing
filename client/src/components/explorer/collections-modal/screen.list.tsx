@@ -27,7 +27,7 @@ const CollectionRow = ({ collection, sets }: { collection: Collection; sets: Map
 
 	return (
 		/** The open button stretches over the whole row; the actions sit above it. */
-		<li className="relative flex min-h-11 items-center gap-3 rounded-md px-2 py-1 hover:bg-raised">
+		<li className="relative flex min-h-11 flex-wrap items-center gap-x-3 rounded-md px-2 py-1 hover:bg-raised">
 			<button
 				type="button"
 				onClick={() => setScreen({ screen: "detail", slug: collection.slug })}
@@ -39,9 +39,13 @@ const CollectionRow = ({ collection, sets }: { collection: Collection; sets: Map
 					<span className="block truncate font-mono text-caption text-fg-2">
 						{collection.slug} · {formatCount(collection.photos.length, "photo", false)}
 					</span>
-					{actions.error && <span className="block text-caption text-err">{actions.error}</span>}
 				</span>
 			</button>
+			{actions.error && (
+				<span className="basis-full pb-1 pl-14 text-caption text-err">
+					{actions.error.title} · {actions.error.message}
+				</span>
+			)}
 			{noAlt > 0 && <Badge tone="warn">{noAlt} no alt</Badge>}
 			<span className="relative z-10 flex">{actions.buttons}</span>
 			{actions.dialogs}
@@ -77,7 +81,7 @@ export const ListScreen = () => {
 
 	return (
 		<>
-			<ScreenHeader title="Collections" subtitle={listed.length ? `${bucketName} · ${listed.length}` : bucketName}>
+			<ScreenHeader title="Collections" subtitle={listed.length ? `${bucketName} · ${listed.length}` : undefined}>
 				{(loading || error || listed.length > 0) && <NewCollectionButton disabled={loading || !!error} />}
 			</ScreenHeader>
 

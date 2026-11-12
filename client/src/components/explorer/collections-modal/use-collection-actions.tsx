@@ -24,10 +24,12 @@ export const useCollectionActions = (collection: Collection) => {
 	const close = () => setDialog(undefined);
 
 	const renameError = rename.error && `Could not rename · ${serverErrorMessage(rename.error)}`;
-	const deleteError = remove.error && `Could not delete · ${serverErrorMessage(remove.error)}`;
+	const failure = remove.error
+		? { title: "Could not delete", message: serverErrorMessage(remove.error) }
+		: rename.error && { title: "Could not rename", message: serverErrorMessage(rename.error) };
 
 	return {
-		error: dialog ? undefined : (renameError ?? deleteError),
+		error: dialog || !failure ? undefined : failure,
 		buttons: (
 			<>
 				<Button variant="icon" aria-label={`Rename ${collection.name}`} onClick={() => open("rename")}>

@@ -7,7 +7,7 @@ import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { holdingSet } from "~/shared/collections";
-import type { TreeNode } from "~/shared/types";
+import type { Collection, TreeNode } from "~/shared/types";
 
 import { PartialNotice } from "../partial-notice";
 import { formatCount, getDepthPadding, isSetFolder, setsUnder, toggleSets } from "../utils";
@@ -15,10 +15,12 @@ import { useBucketSets } from "./use-bucket-sets";
 
 const NONE: ReadonlySet<string> = new Set();
 
-/** `locked` sets are already in the collection: shown ticked and faded, and never toggled. */
 type PickerProps = {
+	/** Sets ticked so far. */
 	picked: ReadonlySet<string>;
+	/** Called with the new picked set when a row is toggled. */
 	onChange: (picked: Set<string>) => void;
+	/** Sets already in the collection: shown ticked and faded, and never toggled. */
 	locked?: ReadonlySet<string>;
 };
 
@@ -27,11 +29,15 @@ type BranchProps = PickerProps & {
 	shown: ReadonlySet<string>;
 };
 
-/** What the footer says about a pick: how many sets, and how many leave another collection. */
-export const pickedSummary = (count: number, moving: number) =>
-	count
-		? `${formatCount(count, "set", false)} picked${moving ? ` · ${moving} moving from other collections` : ""}`
-		: "Pick at least one set";
+/** Sets leaving another collection are named when they share one source, since the footer has room for one name. */
+export const pickedSummary = (count: number, moving: { from: Collection }[]) => {
+	if (!count) return "Pick at least one set";
+	const sources = new Set(moving.map((m) => m.from.slug));
+	const leaving = !moving.length
+		? ""
+		: ` · ${moving.length} ${moving.length === 1 ? "moves" : "move"} from ${sources.size === 1 ? moving[0].from.name : "other collections"}`;
+	return `${formatCount(count, "set", false)} picked${leaving}`;
+};
 
 const Row = ({
 	label,
@@ -44,9 +50,13 @@ const Row = ({
 	note,
 	count,
 }: PickerProps & {
+	/** Name of the folder or set. */
 	label: string;
+	/** Icon before the label. */
 	icon: typeof LucideImages;
+	/** Every set the row stands for; one for a set row. */
 	group: string[];
+	/** Tree depth, which sets the indent. */
 	depth: number;
 	/** Right-aligned note for a set row; it takes the place of the count. */
 	note?: { text: string; warn?: boolean };

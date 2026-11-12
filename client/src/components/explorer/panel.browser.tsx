@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-	LucideAlertTriangle,
-	LucideChevronsUp,
-	LucideFolder,
-	LucideLoader2,
-	LucideSearch,
-	LucideXCircle,
-} from "lucide-react";
+import { LucideAlertTriangle, LucideChevronsUp, LucideFolder, LucideLoader2, LucideSearch } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FilterInput } from "@/components/ui/filter-input";
 import { Kbd } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StateMessage } from "@/components/ui/state-message";
@@ -125,36 +118,20 @@ const Pane = () => {
 	return (
 		<>
 			<div className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1">
-				<div className="relative flex-1">
-					<LucideSearch
-						aria-hidden
-						className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-fg-2"
-					/>
-					<Input
-						ref={filterRef}
-						type="search"
-						aria-label="Filter files"
-						placeholder="Filter files...  ( / )"
-						disabled={!ready}
-						value={query}
-						className="pl-7 pr-7 [&::-webkit-search-cancel-button]:hidden"
-						onChange={(event) => setQuery(event.target.value)}
-						onKeyDown={(event) => event.key === "Escape" && setQuery("")}
-					/>
-					{filtering && (
-						<Button
-							variant="icon"
-							aria-label="Clear filter"
-							className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2"
-							onClick={() => {
-								setQuery("");
-								filterRef.current?.focus();
-							}}
-						>
-							<LucideXCircle className="size-3.5" />
-						</Button>
-					)}
-				</div>
+				<FilterInput
+					ref={filterRef}
+					wrapperClassName="flex-1"
+					aria-label="Filter files"
+					placeholder="Filter files...  ( / )"
+					disabled={!ready}
+					value={query}
+					onChange={(event) => setQuery(event.target.value)}
+					onKeyDown={(event) => event.key === "Escape" && setQuery("")}
+					onClear={() => {
+						setQuery("");
+						filterRef.current?.focus();
+					}}
+				/>
 				<Button
 					variant="icon"
 					aria-label="Collapse all folders"

@@ -55,7 +55,7 @@ const AddSetsForm = ({ collection }: { collection: Collection }) => {
 					/>
 				)}
 			</DialogBody>
-			<ScreenFooter info={pickedSummary(sets.length, moving.length)}>
+			<ScreenFooter info={pickedSummary(sets.length, moving)}>
 				<Button onClick={back}>Cancel</Button>
 				<Button
 					variant="primary"
