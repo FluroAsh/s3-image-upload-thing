@@ -10,7 +10,7 @@ import { type FetchError, ofetch } from "ofetch";
  * without hardcoding URLs or requiring rebuilds when the backend location changes.
  */
 const isServer = typeof window === "undefined";
-const baseURL = isServer ? process.env.API_URL || "http://localhost:3002" : "/proxy";
+export const baseURL = isServer ? process.env.API_URL || "http://localhost:3002" : "/proxy";
 
 /** A failed request; `data.error` is the message the server sent, when it sent one. */
 export type ApiError = FetchError<{ error?: string }>;

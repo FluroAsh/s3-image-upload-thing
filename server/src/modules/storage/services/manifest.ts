@@ -151,6 +151,14 @@ export const describeSource = (
 	return { key, public: false, sha256, bytes: body.length, ...autoOrient };
 };
 
+/** A set's `original.{ext}` saves as `{set}.{ext}`, so originals from different sets don't all download as `original.jpg`. */
+export const downloadNameOf = (key: string) => {
+	const [folder, fileName = ""] = key.split("/").slice(-2);
+	return fileName.startsWith(SOURCE_FILE_STEM)
+		? `${folder}${fileName.slice(SOURCE_FILE_STEM.length - 1)}`
+		: key.split("/").pop();
+};
+
 /** Whether a key is `original.{ext}`, any extension, in the folder of a set; the bucket policy keeps every such key from the CDN. */
 export const isSetSource = (key: string, siblings: ReadonlySet<string>): boolean => {
 	const fileName = key.slice(key.lastIndexOf("/") + 1);
