@@ -1,7 +1,13 @@
 import { useId } from "react";
 
+import type { UseMutationResult } from "@tanstack/react-query";
+
 import { Input } from "@/components/ui/input";
+import type { ApiError } from "@/lib/ofetch";
 import { cn } from "@/lib/utils";
+import type { UpdatePhotoRequest } from "~/shared/types";
+
+import { serverErrorMessage } from "./utils";
 
 export const TEXT_DELETED_NOTE = "Its alt text and caption are deleted.";
 
@@ -22,6 +28,18 @@ type PhotoTextFieldsProps = {
 	altPlaceholder?: string;
 	/** The last save: `error` is the reason it failed, and unset means it was saved. */
 	result?: { field: TextField; error?: string };
+};
+
+/** The `result` line for the last photo write: what it changed, and why it failed if it did. */
+export const photoSaveResult = (
+	write: Pick<
+		UseMutationResult<unknown, ApiError, { set: string } & UpdatePhotoRequest>,
+		"variables" | "isError" | "isSuccess" | "error"
+	>,
+): PhotoTextFieldsProps["result"] => {
+	const field = write.variables && "caption" in write.variables ? "caption" : "alt";
+	if (write.isError && write.error) return { field, error: serverErrorMessage(write.error) };
+	if (write.isSuccess) return { field };
 };
 
 export const PhotoTextFields = ({

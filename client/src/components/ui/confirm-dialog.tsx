@@ -12,6 +12,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { StateMessage } from "@/components/ui/state-message";
+import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 
 export type ConfirmDialogProps = {
 	/** Whether the dialog is shown. */
@@ -50,12 +51,14 @@ export const ConfirmDialog = ({
 	onConfirm,
 }: ConfirmDialogProps) => {
 	const actionRef = useRef<HTMLButtonElement>(null);
+	const restoreFocus = useRestoreFocus(open);
 
 	return (
 		<Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
 			<DialogContent
 				size="small"
 				showClose={false}
+				onCloseAutoFocus={restoreFocus}
 				onOpenAutoFocus={(event) => {
 					if (destructive) return;
 					event.preventDefault();

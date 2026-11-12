@@ -2,7 +2,11 @@ import { createContext, type Dispatch, type SetStateAction, useContext, useState
 
 import { useExplorer } from "@/lib/providers/explorer-provider";
 
-export type CollectionsScreen = { screen: "list" } | { screen: "create" } | { screen: "detail"; slug: string };
+export type CollectionsScreen =
+	| { screen: "list" }
+	| { screen: "create" }
+	| { screen: "detail"; slug: string }
+	| { screen: "add"; slug: string };
 
 const LIST: CollectionsScreen = { screen: "list" };
 

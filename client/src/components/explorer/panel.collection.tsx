@@ -8,7 +8,7 @@ import { useCollections, useUpdatePhoto } from "@/lib/query";
 import { holdingSet } from "~/shared/collections";
 
 import { InspectorSection } from "./inspector";
-import { PhotoTextFields } from "./photo-text-fields";
+import { PhotoTextFields, photoSaveResult } from "./photo-text-fields";
 import { useCollectionMove } from "./use-collection-move";
 import { serverErrorMessage } from "./utils";
 
@@ -28,14 +28,6 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 		if (value === NEW) move.assign.toNew([setPath]);
 		else move.assign.toCollection([setPath], value === NONE ? null : value);
 	};
-
-	const updatedField =
-		updatePhoto.variables && "caption" in updatePhoto.variables ? ("caption" as const) : ("alt" as const);
-	const photoResult = updatePhoto.isError
-		? { field: updatedField, error: serverErrorMessage(updatePhoto.error) }
-		: updatePhoto.isSuccess
-			? { field: updatedField }
-			: undefined;
 
 	return (
 		<InspectorSection title="Collection">
@@ -86,7 +78,7 @@ export const CollectionSection = ({ setPath }: { setPath: string }) => {
 						photo={saved?.photo}
 						withCaption
 						altPlaceholder={saved ? undefined : "Add to a collection to set alt text"}
-						result={photoResult}
+						result={photoSaveResult(updatePhoto)}
 						onSave={(field, value) => updatePhoto.mutate({ set: setPath, [field]: value })}
 					/>
 					<p className="text-caption text-fg-2">Saves on blur</p>
