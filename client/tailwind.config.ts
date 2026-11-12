@@ -46,6 +46,10 @@ export default {
 			backgroundSize: {
 				checkerboard: "16px 16px",
 			},
+			keyframes: {
+				indeterminate: { "0%": { transform: "translateX(-100%)" }, "100%": { transform: "translateX(250%)" } },
+			},
+			animation: { indeterminate: "indeterminate 1.4s ease-in-out infinite" },
 			opacity: {
 				12: "0.12",
 				45: "0.45",

@@ -1,5 +1,11 @@
-import { createContext, type Dispatch, type SetStateAction, useContext, useState } from "react";
+import { createContext, useContext, useRef, useState } from "react";
 
+import { serverErrorMessage } from "@/components/explorer/utils";
+import type { ApiError } from "@/lib/ofetch";
+import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useMutateUpload } from "@/lib/query";
+import { type PickedFile, pickFile } from "@/lib/upload-files";
+import { buildUploadFormData } from "@/lib/upload-form-data";
 import type { UploadResponse } from "~/shared/types";
 
 export const EUploadState = {
@@ -12,27 +18,114 @@ export const EUploadState = {
 export type UploadState = (typeof EUploadState)[keyof typeof EUploadState];
 
 type UploadProviderContext = {
+	/** Which screen the modal shows. */
 	uploadState: UploadState;
+	/** The server's per-file results; `null` before a response. */
 	uploadResponse: UploadResponse | null;
 	/** The server's message for a failed request; `null` when none was sent. */
 	uploadError: string | null;
-	setUploadState: Dispatch<SetStateAction<UploadState>>;
-	setUploadResponse: Dispatch<SetStateAction<UploadResponse | null>>;
-	setUploadError: Dispatch<SetStateAction<string | null>>;
+	/** Picked files; kept through the error and complete screens so they can be retried. */
+	files: PickedFile[];
+	/** Folder path the sets are created in, without a trailing slash; `""` for the bucket root. */
+	destination: string;
+	/** Sets the destination folder; pass `""` for the bucket root. */
+	setDestination: (destination: string) => void;
+	/** Adds the image files among `incoming` to the picked list, reading their dimensions. */
+	addFiles: (incoming: File[]) => Promise<void>;
+	/** Drops one picked file by its row id. */
+	removeFile: (id: string) => void;
+	/** Uploads every picked file. */
+	submit: () => Promise<void>;
+	/** Resends the files the last response marked `failed`, keeping the other results. */
+	retryFailed: () => Promise<void>;
+	/** Repeats the request that just failed, minus any file removed since. */
+	retryLast: () => Promise<void>;
+	/** Back to the file picker with the files kept, dropping those that were stored. */
+	backToFiles: () => void;
+	/** Back to an empty file picker in the same destination. */
+	uploadMore: () => void;
+	/** Back to the first screen with no files and the root destination. */
 	resetState: () => void;
 };
 
 const UploadContext = createContext<UploadProviderContext | null>(null);
 
 export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
+	const { bucketName, bucketRegion } = useExplorer().state;
+	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName);
+
 	const [uploadState, setUploadState] = useState<UploadState>(EUploadState.Idle);
 	const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(null);
 	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [files, setFiles] = useState<PickedFile[]>([]);
+	const [destination, setDestination] = useState("");
+	const lastSend = useRef<{ batch: PickedFile[]; merge: boolean }>({ batch: [], merge: false });
+
+	const send = async (batch: PickedFile[], merge: boolean) => {
+		lastSend.current = { batch, merge };
+		try {
+			if (!bucketName || !bucketRegion) throw new Error("Unable to find the active bucket and region.");
+
+			setUploadError(null);
+			setUploadState(EUploadState.Uploading);
+			const response = await postUploadImages(
+				buildUploadFormData({ bucketName, bucketRegion, destination, images: batch.map(({ file }) => file) }),
+			);
+			const retried = new Map(response.results.map((result) => [result.file, result]));
+			setUploadResponse((previous) =>
+				merge && previous
+					? { results: previous.results.map((result) => retried.get(result.file) ?? result) }
+					: response,
+			);
+			setUploadState(EUploadState.Complete);
+		} catch (e) {
+			setUploadState(EUploadState.Error);
+			setUploadError(serverErrorMessage(e as ApiError, (e as Error).message));
+			console.warn(e);
+		}
+	};
+
+	const addFiles = async (incoming: File[]) => {
+		const images = incoming.filter(({ type }) => type.startsWith("image/"));
+		const picked = await Promise.all(images.map(pickFile));
+		setFiles((previous) => [...previous, ...picked]);
+	};
+
+	const retryFailed = () => {
+		const failed = new Set(uploadResponse?.results.filter(({ status }) => status === "failed").map(({ file }) => file));
+		return send(
+			files.filter(({ file }) => failed.has(file.name)),
+			true,
+		);
+	};
+
+	const retryLast = () => {
+		const listed = new Set(files.map(({ id }) => id));
+		return send(
+			lastSend.current.batch.filter(({ id }) => listed.has(id)),
+			lastSend.current.merge,
+		);
+	};
+
+	const backToFiles = () => {
+		const stored = new Set(uploadResponse?.results.filter(({ status }) => status === "stored").map(({ file }) => file));
+		setFiles((previous) => previous.filter(({ file }) => !stored.has(file.name)));
+		setUploadResponse(null);
+		setUploadError(null);
+		setUploadState(EUploadState.Idle);
+	};
+
+	const uploadMore = () => {
+		setFiles([]);
+		backToFiles();
+	};
 
 	const resetState = () => {
 		setUploadState(EUploadState.Idle);
 		setUploadResponse(null);
 		setUploadError(null);
+		setFiles([]);
+		setDestination("");
 	};
 
 	return (
@@ -41,9 +134,16 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 				uploadState,
 				uploadResponse,
 				uploadError,
-				setUploadState,
-				setUploadResponse,
-				setUploadError,
+				files,
+				destination,
+				setDestination,
+				addFiles,
+				removeFile: (id) => setFiles((previous) => previous.filter((picked) => picked.id !== id)),
+				submit: () => send(files, false),
+				retryFailed,
+				retryLast,
+				backToFiles,
+				uploadMore,
 				resetState,
 			}}
 		>

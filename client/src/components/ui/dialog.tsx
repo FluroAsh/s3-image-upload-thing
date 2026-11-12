@@ -42,10 +42,12 @@ type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.
 	size?: keyof typeof CONTENT_SIZES;
 	/** Shows the corner close button; turn off for dialogs that close from their footer. */
 	showClose?: boolean;
+	/** Greys the close button out while the dialog cannot be dismissed. */
+	closeDisabled?: boolean;
 };
 
 const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.Content>, DialogContentProps>(
-	({ className, children, size = "default", showClose = true, ...props }, ref) => (
+	({ className, children, size = "default", showClose = true, closeDisabled = false, ...props }, ref) => (
 		<DialogPortal>
 			<DialogOverlay />
 			<DialogPrimitive.Content
@@ -61,7 +63,7 @@ const DialogContent = React.forwardRef<React.ElementRef<typeof DialogPrimitive.C
 				{showClose && (
 					<div className="absolute right-2 top-0 flex h-10 items-center">
 						<DialogPrimitive.Close asChild>
-							<Button variant="icon">
+							<Button variant="icon" disabled={closeDisabled}>
 								<LucideX className="size-3.5" />
 								<span className="sr-only">Close</span>
 							</Button>
