@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { LucideCheck, LucideChevronDown, LucideDatabase } from "lucide-react";
@@ -41,10 +41,18 @@ export const BucketPicker = () => {
 	const firstRowRef = useRef<HTMLDivElement>(null);
 	const needle = filterNeedle(filter);
 	const visible = needle ? buckets.filter((bucket) => matchesFilter(bucket.Name, needle)) : buckets;
+	const rowId = useId();
+	/** Focus stays in the filter, so the highlighted match is tracked here; any edit resets it to the top match. */
+	const [matchIndex, setMatchIndex] = useState(0);
+
+	const changeFilter = (text: string) => {
+		setFilter(text);
+		setMatchIndex(0);
+	};
 
 	const handleOpenChange = (next: boolean) => {
 		setOpen(next);
-		if (!next) setFilter("");
+		if (!next) changeFilter("");
 	};
 
 	const selectBucket = (key: string) => {
@@ -62,12 +70,17 @@ export const BucketPicker = () => {
 	const handleFilterKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
 		if (event.key === "Escape") return;
 		event.stopPropagation();
-		if (event.key === "ArrowDown") {
+		if (needle && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+			event.preventDefault();
+			const index = Math.max(0, Math.min(visible.length - 1, matchIndex + (event.key === "ArrowDown" ? 1 : -1)));
+			setMatchIndex(index);
+			document.getElementById(`${rowId}-${index}`)?.scrollIntoView({ block: "nearest" });
+		} else if (event.key === "ArrowDown") {
 			event.preventDefault();
 			firstRowRef.current?.focus();
-		} else if (event.key === "Enter" && needle && visible[0]) {
+		} else if (event.key === "Enter" && needle && visible[matchIndex]) {
 			event.preventDefault();
-			selectBucket(bucketKey(visible[0]));
+			selectBucket(bucketKey(visible[matchIndex]));
 			handleOpenChange(false);
 		}
 	};
@@ -111,10 +124,11 @@ export const BucketPicker = () => {
 							aria-label="Filter buckets"
 							placeholder="Filter buckets"
 							value={filter}
-							onChange={(event) => setFilter(event.target.value)}
+							onChange={(event) => changeFilter(event.target.value)}
 							onKeyDown={handleFilterKeyDown}
+							aria-activedescendant={needle && visible.length ? `${rowId}-${matchIndex}` : undefined}
 							onClear={() => {
-								setFilter("");
+								changeFilter("");
 								inputRef.current?.focus();
 							}}
 						/>
@@ -127,12 +141,14 @@ export const BucketPicker = () => {
 							{visible.map((bucket, index) => (
 								<DropdownMenu.RadioItem
 									key={bucketKey(bucket)}
+									id={`${rowId}-${index}`}
+									data-match={needle && index === matchIndex ? "" : undefined}
 									ref={index === 0 ? firstRowRef : undefined}
 									onPointerMove={keepFilterFocus}
 									onPointerLeave={keepFilterFocus}
 									onKeyDown={(event) => handleRowKeyDown(event, index)}
 									value={bucketKey(bucket)}
-									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[state=checked]:bg-raised"
+									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[match]:bg-pressed [&[data-state=checked]:not(:hover,[data-highlighted],[data-match])]:bg-raised"
 								>
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-mono text-body text-fg">{bucket.Name}</div>
