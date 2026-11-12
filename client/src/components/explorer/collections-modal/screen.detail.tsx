@@ -102,7 +102,7 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 							tone="err"
 							icon={LucideAlertTriangle}
 							title="Could not reorder"
-							message={`${serverErrorMessage(reorder.error)} The order shown is the saved one.`}
+							message={`${serverErrorMessage(reorder.error)} · The order shown is the saved one.`}
 						/>
 					)}
 					<div ref={gridRef} className="grid grid-cols-[repeat(auto-fill,96px)] gap-2">

@@ -42,7 +42,7 @@ const CollectionRow = ({ collection, sets }: { collection: Collection; sets: Map
 				</span>
 			</button>
 			{actions.error && (
-				<span className="basis-full pb-1 pl-14 text-caption text-err">
+				<span className="order-last basis-full pb-1 pl-11 text-caption text-err">
 					{actions.error.title} · {actions.error.message}
 				</span>
 			)}
