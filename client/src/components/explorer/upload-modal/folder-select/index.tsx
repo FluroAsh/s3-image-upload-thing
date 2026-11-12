@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LucideChevronRight, LucideFolder, LucideFolderPlus } from "lucide-react";
 
-import { formatCount, isSetFolder, setPathOf } from "@/components/explorer/utils";
+import { filterNeedle, formatCount, isSetFolder, matchesFilter, setPathOf } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
 import { FilterInput } from "@/components/ui/filter-input";
 import { PromptDialog } from "@/components/ui/prompt-dialog";
@@ -61,7 +61,7 @@ export const FolderSelect = () => {
 	const folderId = destination ? `${destination}/` : "";
 	const subFolders = (id: string) =>
 		(childMap.get(id) ?? []).filter((node) => isFolder(node) && !isSetFolder(node, childMap.get(node.id)));
-	const folders = subFolders(folderId).filter(({ name }) => name.toLowerCase().includes(filter.toLowerCase()));
+	const folders = subFolders(folderId).filter(({ name }) => matchesFilter(name, filterNeedle(filter)));
 	const currentName = destination.split("/").pop() || bucketName;
 
 	const open = (path: string) => {

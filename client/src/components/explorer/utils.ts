@@ -8,6 +8,12 @@ const DEPTH_BASE_OFFSET_PX = 8;
 
 export const getDepthPadding = (depth: number) => `${depth * DEPTH_INDENT_PX + DEPTH_BASE_OFFSET_PX}px`;
 
+/** The trimmed, lower-cased form of a filter box's text; empty means no filter. */
+export const filterNeedle = (query: string) => query.trim().toLowerCase();
+
+/** Whether a name contains the needle from `filterNeedle`, ignoring case. */
+export const matchesFilter = (name: string, needle: string) => name.toLowerCase().includes(needle);
+
 export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 
 /** The size a variant file is named for, e.g. `small_photo.webp`; falls back to the text before the first underscore for files outside the table. */
@@ -50,10 +56,10 @@ export const pickPreviewVariant = (
 const qualify = (text: string | undefined, partial: boolean) =>
 	text === undefined ? "unknown" : partial ? `at least ${text}` : text;
 
-/** A count with the right plural; `undefined` means it was never counted, and `partial` that it is a lower bound. */
 /** A fixed locale, so the server render and the browser agree on the separator. */
 const COUNT_FORMAT = new Intl.NumberFormat("en");
 
+/** A count with the right plural; `undefined` means it was never counted, and `partial` that it is a lower bound. */
 export const formatCount = (count: number | undefined, noun: string | undefined, partial: boolean) =>
 	qualify(
 		count === undefined
