@@ -89,12 +89,24 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 	return stats;
 };
 
+/** Saves rather than displays; the `filename*` form carries any UTF-8 name and the quoted ASCII form is the fallback for old clients. */
+const attachmentDisposition = (name: string) => {
+	const ascii = name.replace(/[^\x20-\x7e]|["\\]/g, "_");
+	return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+};
+
+/** With `downloadName` the URL makes the browser save the object under that name instead of showing it. */
 export const generatePresignedUrl = async (
 	bucketName: string,
 	bucketRegion: string,
 	key: string,
+	downloadName?: string,
 ): Promise<`https://${string}`> => {
-	const command = new GetObjectCommand({ Bucket: bucketName, Key: key });
+	const command = new GetObjectCommand({
+		Bucket: bucketName,
+		Key: key,
+		ResponseContentDisposition: downloadName && attachmentDisposition(downloadName),
+	});
 	const client = getRegionalClient(bucketRegion);
 
 	/* @ts-expect-error - @smithy/smithy-client type is not compatible with the S3Client type */

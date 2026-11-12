@@ -12,6 +12,7 @@ import {
 	updateCollectionHandler,
 	updatePhotoHandler,
 } from "./handlers/collections";
+import { downloadHandler } from "./handlers/download";
 import { generateSizesHandler } from "./handlers/generate-sizes";
 import { getBucketHandler } from "./handlers/get-bucket";
 import { getManifestHandler } from "./handlers/get-manifest";
@@ -35,6 +36,7 @@ storage.post("/upload", uploadImagesHandler);
 
 storage.get("/buckets", listBucketsHandler);
 storage.get("/buckets/:bucketName", getBucketHandler);
+storage.get("/download", downloadHandler);
 storage.post("/presigned-urls", presignedUrlsHandler);
 
 /** A set path holds slashes, so the param takes the rest of the path. */
