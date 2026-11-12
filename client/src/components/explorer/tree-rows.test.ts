@@ -41,6 +41,7 @@ const nodes = [
 	file("2026/sydney/manly-ferry/full_manly-ferry.webp"),
 	file("2026/sydney/ferry-timelapse.mp4"),
 	file("2026/sydney/notes.txt"),
+	file("2026/sydney/sydney-notes.txt"),
 	folder("2025/"),
 	file("2025/devonport-ferry.txt"),
 ];
@@ -75,6 +76,25 @@ describe("buildRows", () => {
 		expect(rows.find((row) => row.node.id === "2026/sydney/")).toMatchObject({ expanded: true, count: 2 });
 	});
 
+	it("lists a matching folder's contents, collapsed until expanded", () => {
+		expect(ids(buildRows(childMap, {}, "2025").rows)).toEqual(["2025/"]);
+		expect(ids(buildRows(childMap, { "2025/": true }, "2025").rows)).toEqual(["2025/", "2025/devonport-ferry.txt"]);
+	});
+
+	it("opens a matching folder holding a deeper match and lists all its contents", () => {
+		const { rows, matches } = buildRows(childMap, {}, "sydney");
+		expect(matches).toBe(2);
+		expect(ids(rows)).toEqual([
+			"2026/",
+			"2026/sydney/",
+			"2026/sydney/manly-ferry/",
+			"2026/sydney/ferry-timelapse.mp4",
+			"2026/sydney/notes.txt",
+			"2026/sydney/sydney-notes.txt",
+		]);
+		expect(rows.find((row) => row.node.id === "2026/sydney/")).toMatchObject({ locked: true, expanded: true });
+	});
+
 	it("returns nothing when no name matches", () => {
 		expect(buildRows(childMap, {}, "xyz")).toEqual({ rows: [], matches: 0 });
 	});
@@ -101,8 +121,9 @@ describe("navigate", () => {
 		expect(navigate(rows, "2025/", "ArrowLeft")).toBeUndefined();
 	});
 
-	it("moves to the parent instead of collapsing while filtering", () => {
-		expect(navigate(rows, "2026/sydney/", "ArrowLeft", true)).toEqual({ type: "focus", id: "2026/" });
-		expect(navigate(rows, "2026/", "ArrowLeft", true)).toBeUndefined();
+	it("moves to the parent instead of collapsing a folder the filter holds open", () => {
+		const filtered = buildRows(childMap, {}, "ferry").rows;
+		expect(navigate(filtered, "2026/sydney/", "ArrowLeft")).toEqual({ type: "focus", id: "2026/" });
+		expect(navigate(filtered, "2026/", "ArrowLeft")).toBeUndefined();
 	});
 });
