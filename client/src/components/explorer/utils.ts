@@ -99,6 +99,10 @@ export const setFoldersIn = (childMap: Map<string, TreeNode[]>, folderId: string
 export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>
 	[...sets].filter(([, folder]) => folder.id.startsWith(folderId)).map(([set]) => set);
 
+/** The picked sets with their folders, in tree order. */
+export const pickedInTreeOrder = (sets: ReadonlyMap<string, TreeNode>, picked: ReadonlySet<string>) =>
+	[...sets].filter(([set]) => picked.has(set));
+
 /** Ticks every set of a group, or clears the group when all of it is already ticked. */
 export const toggleSets = (picked: ReadonlySet<string>, group: string[]) => {
 	const next = new Set(picked);

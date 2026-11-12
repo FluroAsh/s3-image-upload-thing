@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { LucideDatabase, LucideFolderClosed, LucideImages } from "lucide-react";
+import { LucideDatabase, LucideFolderClosed } from "lucide-react";
 
 import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
@@ -16,9 +16,12 @@ import {
 	getDepthPadding,
 	isSetFolder,
 	matchesFilter,
+	pickedInTreeOrder,
 	setsUnder,
 	toggleSets,
 } from "../utils";
+import { RowThumb, ThumbRootContext } from "./collection-thumb";
+import { PickedTray } from "./picked-tray";
 import { useBucketSets } from "./use-bucket-sets";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -50,6 +53,7 @@ export const pickedSummary = (count: number, moving: { from: Collection }[]) => 
 const Row = ({
 	label,
 	icon: Icon,
+	folder,
 	group,
 	depth,
 	picked,
@@ -60,8 +64,10 @@ const Row = ({
 }: PickerProps & {
 	/** Name of the folder or set. */
 	label: string;
-	/** Icon before the label. */
-	icon: typeof LucideImages;
+	/** Icon before the label; a set row shows its thumbnail instead. */
+	icon?: typeof LucideDatabase;
+	/** The set's folder, which a set row shows as a thumbnail. */
+	folder?: TreeNode;
 	/** Every set the row stands for; one for a set row. */
 	group: string[];
 	/** Tree depth, which sets the indent. */
@@ -92,7 +98,7 @@ const Row = ({
 				}}
 				onChange={() => onChange(toggleSets(picked, free))}
 			/>
-			<Icon className={cn("size-3.5 shrink-0", Icon === LucideImages ? "text-accent" : "text-fg-2")} />
+			{folder ? <RowThumb folder={folder} /> : Icon && <Icon className="size-3.5 shrink-0 text-fg-2" />}
 			<span className="truncate">{label}</span>
 			{note ? (
 				<span className={cn("ml-auto shrink-0 text-caption", note.warn ? "text-warn" : "text-fg-2")}>{note.text}</span>
@@ -113,7 +119,7 @@ const Branch = ({ node, depth, shown, ...pick }: BranchProps & { node: TreeNode;
 	if (isSetFolder(node, childMap.get(node.id))) {
 		const held = holdingSet(data, group[0])?.collection;
 		const note = pick.locked?.has(group[0]) ? { text: "already in" } : held && { text: `in ${held.name}`, warn: true };
-		return <Row {...pick} label={node.name} icon={LucideImages} group={group} depth={depth} note={note || undefined} />;
+		return <Row {...pick} label={node.name} folder={node} group={group} depth={depth} note={note || undefined} />;
 	}
 
 	return (
@@ -138,6 +144,7 @@ export const SetPicker = (pick: PickerProps) => {
 	const { bucketName } = useExplorer().state;
 	const { childMap, sets, data } = useBucketSets();
 	const [filter, setFilter] = useState("");
+	const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
 
 	const needle = filterNeedle(filter);
 	const shown = useMemo(() => new Set([...sets.keys()].filter((set) => matchesFilter(set, needle))), [sets, needle]);
@@ -153,27 +160,33 @@ export const SetPicker = (pick: PickerProps) => {
 				aria-label="Filter sets"
 			/>
 			{data?.partial && <PartialNotice count={data.tree.length} />}
-			<div className="max-h-[320px] overflow-y-auto rounded-md border border-line-strong p-1">
-				{all.length ? (
-					<>
-						<Row
-							{...pick}
-							label={bucketName}
-							icon={LucideDatabase}
-							group={all}
-							depth={0}
-							count={formatCount(all.length, "set", false)}
-						/>
-						{(childMap.get("") ?? []).map((node) => (
-							<Branch key={node.id} {...pick} shown={shown} node={node} depth={1} />
-						))}
-					</>
-				) : (
-					<p className="px-2 py-3 text-center text-secondary text-fg-2">
-						{needle ? `No sets match “${filter.trim()}”` : "No sets in this bucket yet"}
-					</p>
-				)}
+			<div ref={setScroller} className="max-h-[320px] overflow-y-auto rounded-md border border-line-strong p-1">
+				<ThumbRootContext.Provider value={scroller}>
+					{all.length ? (
+						<>
+							<Row
+								{...pick}
+								label={bucketName}
+								icon={LucideDatabase}
+								group={all}
+								depth={0}
+								count={formatCount(all.length, "set", false)}
+							/>
+							{(childMap.get("") ?? []).map((node) => (
+								<Branch key={node.id} {...pick} shown={shown} node={node} depth={1} />
+							))}
+						</>
+					) : (
+						<p className="px-2 py-3 text-center text-secondary text-fg-2">
+							{needle ? `No sets match “${filter.trim()}”` : "No sets in this bucket yet"}
+						</p>
+					)}
+				</ThumbRootContext.Provider>
 			</div>
+			<PickedTray
+				picked={pickedInTreeOrder(sets, pick.picked)}
+				onRemove={(set) => pick.onChange(toggleSets(pick.picked, [set]))}
+			/>
 		</div>
 	);
 };
