@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { LucideCheck, LucideChevronDown, LucideDatabase } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
+import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets } from "@/lib/query";
 import { dashboardSearchParams } from "@/lib/search-params";
@@ -34,19 +35,45 @@ export const BucketPicker = () => {
 	const { data } = useBuckets();
 	const buckets = data?.buckets ?? [];
 	const activeKey = bucketKey({ Name: bucketName, BucketRegion: bucketRegion });
+	const [open, setOpen] = useState(false);
+	const [filter, setFilter] = useState("");
+	const inputRef = useRef<HTMLInputElement | null>(null);
+	const listRef = useRef<HTMLDivElement>(null);
+	const needle = filter.trim().toLowerCase();
+	const visible = needle ? buckets.filter((bucket) => bucket.Name.toLowerCase().includes(needle)) : buckets;
+
+	const handleOpenChange = (next: boolean) => {
+		setOpen(next);
+		if (!next) setFilter("");
+	};
 
 	const selectBucket = (key: string) => {
 		const bucket = buckets.find((candidate) => bucketKey(candidate) === key);
 		if (bucket) setParams({ bucket: bucket.Name, region: bucket.BucketRegion });
 	};
 
-	/** Radix focuses the first item after mount, so the active bucket takes focus a tick later. */
-	const focusOnMount = useCallback((item: HTMLElement | null) => {
-		if (item) setTimeout(() => item.focus());
+	/** Radix focuses the content after mount, so the filter takes focus a tick later. */
+	const focusOnMount = useCallback((input: HTMLInputElement | null) => {
+		inputRef.current = input;
+		if (input) setTimeout(() => input.focus());
 	}, []);
 
+	/** The menu's typeahead and roving focus would swallow typed keys, so only Escape reaches it. */
+	const handleFilterKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+		if (event.key === "Escape") return;
+		event.stopPropagation();
+		if (event.key === "ArrowDown") {
+			event.preventDefault();
+			listRef.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
+		} else if (event.key === "Enter" && visible[0]) {
+			event.preventDefault();
+			selectBucket(bucketKey(visible[0]));
+			handleOpenChange(false);
+		}
+	};
+
 	return (
-		<DropdownMenu.Root>
+		<DropdownMenu.Root open={open} onOpenChange={handleOpenChange}>
 			<DropdownMenu.Trigger asChild>
 				<Button
 					aria-label={`Choose bucket: ${bucketName} ${bucketRegion}`}
@@ -65,12 +92,28 @@ export const BucketPicker = () => {
 					sideOffset={4}
 					className="z-50 w-[560px] max-w-[calc(100vw-16px)] overflow-hidden rounded-lg border border-line-strong bg-panel text-fg shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
 				>
-					<div className="max-h-[60vh] overflow-y-auto p-1">
+					<div className="border-b border-line p-1">
+						<FilterInput
+							ref={focusOnMount}
+							aria-label="Filter buckets"
+							placeholder="Filter buckets"
+							value={filter}
+							onChange={(event) => setFilter(event.target.value)}
+							onKeyDown={handleFilterKeyDown}
+							onClear={() => {
+								setFilter("");
+								inputRef.current?.focus();
+							}}
+						/>
+					</div>
+					<div ref={listRef} className="max-h-[60vh] overflow-y-auto p-1">
+						{visible.length === 0 && (
+							<p className="px-2 py-1.5 text-caption text-fg-2">No buckets match “{filter.trim()}”</p>
+						)}
 						<DropdownMenu.RadioGroup value={activeKey} onValueChange={selectBucket}>
-							{buckets.map((bucket) => (
+							{visible.map((bucket) => (
 								<DropdownMenu.RadioItem
 									key={bucketKey(bucket)}
-									ref={bucketKey(bucket) === activeKey ? focusOnMount : undefined}
 									value={bucketKey(bucket)}
 									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 data-[highlighted]:bg-pressed data-[state=checked]:bg-raised"
 								>
@@ -86,7 +129,9 @@ export const BucketPicker = () => {
 						</DropdownMenu.RadioGroup>
 					</div>
 					<p className="border-t border-line px-3 py-2 text-caption text-fg-2">
-						{buckets.length} {buckets.length === 1 ? "bucket" : "buckets"} in this account
+						{needle && `${visible.length} of `}
+						{buckets.length} {buckets.length === 1 ? "bucket" : "buckets"}
+						{!needle && " in this account"}
 						{buckets.some((bucket) => bucket.partial) && " · counts are lower bounds when the listing stopped early"}
 					</p>
 				</DropdownMenu.Content>
