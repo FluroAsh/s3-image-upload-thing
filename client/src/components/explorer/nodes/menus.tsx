@@ -9,7 +9,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 
-import { openFile, publicUrlOf } from "../file-actions";
+import { publicUrlOf, saveFile } from "../file-actions";
 import type { TreeRowData } from "../tree-rows";
 import type { CollectionAssign } from "../use-collection-move";
 import { pickPreviewVariant, setFoldersIn, setPathOf, sizeRank, variantOf } from "../utils";
@@ -46,12 +46,7 @@ export const SetMenu = ({ row, onOpen, assign }: MenuProps & { assign: Collectio
 						{variants
 							.toSorted((a, b) => sizeRank(variantOf(b.name)) - sizeRank(variantOf(a.name)))
 							.map(({ id, name, size }) => (
-								<ContextMenuItem
-									key={id}
-									meta={size}
-									disabled={!urls[id]}
-									onSelect={() => urls[id] && openFile(urls[id])}
-								>
+								<ContextMenuItem key={id} meta={size} onSelect={() => saveFile(id, { bucketName, bucketRegion })}>
 									{variantOf(name)}
 								</ContextMenuItem>
 							))}
@@ -75,7 +70,7 @@ export const FileMenu = ({ row, onOpen }: MenuProps) => {
 			<ContextMenuItem meta={OPEN_KEY} onSelect={onOpen}>
 				Open
 			</ContextMenuItem>
-			<ContextMenuItem meta={node.size} disabled={!url} onSelect={() => url && openFile(url)}>
+			<ContextMenuItem meta={node.size} onSelect={() => saveFile(node.id, { bucketName, bucketRegion })}>
 				Download
 			</ContextMenuItem>
 			<CopyItem label="Copy public URL" text={url && publicUrlOf(url)} />
