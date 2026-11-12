@@ -1,3 +1,4 @@
+import type { Point } from "@/hooks/usePointerPosition";
 import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS, INLINE_VARIANTS } from "~/shared/constants/image-variants";
 import { type SizeState, sizeStatuses } from "~/shared/image-sizes";
@@ -112,3 +113,18 @@ export const toggleSets = (picked: ReadonlySet<string>, group: string[]) => {
 	}
 	return next;
 };
+
+export type Size = { width: number; height: number };
+
+/** Flips rather than clamps, so the box never covers the cursor. */
+export const placeBesideCursor = (cursor: Point, box: Size, viewport: Size, gap = 16): Point => ({
+	x: cursor.x + gap + box.width > viewport.width ? Math.max(0, cursor.x - gap - box.width) : cursor.x + gap,
+	y: cursor.y + gap + box.height > viewport.height ? Math.max(0, cursor.y - gap - box.height) : cursor.y + gap,
+});
+
+export const PREVIEW_SHAPES = ["square", "landscape", "portrait"] as const;
+export type PreviewShape = (typeof PREVIEW_SHAPES)[number];
+
+/** A box shape fixed from the thumbnail, so the box never resizes when the larger image swaps in. */
+export const previewShapeOf = ({ width, height }: Size): PreviewShape =>
+	width > height * 1.2 ? "landscape" : height > width * 1.2 ? "portrait" : "square";

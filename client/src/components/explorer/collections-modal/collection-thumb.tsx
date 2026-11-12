@@ -1,14 +1,16 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 
 import { LucideImages } from "lucide-react";
 
 import { useInView } from "@/hooks/useInView";
+import type { Point } from "@/hooks/usePointerPosition";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
 import { PREVIEW_ORDER, pickPreviewVariant } from "../utils";
+import { HoverPreview } from "./hover-preview";
 
 const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
@@ -56,12 +58,19 @@ export const CollectionThumb = ({
 	);
 };
 
-/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker. */
+/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker, and previews it larger on hover. */
 export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 	const [ref, seen] = useInView();
+	const [hoverAt, setHoverAt] = useState<Point>();
+	const close = useCallback(() => setHoverAt(undefined), []);
 
 	return (
-		<div ref={ref} className="shrink-0">
+		<div
+			ref={ref}
+			className="shrink-0"
+			onPointerEnter={(event) => setHoverAt({ x: event.clientX, y: event.clientY })}
+			onPointerLeave={close}
+		>
 			<CollectionThumb
 				folder={folder}
 				className="size-5 rounded-sm"
@@ -69,6 +78,7 @@ export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 				enabled={seen}
 				fallback={<SetIcon className="size-3.5" />}
 			/>
+			{hoverAt && <HoverPreview folder={folder} start={hoverAt} onClose={close} />}
 		</div>
 	);
 };
