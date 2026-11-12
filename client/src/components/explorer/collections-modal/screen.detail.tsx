@@ -12,15 +12,22 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { StateMessage } from "@/components/ui/state-message";
-import { useCollections, useReorderCollection, useSetMembers, useUpdateCollection, useUpdatePhoto } from "@/lib/query";
+import {
+	useCollections,
+	useManifest,
+	useReorderCollection,
+	useSetMembers,
+	useUpdateCollection,
+	useUpdatePhoto,
+} from "@/lib/query";
 import { cn } from "@/lib/utils";
 import { coverOf } from "~/shared/collections";
 import type { Collection, CollectionPhoto } from "~/shared/types";
 
 import { RemoveFromCollectionDialog } from "../collection-dialogs";
 import { PhotoTextFields } from "../photo-text-fields";
-import { Sizes } from "../sizes";
-import { serverErrorMessage } from "../utils";
+import { SizeChips } from "../size-chips";
+import { serverErrorMessage, summariseSizes } from "../utils";
 import { AddSets } from "./add-sets";
 import { reorderSets } from "./collection-order";
 import { CollectionThumb } from "./collection-thumb";
@@ -87,6 +94,28 @@ const PhotoTile = ({
 	);
 };
 
+const PhotoSizes = ({ set }: { set: string }) => {
+	const { data } = useManifest(set);
+	const summary = data && summariseSizes(data);
+
+	return (
+		<div className="border-t border-line pt-2">
+			<p className="mb-1.5 flex justify-between text-caption font-medium uppercase tracking-label text-fg-2">
+				Sizes
+				{summary && (
+					<span className="font-mono">
+						{summary.statuses.length - summary.missing} of {summary.statuses.length}
+					</span>
+				)}
+			</p>
+			<SizeChips set={set} />
+			{!!summary?.missing && (
+				<p className="mt-2 text-caption text-fg-2">Open the set in the explorer to generate missing sizes.</p>
+			)}
+		</div>
+	);
+};
+
 const PhotoEditor = ({
 	collection,
 	photo,
@@ -142,9 +171,7 @@ const PhotoEditor = ({
 					message={serverErrorMessage(error)}
 				/>
 			)}
-			<div className="border-t border-line pt-2">
-				<Sizes key={photo.set} set={photo.set} />
-			</div>
+			<PhotoSizes set={photo.set} />
 			<RemoveFromCollectionDialog
 				open={removing}
 				onOpenChange={showRemove}
