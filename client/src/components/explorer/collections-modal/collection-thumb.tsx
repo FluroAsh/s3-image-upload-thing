@@ -9,7 +9,7 @@ const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
 export const CollectionThumb = ({
 	folder,
-	className = "size-16",
+	className = "size-8",
 }: {
 	folder: TreeNode | undefined;
 	className?: string;

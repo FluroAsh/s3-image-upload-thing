@@ -1,11 +1,11 @@
 import { useState } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { LucideChevronRight, LucideFolder, LucideFolderPlus, LucideSearch } from "lucide-react";
+import { LucideChevronRight, LucideFolder, LucideFolderPlus } from "lucide-react";
 
 import { formatCount, isSetFolder, setPathOf } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FilterInput } from "@/components/ui/filter-input";
 import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree } from "@/lib/query";
@@ -94,16 +94,13 @@ export const FolderSelect = () => {
 			<div className="rounded-md border border-line bg-panel">
 				<div className="flex h-9 items-center gap-2 border-b border-line px-2">
 					<Breadcrumb bucketName={bucketName} />
-					<div className="relative w-[150px] shrink-0">
-						<LucideSearch className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-fg-2" />
-						<Input
-							value={filter}
-							onChange={(e) => setFilter(e.target.value)}
-							className="pl-6"
-							placeholder="Filter folders…"
-							aria-label="Filter folders"
-						/>
-					</div>
+					<FilterInput
+						wrapperClassName="w-[150px] shrink-0"
+						value={filter}
+						onChange={(e) => setFilter(e.target.value)}
+						placeholder="Filter folders…"
+						aria-label="Filter folders"
+					/>
 					<Button variant="ghost" onClick={() => setNaming(true)}>
 						<LucideFolderPlus className="size-3.5" />
 						New folder

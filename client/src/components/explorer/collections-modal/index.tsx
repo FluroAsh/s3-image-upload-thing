@@ -1,10 +1,11 @@
 import { LucideFolderHeart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useCollections } from "@/lib/query";
 
+import { AddSets } from "./add-sets";
 import { useCollectionsModal } from "./provider";
 import { CreateScreen } from "./screen.create";
 import { DetailScreen } from "./screen.detail";
@@ -34,21 +35,16 @@ export const CollectionsTrigger = () => {
 				</Button>
 			</DialogTrigger>
 
-			<DialogContent size="wide">
-				<DialogHeader>
-					<DialogTitle>{screen.screen === "create" ? "New collection" : `Collections in ${bucketName}`}</DialogTitle>
-				</DialogHeader>
-				<DialogBody>
-					<div className="min-h-[500px]">
-						{screen.screen === "create" ? (
-							<CreateScreen />
-						) : screen.screen === "detail" ? (
-							<DetailScreen slug={screen.slug} />
-						) : (
-							<ListScreen />
-						)}
-					</div>
-				</DialogBody>
+			<DialogContent size={screen.screen === "detail" ? "wide" : "default"}>
+				{screen.screen === "create" ? (
+					<CreateScreen />
+				) : screen.screen === "add" ? (
+					<AddSets slug={screen.slug} />
+				) : screen.screen === "detail" ? (
+					<DetailScreen slug={screen.slug} />
+				) : (
+					<ListScreen />
+				)}
 			</DialogContent>
 		</Dialog>
 	);
