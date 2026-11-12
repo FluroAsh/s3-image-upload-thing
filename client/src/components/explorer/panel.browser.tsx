@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StateMessage } from "@/components/ui/state-message";
 import { useHasMounted } from "@/hooks/useHasMounted";
@@ -24,12 +25,6 @@ import { buildRows } from "./tree-rows";
 import { UploadTrigger } from "./upload-modal";
 import { UploadProvider } from "./upload-modal/provider";
 import { formatCount, formatSize, serverErrorMessage } from "./utils";
-
-const Kbd = ({ children }: { children: React.ReactNode }) => (
-	<kbd className="inline-flex h-chip items-center rounded-sm border border-line-strong bg-raised px-1 font-mono text-caption text-fg-2">
-		{children}
-	</kbd>
-);
 
 const FooterHints = ({ filtering }: { filtering: boolean }) =>
 	filtering ? (

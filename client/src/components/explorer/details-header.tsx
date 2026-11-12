@@ -1,35 +1,17 @@
-import { useEffect, useState } from "react";
-
 import { LucideCheck, LucideCopy, LucideExternalLink, LucideX } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useCopy } from "@/hooks/useCopy";
 
 import { SetBadge } from "./set-badge";
 
-const COPIED_MS = 1500;
-
 const CopyUrlButton = ({ url }: { url: string }) => {
-	const [result, setResult] = useState<"copied" | "failed" | null>(null);
-
-	useEffect(() => {
-		if (!result) return;
-		const timer = setTimeout(() => setResult(null), COPIED_MS);
-		return () => clearTimeout(timer);
-	}, [result]);
+	const { result, copy } = useCopy();
 
 	const Icon = result === "copied" ? LucideCheck : result === "failed" ? LucideX : LucideCopy;
 
 	return (
-		<Button
-			variant="ghost"
-			disabled={!url}
-			onClick={() =>
-				navigator.clipboard.writeText(url).then(
-					() => setResult("copied"),
-					() => setResult("failed"),
-				)
-			}
-		>
+		<Button variant="ghost" disabled={!url} onClick={() => copy(url)}>
 			<Icon className="size-3.5" />
 			{result === "copied" ? "Copied" : result === "failed" ? "Copy failed" : "Copy URL"}
 		</Button>

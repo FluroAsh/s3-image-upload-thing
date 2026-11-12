@@ -14,6 +14,12 @@ export const extractFilename = (value: string) => value.match(/_(.+)\./)?.[1];
 export const variantOf = (fileName: string): string =>
 	IMAGE_VARIANTS.find((variant) => fileName.startsWith(`${variant}_`)) ?? fileName.split("_")[0];
 
+/** Position of a size in the size table, smallest first; a name outside the table ranks last. */
+export const sizeRank = (name: string) => {
+	const rank = (IMAGE_VARIANTS as readonly string[]).indexOf(name);
+	return rank === -1 ? IMAGE_VARIANTS.length : rank;
+};
+
 /** The file's extension in capitals, which names its type; `"unknown"` without one. */
 export const fileType = (fileName: string): string => {
 	const extension = fileName.includes(".") ? fileName.split(".").pop() : "";
@@ -78,6 +84,10 @@ export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: str
 		if (!node.isFolder) return [];
 		return isSetFolder(node, childMap.get(node.id)) ? [node] : setFoldersUnder(childMap, node.id);
 	});
+
+/** The set folders directly inside `folderId`, not those in its subfolders. */
+export const setFoldersIn = (childMap: Map<string, TreeNode[]>, folderId: string): TreeNode[] =>
+	(childMap.get(folderId) ?? []).filter((node) => isSetFolder(node, childMap.get(node.id)));
 
 /** The sets inside a folder (`""` for the bucket root), found by folder id prefix. */
 export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>

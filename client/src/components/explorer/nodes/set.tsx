@@ -3,10 +3,11 @@ import { LucideImages } from "lucide-react";
 import { useSetSelection } from "@/hooks/useSetSelection";
 
 import { setPathOf } from "../utils";
+import { SetMenu } from "./menus";
 import { NodeName, TreeRow } from "./row";
 import type { NodeProps } from "./types";
 
-export const SetNode = ({ row, query, tabbable, onFocus }: NodeProps) => {
+export const SetNode = ({ row, query, tabbable, onFocus, assign }: NodeProps) => {
 	const { node, variants } = row;
 	const { isActive, select } = useSetSelection(setPathOf(node.id));
 
@@ -17,6 +18,7 @@ export const SetNode = ({ row, query, tabbable, onFocus }: NodeProps) => {
 			selected={isActive}
 			tabbable={tabbable}
 			meta={variants.length}
+			menu={<SetMenu row={row} onOpen={select} assign={assign} />}
 			onActivate={select}
 			onFocus={onFocus}
 		>
