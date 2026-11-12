@@ -14,6 +14,7 @@ import {
 	pickedInTreeOrder,
 	pickPreviewVariant,
 	placeBesideCursor,
+	previewShapeOf,
 	serverErrorMessage,
 	setFoldersIn,
 	setFoldersUnder,
@@ -225,5 +226,13 @@ describe("placeBesideCursor", () => {
 
 	it("flips to the left and above near the far edges", () => {
 		expect(placeBesideCursor({ x: 450, y: 380 }, box, viewport)).toEqual({ x: 334, y: 314 });
+	});
+});
+
+describe("previewShapeOf", () => {
+	it("picks landscape, portrait or square from the aspect ratio", () => {
+		expect(previewShapeOf({ width: 120, height: 80 })).toBe("landscape");
+		expect(previewShapeOf({ width: 80, height: 120 })).toBe("portrait");
+		expect(previewShapeOf({ width: 120, height: 110 })).toBe("square");
 	});
 });
