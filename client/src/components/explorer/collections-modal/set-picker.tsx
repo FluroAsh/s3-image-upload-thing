@@ -1,12 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { LucideDatabase, LucideFolderClosed, LucideImages } from "lucide-react";
+import { LucideDatabase, LucideFolderClosed } from "lucide-react";
 
 import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useCollections } from "@/lib/query";
 import { cn } from "@/lib/utils";
-import { holdingSet } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
 import { PartialNotice } from "../partial-notice";
@@ -16,10 +14,14 @@ import {
 	getDepthPadding,
 	isSetFolder,
 	matchesFilter,
+	pickedInTreeOrder,
 	setsUnder,
 	toggleSets,
 } from "../utils";
+import { RowThumb } from "./collection-thumb";
+import { PickedTray } from "./picked-tray";
 import { useBucketSets } from "./use-bucket-sets";
+import { useHeldBy } from "./use-held-by";
 
 const NONE: ReadonlySet<string> = new Set();
 
@@ -50,6 +52,7 @@ export const pickedSummary = (count: number, moving: { from: Collection }[]) => 
 const Row = ({
 	label,
 	icon: Icon,
+	folder,
 	group,
 	depth,
 	picked,
@@ -60,8 +63,10 @@ const Row = ({
 }: PickerProps & {
 	/** Name of the folder or set. */
 	label: string;
-	/** Icon before the label. */
-	icon: typeof LucideImages;
+	/** Icon before the label; a set row shows its thumbnail instead. */
+	icon?: typeof LucideDatabase;
+	/** The set's folder, which a set row shows as a thumbnail. */
+	folder?: TreeNode;
 	/** Every set the row stands for; one for a set row. */
 	group: string[];
 	/** Tree depth, which sets the indent. */
@@ -92,7 +97,7 @@ const Row = ({
 				}}
 				onChange={() => onChange(toggleSets(picked, free))}
 			/>
-			<Icon className={cn("size-3.5 shrink-0", Icon === LucideImages ? "text-accent" : "text-fg-2")} />
+			{folder ? <RowThumb folder={folder} /> : Icon && <Icon className="size-3.5 shrink-0 text-fg-2" />}
 			<span className="truncate">{label}</span>
 			{note ? (
 				<span className={cn("ml-auto shrink-0 text-caption", note.warn ? "text-warn" : "text-fg-2")}>{note.text}</span>
@@ -105,15 +110,14 @@ const Row = ({
 
 const Branch = ({ node, depth, shown, ...pick }: BranchProps & { node: TreeNode; depth: number }) => {
 	const { childMap, sets } = useBucketSets();
-	const { data } = useCollections();
 
 	const group = setsUnder(sets, node.id).filter((set) => shown.has(set));
+	const held = useHeldBy(node.isFolder && isSetFolder(node, childMap.get(node.id)) ? group[0] : undefined);
 	if (!node.isFolder || !group.length) return null;
 
 	if (isSetFolder(node, childMap.get(node.id))) {
-		const held = holdingSet(data, group[0])?.collection;
 		const note = pick.locked?.has(group[0]) ? { text: "already in" } : held && { text: `in ${held.name}`, warn: true };
-		return <Row {...pick} label={node.name} icon={LucideImages} group={group} depth={depth} note={note || undefined} />;
+		return <Row {...pick} label={node.name} folder={node} group={group} depth={depth} note={note || undefined} />;
 	}
 
 	return (
@@ -138,6 +142,7 @@ export const SetPicker = (pick: PickerProps) => {
 	const { bucketName } = useExplorer().state;
 	const { childMap, sets, data } = useBucketSets();
 	const [filter, setFilter] = useState("");
+	const filterRef = useRef<HTMLInputElement>(null);
 
 	const needle = filterNeedle(filter);
 	const shown = useMemo(() => new Set([...sets.keys()].filter((set) => matchesFilter(set, needle))), [sets, needle]);
@@ -146,6 +151,7 @@ export const SetPicker = (pick: PickerProps) => {
 	return (
 		<div className="space-y-2">
 			<FilterInput
+				ref={filterRef}
 				wrapperClassName="w-full"
 				value={filter}
 				onChange={(e) => setFilter(e.target.value)}
@@ -174,6 +180,11 @@ export const SetPicker = (pick: PickerProps) => {
 					</p>
 				)}
 			</div>
+			<PickedTray
+				picked={pickedInTreeOrder(sets, pick.picked)}
+				onRemove={(set) => pick.onChange(toggleSets(pick.picked, [set]))}
+				onEmptied={() => filterRef.current?.focus()}
+			/>
 		</div>
 	);
 };

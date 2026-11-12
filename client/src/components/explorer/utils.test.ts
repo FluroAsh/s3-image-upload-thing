@@ -11,6 +11,7 @@ import {
 	formatSize,
 	matchesFilter,
 	PREVIEW_ORDER,
+	pickedInTreeOrder,
 	pickPreviewVariant,
 	serverErrorMessage,
 	setFoldersIn,
@@ -175,6 +176,11 @@ describe("set picker selection", () => {
 
 	it("takes every set for the bucket root", () => {
 		expect(setsUnder(sets, "")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka", "cdn/solo"]);
+	});
+
+	it("lists picked sets in tree order, not the order they were ticked", () => {
+		const picked = new Set(["cdn/solo", "cdn/trip/kyoto", "cdn/gone"]);
+		expect(pickedInTreeOrder(sets, picked).map(([set]) => set)).toEqual(["cdn/trip/kyoto", "cdn/solo"]);
 	});
 
 	it("ticks a partly ticked group, then clears it once whole", () => {
