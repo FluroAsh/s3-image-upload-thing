@@ -6,8 +6,10 @@ import type { TreeNode } from "~/shared/types";
 
 import {
 	fileType,
+	filterNeedle,
 	formatCount,
 	formatSize,
+	matchesFilter,
 	PREVIEW_ORDER,
 	pickPreviewVariant,
 	serverErrorMessage,
@@ -194,5 +196,14 @@ describe("fileType", () => {
 	it("names the type from the extension", () => {
 		expect(fileType("photo.JPG")).toBe("JPG");
 		expect(fileType("notes")).toBe("unknown");
+	});
+});
+
+describe("matchesFilter", () => {
+	it("ignores case and surrounding spaces, and matches everything when empty", () => {
+		const needle = filterNeedle("  FoO ");
+		expect(matchesFilter("a-foo-b", needle)).toBe(true);
+		expect(matchesFilter("bar", needle)).toBe(false);
+		expect(matchesFilter("bar", filterNeedle("  "))).toBe(true);
 	});
 });

@@ -30,6 +30,7 @@ export const FilterInput = React.forwardRef<HTMLInputElement, FilterInputProps>(
 				<Button
 					variant="icon"
 					aria-label="Clear filter"
+					tabIndex={-1}
 					className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2"
 					onClick={onClear}
 				>

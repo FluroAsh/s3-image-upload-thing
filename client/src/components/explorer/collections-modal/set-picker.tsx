@@ -10,7 +10,15 @@ import { holdingSet } from "~/shared/collections";
 import type { Collection, TreeNode } from "~/shared/types";
 
 import { PartialNotice } from "../partial-notice";
-import { formatCount, getDepthPadding, isSetFolder, setsUnder, toggleSets } from "../utils";
+import {
+	filterNeedle,
+	formatCount,
+	getDepthPadding,
+	isSetFolder,
+	matchesFilter,
+	setsUnder,
+	toggleSets,
+} from "../utils";
 import { useBucketSets } from "./use-bucket-sets";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -131,11 +139,8 @@ export const SetPicker = (pick: PickerProps) => {
 	const { childMap, sets, data } = useBucketSets();
 	const [filter, setFilter] = useState("");
 
-	const needle = filter.trim().toLowerCase();
-	const shown = useMemo(
-		() => new Set([...sets.keys()].filter((set) => set.toLowerCase().includes(needle))),
-		[sets, needle],
-	);
+	const needle = filterNeedle(filter);
+	const shown = useMemo(() => new Set([...sets.keys()].filter((set) => matchesFilter(set, needle))), [sets, needle]);
 	const all = setsUnder(sets, "").filter((set) => shown.has(set));
 
 	return (

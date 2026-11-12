@@ -1,6 +1,6 @@
 import type { TreeNode } from "~/shared/types";
 
-import { isSetFolder } from "./utils";
+import { filterNeedle, isSetFolder, matchesFilter } from "./utils";
 
 export const ROW_KINDS = ["folder", "set", "file"] as const;
 
@@ -21,9 +21,9 @@ export type TreeRowData = {
 
 /** Flattens the loaded tree into the visible rows; a filter keeps matches and opens the folders above them, and a matching folder still lists all its contents. */
 export const buildRows = (childMap: Map<string, TreeNode[]>, expanded: Record<string, boolean>, query: string) => {
-	const needle = query.trim().toLowerCase();
+	const needle = filterNeedle(query);
 	const filtering = needle !== "";
-	const isHit = (node: TreeNode) => filtering && node.name.toLowerCase().includes(needle);
+	const isHit = (node: TreeNode) => filtering && matchesFilter(node.name, needle);
 
 	const isLeaf = (node: TreeNode, children: TreeNode[]) => !node.isFolder || isSetFolder(node, children);
 
