@@ -34,4 +34,11 @@ describe("GET /storage/download", () => {
 			`attachment; filename="_ _a_.jpg"; filename*=UTF-8''%C3%A9%20%22a%22.jpg`,
 		);
 	});
+
+	it("names a set's original after the set", async () => {
+		const res = await app.request(`/storage/download?${SCOPE}&key=trip/kyoto/original.jpg`);
+		const disposition = new URL(res.headers.get("location") ?? "").searchParams.get("response-content-disposition");
+
+		expect(disposition).toBe(`attachment; filename="kyoto.jpg"; filename*=UTF-8''kyoto.jpg`);
+	});
 });

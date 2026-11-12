@@ -5,17 +5,15 @@ import {
 	ContextMenuSubContent,
 	ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
-import { Kbd } from "@/components/ui/kbd";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useFileTree, usePresignedUrls } from "@/lib/query";
+import { useFileTree, useManifest, usePresignedUrls } from "@/lib/query";
 
 import { publicUrlOf, saveFile } from "../file-actions";
+import { formatBytes } from "../inspector";
 import type { TreeRowData } from "../tree-rows";
 import type { CollectionAssign } from "../use-collection-move";
 import { pickPreviewVariant, setFoldersIn, setPathOf, sizeRank, variantOf } from "../utils";
 import { CollectionSubmenu, CopyItem } from "./menu-parts";
-
-const OPEN_KEY = <Kbd>⏎</Kbd>;
 
 type MenuProps = {
 	/** The row the menu belongs to. */
@@ -27,26 +25,28 @@ type MenuProps = {
 export const SetMenu = ({ row, onOpen, assign }: MenuProps & { assign: CollectionAssign }) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { node, variants } = row;
-	const { data: urls = {} } = usePresignedUrls(
-		variants.map(({ id }) => id),
-		bucketName,
-		bucketRegion,
-	);
 	const preview = pickPreviewVariant(variants);
+	const { data: urls = {} } = usePresignedUrls(preview ? [preview.id] : [], bucketName, bucketRegion);
+	/** The tree leaves out a set's original, so its key comes from the manifest. */
+	const source = useManifest(setPathOf(node.id)).data?.source;
+	const location = { bucketName, bucketRegion };
 
 	return (
 		<>
-			<ContextMenuItem meta={OPEN_KEY} onSelect={onOpen}>
-				Open
-			</ContextMenuItem>
-			{variants.length > 0 && (
+			<ContextMenuItem onSelect={onOpen}>Open</ContextMenuItem>
+			{(variants.length > 0 || source) && (
 				<ContextMenuSub>
 					<ContextMenuSubTrigger>Download</ContextMenuSubTrigger>
 					<ContextMenuSubContent>
+						{source && (
+							<ContextMenuItem meta={formatBytes(source.bytes)} onSelect={() => saveFile(source.key, location)}>
+								original
+							</ContextMenuItem>
+						)}
 						{variants
 							.toSorted((a, b) => sizeRank(variantOf(b.name)) - sizeRank(variantOf(a.name)))
 							.map(({ id, name, size }) => (
-								<ContextMenuItem key={id} meta={size} onSelect={() => saveFile(id, { bucketName, bucketRegion })}>
+								<ContextMenuItem key={id} meta={size} onSelect={() => saveFile(id, location)}>
 									{variantOf(name)}
 								</ContextMenuItem>
 							))}
@@ -67,9 +67,7 @@ export const FileMenu = ({ row, onOpen }: MenuProps) => {
 
 	return (
 		<>
-			<ContextMenuItem meta={OPEN_KEY} onSelect={onOpen}>
-				Open
-			</ContextMenuItem>
+			<ContextMenuItem onSelect={onOpen}>Open</ContextMenuItem>
 			<ContextMenuItem meta={node.size} onSelect={() => saveFile(node.id, { bucketName, bucketRegion })}>
 				Download
 			</ContextMenuItem>
@@ -92,9 +90,7 @@ export const FolderMenu = ({
 
 	return (
 		<>
-			<ContextMenuItem meta={<Kbd>{row.expanded ? "←" : "→"}</Kbd>} onSelect={onToggle}>
-				{row.expanded ? "Collapse" : "Expand"}
-			</ContextMenuItem>
+			<ContextMenuItem onSelect={onToggle}>{row.expanded ? "Collapse" : "Expand"}</ContextMenuItem>
 			<CopyItem label="Copy path" text={setPathOf(row.node.id)} />
 			<ContextMenuItem onSelect={() => setAttentionFolder(setPathOf(row.node.id))}>
 				Show sets needing attention

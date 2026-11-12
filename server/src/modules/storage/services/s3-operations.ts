@@ -92,7 +92,9 @@ export const getBucketStats = async (bucketName: string, bucketRegion: string): 
 /** Saves rather than displays; the `filename*` form carries any UTF-8 name and the quoted ASCII form is the fallback for old clients. */
 const attachmentDisposition = (name: string) => {
 	const ascii = name.replace(/[^\x20-\x7e]|["\\]/g, "_");
-	return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+	/** RFC 5987 also reserves `'()*`, which `encodeURIComponent` leaves as they are. */
+	const encoded = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+	return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 };
 
 /** With `downloadName` the URL makes the browser save the object under that name instead of showing it. */

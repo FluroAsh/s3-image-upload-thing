@@ -5,10 +5,11 @@ import { errorMessage } from "@/shared/utils/helpers";
 
 export const badRequest = (message: string) => new HTTPException(400, { message });
 
-/** Runs a handler body, answering an `HTTPException` with its own status and anything else as a logged 500. */
+/** Runs a handler body, answering an `HTTPException` with its own status and anything else as a logged 500; a body that is already a `Response`, such as a redirect, is sent as is. */
 export const respond = async <Body>(ctx: Context, run: () => Promise<Body>, status: 200 | 201 = 200) => {
 	try {
-		return ctx.json(await run(), status);
+		const body = await run();
+		return body instanceof Response ? body : ctx.json(body, status);
 	} catch (error) {
 		if (error instanceof HTTPException) return ctx.json({ error: error.message }, error.status);
 
