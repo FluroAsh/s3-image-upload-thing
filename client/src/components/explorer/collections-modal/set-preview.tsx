@@ -10,7 +10,7 @@ import { pickPreviewVariant } from "../utils";
 const LARGER_FIRST: ImageVariant[] = [...INLINE_VARIANTS, "full"];
 
 /** Previews a set from its sizes; mounted only after the hover delay, so nothing is requested before. */
-export const SetPreview = ({ folder, start, onClose }: { folder: TreeNode; start: Point; onClose: () => void }) => {
+export const SetPreview = ({ folder, start }: { folder: TreeNode; start: Point }) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { childMap } = useFileTree(bucketName, bucketRegion);
 
@@ -21,7 +21,5 @@ export const SetPreview = ({ folder, start, onClose }: { folder: TreeNode; start
 	const { data: largeData } = usePresignedUrls(large ? [large.id] : [], bucketName, bucketRegion);
 	const thumbUrl = thumb && thumbData?.[thumb.id];
 
-	return thumbUrl ? (
-		<PreviewBox thumbSrc={thumbUrl} largeSrc={large && largeData?.[large.id]} start={start} onClose={onClose} />
-	) : null;
+	return thumbUrl ? <PreviewBox thumbSrc={thumbUrl} largeSrc={large && largeData?.[large.id]} start={start} /> : null;
 };

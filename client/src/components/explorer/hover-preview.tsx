@@ -14,14 +14,17 @@ const SHAPE_CLASS = {
 	portrait: "h-60 w-40",
 } as const satisfies Record<PreviewShape, string>;
 
-/** Delays the preview until the cursor has rested on the thumbnail, so nothing is requested while passing over. */
+/** Delays the preview until the cursor has rested on the thumbnail; a scroll, key press or drag from the moment the cursor enters cancels it. */
 export const useHoverPreview = () => {
 	const [at, setAt] = useState<Point>();
 	const pointer = useRef<Point>({ x: 0, y: 0 });
 	const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+	const unlisten = useRef<() => void>(undefined);
 
 	const close = useCallback(() => {
 		clearTimeout(timer.current);
+		unlisten.current?.();
+		unlisten.current = undefined;
 		setAt(undefined);
 	}, []);
 
@@ -36,11 +39,22 @@ export const useHoverPreview = () => {
 		close,
 		handlers: {
 			onPointerEnter: (event: PointerEvent) => {
+				close();
 				track(event);
+				window.addEventListener("scroll", close, true);
+				window.addEventListener("keydown", close);
+				window.addEventListener("dragstart", close);
+				unlisten.current = () => {
+					window.removeEventListener("scroll", close, true);
+					window.removeEventListener("keydown", close);
+					window.removeEventListener("dragstart", close);
+				};
 				timer.current = setTimeout(() => setAt(pointer.current), HOVER_DELAY_MS);
 			},
 			onPointerMove: track,
 			onPointerLeave: close,
+			onPointerDown: close,
+			onPointerCancel: close,
 		},
 	};
 };
@@ -52,12 +66,10 @@ type PreviewBoxProps = {
 	largeSrc?: string;
 	/** Where the cursor was when the preview opened. */
 	start: Point;
-	/** Called on key press or scroll, or when a drag starts. */
-	onClose: () => void;
 };
 
 /** Boxed image beside the cursor, whatever its source; it never takes pointer events. */
-export const PreviewBox = ({ thumbSrc, largeSrc, start, onClose }: PreviewBoxProps) => {
+export const PreviewBox = ({ thumbSrc, largeSrc, start }: PreviewBoxProps) => {
 	const boxRef = useRef<HTMLDivElement>(null);
 	const [shape, setShape] = useState<PreviewShape>();
 	const [largeLoaded, setLargeLoaded] = useState(false);
@@ -76,17 +88,6 @@ export const PreviewBox = ({ thumbSrc, largeSrc, start, onClose }: PreviewBoxPro
 
 	/** Re-places after any render that may have resized the box, such as the shape being set. */
 	useLayoutEffect(() => place());
-
-	useEffect(() => {
-		window.addEventListener("scroll", onClose, true);
-		window.addEventListener("keydown", onClose);
-		window.addEventListener("dragstart", onClose);
-		return () => {
-			window.removeEventListener("scroll", onClose, true);
-			window.removeEventListener("keydown", onClose);
-			window.removeEventListener("dragstart", onClose);
-		};
-	}, [onClose]);
 
 	return createPortal(
 		<div
@@ -121,8 +122,8 @@ export const PreviewBox = ({ thumbSrc, largeSrc, start, onClose }: PreviewBoxPro
 	);
 };
 
-/** Previews a picked file from its own bytes, so nothing is fetched. */
-export const FilePreview = ({ file, start, onClose }: { file: File; start: Point; onClose: () => void }) => {
+/** Previews a picked file from its own bytes, so nothing is fetched; the list's small thumbnail sets the shape at once. */
+export const FilePreview = ({ file, thumbSrc, start }: { file: File; thumbSrc: string; start: Point }) => {
 	const [url, setUrl] = useState<string>();
 
 	useEffect(() => {
@@ -131,5 +132,5 @@ export const FilePreview = ({ file, start, onClose }: { file: File; start: Point
 		return () => URL.revokeObjectURL(objectUrl);
 	}, [file]);
 
-	return url ? <PreviewBox thumbSrc={url} start={start} onClose={onClose} /> : null;
+	return <PreviewBox thumbSrc={thumbSrc} largeSrc={url} start={start} />;
 };

@@ -40,6 +40,43 @@ describe("readImageSize", () => {
 		expect(readImageSize(jpeg(6000, 4000, exif(1)))).toEqual({ width: 6000, height: 4000 });
 	});
 
+	it("walks DQT and DHT segments to a progressive frame and reads little-endian EXIF", () => {
+		const tables = [
+			[0xff, 0xdb, ...u16(4), 0, 0],
+			[0xff, 0xc4, ...u16(4), 0, 0],
+		];
+		const le = [
+			0xff,
+			0xe1,
+			...u16(2 + 6 + 8 + 2 + 12 + 4),
+			...bytesOf("Exif\0\0"),
+			...bytesOf("II"),
+			...u16le(42),
+			...u32(8).reverse(),
+			...u16le(1),
+			...u16le(0x0112),
+			...u16le(3),
+			...u32(1).reverse(),
+			...u16le(8),
+			0,
+			0,
+			...u32(0),
+		];
+		const progressive = bytesOf([0xff, 0xd8], le, ...tables, [
+			0xff,
+			0xc2,
+			...u16(11),
+			8,
+			...u16(4000),
+			...u16(6000),
+			3,
+			0,
+			0,
+			0,
+		]);
+		expect(readImageSize(progressive)).toEqual({ width: 4000, height: 6000 });
+	});
+
 	it("reads a PNG's size from IHDR", () => {
 		const png = bytesOf([0x89], "PNG\r\n\x1a\n", u32(13), "IHDR", u32(640), u32(480));
 		expect(readImageSize(png)).toEqual({ width: 640, height: 480 });
@@ -60,5 +97,8 @@ describe("readImageSize", () => {
 	it("gives up on other or truncated data", () => {
 		expect(readImageSize(bytesOf("GIF89a"))).toBeUndefined();
 		expect(readImageSize(bytesOf([0xff, 0xd8, 0xff, 0xe1]))).toBeUndefined();
+		const padding = [0xff, 0xe0, ...u16(200), ...new Array(198).fill(0)];
+		const cut = jpeg(6000, 4000, padding).subarray(0, 100);
+		expect(readImageSize(cut)).toBeUndefined();
 	});
 });

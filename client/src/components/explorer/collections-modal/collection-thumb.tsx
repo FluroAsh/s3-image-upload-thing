@@ -56,7 +56,7 @@ export const CollectionThumb = ({
 				: url && (
 						<img src={url} alt="" loading="lazy" className="size-full object-cover" onError={() => setFailedUrl(url)} />
 					)}
-			{hover.at && folder && <SetPreview folder={folder} start={hover.at} onClose={hover.close} />}
+			{hover.at && folder && <SetPreview folder={folder} start={hover.at} />}
 		</div>
 	);
 };

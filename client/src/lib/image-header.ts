@@ -1,4 +1,9 @@
-export type ImageSize = { width: number; height: number };
+export type ImageSize = {
+	/** Pixels, after EXIF rotation. */
+	width: number;
+	/** Pixels, after EXIF rotation. */
+	height: number;
+};
 
 /** Bytes of a file's start that cover the size in every JPEG seen, after the metadata segments that precede it. */
 export const HEADER_BYTES = 512 * 1024;
@@ -56,7 +61,7 @@ const webpSize = (bytes: Uint8Array): ImageSize | undefined => {
 	}
 };
 
-/** Reads pixel size, with EXIF rotation applied, from the start of a JPEG, PNG or WebP file without decoding it. */
+/** Reads pixel size, with EXIF rotation applied, from the start of a JPEG, PNG or WebP file without decoding it; a truncated header reads past the end, so the size is unknown. */
 export const readImageSize = (bytes: Uint8Array): ImageSize | undefined => {
 	try {
 		if (bytes[0] === 0xff && bytes[1] === 0xd8) return jpegSize(bytes);
@@ -65,7 +70,5 @@ export const readImageSize = (bytes: Uint8Array): ImageSize | undefined => {
 			return { width: view.getUint32(16), height: view.getUint32(20) };
 		}
 		if (ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 4) === "WEBP") return webpSize(bytes);
-	} catch {
-		// A truncated header reads past the end; the size is simply unknown.
-	}
+	} catch {}
 };

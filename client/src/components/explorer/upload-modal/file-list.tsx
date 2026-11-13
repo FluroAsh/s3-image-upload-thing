@@ -48,7 +48,7 @@ export const Thumb = ({ picked }: { picked?: PickedFile }) => {
 			) : (
 				<LucideFile className="size-4" />
 			)}
-			{hover.at && picked && <FilePreview file={picked.file} start={hover.at} onClose={hover.close} />}
+			{hover.at && picked && url && <FilePreview file={picked.file} thumbSrc={url} start={hover.at} />}
 		</div>
 	);
 };
