@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 
 import { bucketLocationOf } from "@/shared/utils/params";
 import { badRequest, respond } from "@/shared/utils/respond";
+import { isAllowedHookUrl } from "~/shared/hooks";
 import type {
 	AddHookRequest,
 	DeleteHookResponse,
@@ -18,15 +19,10 @@ import { hooksOf, readSettings, type StoredHook, updateHooks } from "../services
 
 const bucketOf = (ctx: Context) => bucketLocationOf(ctx).bucketName;
 
-/** Plain `http://localhost` is allowed outside production, so a local request catcher can stand in for a site. */
-const isAllowedUrl = (url: URL) =>
-	url.protocol === "https:" ||
-	(process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost");
-
 const requireUrl = (value: unknown): string => {
 	if (typeof value !== "string") throw badRequest("URL must be a valid https URL");
 	const url = URL.parse(value);
-	if (!url || !isAllowedUrl(url)) throw badRequest("URL must be a valid https URL");
+	if (!url || !isAllowedHookUrl(url)) throw badRequest("URL must be a valid https URL");
 	return value;
 };
 

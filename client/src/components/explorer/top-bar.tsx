@@ -7,7 +7,7 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { useActiveFile } from "@/hooks/useActiveFile";
-import { useExplorer } from "@/lib/providers/explorer-provider";
+import { useBucketHref } from "@/lib/use-bucket-href";
 
 import { BucketPicker } from "./bucket-picker";
 import { CollectionsTrigger } from "./collections-modal";
@@ -37,52 +37,65 @@ const Breadcrumb = () => {
 	);
 };
 
-const SettingsIcon = () => <LucideSlidersHorizontal className="size-4" />;
+const settingsIcon = <LucideSlidersHorizontal className="size-4" />;
+const dashboardIcon = <LucideArrowLeft className="size-4" />;
 
-const useBucketHref = (path: "/dashboard" | "/settings") => {
-	const { bucketName, bucketRegion } = useExplorer().state;
-	return `${path}?${new URLSearchParams({ bucket: bucketName, region: bucketRegion })}`;
+type PageLinkProps = {
+	path: "/dashboard" | "/settings";
+	icon: React.ReactNode;
+	/** The page being shown: drawn pressed and not a link. */
+	current?: boolean;
+	children: string;
 };
 
-const SettingsLink = () => (
-	<Link href={useBucketHref("/settings")} className={buttonVariants({ variant: "ghost" })}>
-		<SettingsIcon />
-		Settings
-	</Link>
-);
+const PageLink = ({ path, icon, current = false, children }: PageLinkProps) => {
+	const href = useBucketHref(path);
+	const className = buttonVariants({ variant: "ghost" });
 
-const DashboardLink = () => (
-	<Link href={useBucketHref("/dashboard")} className={buttonVariants({ variant: "ghost" })}>
-		<LucideArrowLeft className="size-4" />
-		Dashboard
-	</Link>
-);
-
-/** On the settings page Settings is the current page, so it is drawn pressed and is not a link. */
-const CurrentSettings = () => (
-	<span aria-current="page" className={buttonVariants({ variant: "ghost" })}>
-		<SettingsIcon />
-		Settings
-	</span>
-);
+	return current ? (
+		<span aria-current="page" className={className}>
+			{icon}
+			{children}
+		</span>
+	) : (
+		<Link href={href} className={className}>
+			{icon}
+			{children}
+		</Link>
+	);
+};
 
 export const TopBar = ({ page = "dashboard" }: { page?: "dashboard" | "settings" }) => (
 	<header className="flex h-topbar shrink-0 items-center justify-between gap-4 border-b border-line bg-panel px-3">
 		<div className="flex min-w-0 items-center gap-3">
 			<h1 className="text-caption font-medium uppercase tracking-[.06em] text-fg">S3 Explorer</h1>
 			<BucketPicker />
-			{page === "settings" ? <DashboardLink /> : <Breadcrumb />}
+			{page === "settings" ? (
+				<nav aria-label="Back">
+					<PageLink path="/dashboard" icon={dashboardIcon}>
+						Dashboard
+					</PageLink>
+				</nav>
+			) : (
+				<Breadcrumb />
+			)}
 		</div>
 
 		{page === "settings" ? (
-			<CurrentSettings />
+			<nav aria-label="Pages">
+				<PageLink path="/settings" icon={settingsIcon} current>
+					Settings
+				</PageLink>
+			</nav>
 		) : (
 			<nav className="flex items-center gap-2" aria-label="File actions">
 				<CollectionsProvider>
 					<CollectionsTrigger />
 				</CollectionsProvider>
 				<DeployStatus />
-				<SettingsLink />
+				<PageLink path="/settings" icon={settingsIcon}>
+					Settings
+				</PageLink>
 				<UploadProvider>
 					<UploadTrigger />
 				</UploadProvider>
