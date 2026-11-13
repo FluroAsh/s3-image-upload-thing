@@ -8,6 +8,8 @@ export type HookResult = {
 export type DeployHook = {
   id: string;
   name: string;
+  /** What the hook is for, at most `HOOK_DESCRIPTION_MAX` characters; empty when not given. */
+  description: string;
   /** Host and the last 4 characters only; the full URL never leaves the server. */
   maskedUrl: string;
   lastResult: HookResult | null;
@@ -19,7 +21,7 @@ export type HooksResponse = {
   pending: boolean;
 };
 
-export type AddHookRequest = { name: string; url: string };
+export type AddHookRequest = { name: string; url: string; description?: string };
 
 export type UpdateHookRequest = Partial<AddHookRequest>;
 

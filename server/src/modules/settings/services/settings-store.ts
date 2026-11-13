@@ -1,7 +1,8 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-export type StoredHook = { id: string; name: string; url: string };
+/** `createdAt` orders the list; hooks saved before it existed sort first, in file order. */
+export type StoredHook = { id: string; name: string; url: string; description?: string; createdAt?: string };
 
 export type Settings = { buckets: Record<string, { hooks: StoredHook[] }> };
 

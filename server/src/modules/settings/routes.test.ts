@@ -45,6 +45,29 @@ describe("hook routes", () => {
 		expect((await (await call("GET", "")).json()).hooks).toEqual([]);
 	});
 
+	it("keeps an optional one-line description, capped in length", async () => {
+		const { id } = (await (
+			await call("POST", "", { name: "Site", url: SECRET_URL, description: " Rebuilds the portfolio " })
+		).json()) as { id: string };
+		expect((await (await call("GET", "")).json()).hooks[0].description).toBe("Rebuilds the portfolio");
+
+		await call("PATCH", `/${id}`, { description: "" });
+		expect((await (await call("GET", "")).json()).hooks[0].description).toBe("");
+		expect((await call("PATCH", `/${id}`, { description: "x".repeat(121) })).status).toBe(400);
+	});
+
+	it("lists hooks oldest first", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date("2026-01-02T00:00:00Z"));
+		await add("Second");
+		vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+		await add("First");
+		vi.useRealTimers();
+
+		const names = (await (await call("GET", "")).json()).hooks.map(({ name }: { name: string }) => name);
+		expect(names).toEqual(["First", "Second"]);
+	});
+
 	it("masks the URL in every response", async () => {
 		const added = await call("POST", "", { name: "Site", url: SECRET_URL });
 		const { id } = await added.clone().json();

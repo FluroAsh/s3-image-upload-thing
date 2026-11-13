@@ -10,7 +10,7 @@ import { FormDialog } from "@/components/ui/form-dialog";
 import { Input } from "@/components/ui/input";
 import { StateMessage } from "@/components/ui/state-message";
 import { useAddHook, useUpdateHook } from "@/lib/query";
-import { isAllowedHookUrl } from "~/shared/hooks";
+import { HOOK_DESCRIPTION_MAX, isAllowedHookUrl } from "~/shared/hooks";
 import type { DeployHook } from "~/shared/types";
 
 const isHookUrl = (value: string) => {
@@ -18,24 +18,29 @@ const isHookUrl = (value: string) => {
 	return !!url && isAllowedHookUrl(url);
 };
 
+type HookValues = { name: string; url: string; description: string };
+
 type HookFormProps = {
 	hook?: DeployHook;
 	pending: boolean;
 	error?: string;
 	/** `url` is empty when editing and the saved URL is kept. */
-	onSave: (values: { name: string; url: string }) => void;
+	onSave: (values: HookValues) => void;
 	onCancel: () => void;
 };
 
 const HookForm = ({ hook, pending, error, onSave, onCancel }: HookFormProps) => {
 	const [name, setName] = useState(hook?.name ?? "");
 	const [url, setUrl] = useState("");
+	const [description, setDescription] = useState(hook?.description ?? "");
 	const [urlTouched, setUrlTouched] = useState(false);
 	const trimmedName = name.trim();
 	const trimmedUrl = url.trim();
+	const trimmedDescription = description.trim();
 	const invalidReason = trimmedUrl && !isHookUrl(trimmedUrl) ? "Use an https:// URL." : undefined;
-	const changed = !hook || trimmedName !== hook.name || !!trimmedUrl;
+	const changed = !hook || trimmedName !== hook.name || trimmedDescription !== hook.description || !!trimmedUrl;
 	/** Editing with an empty URL keeps the saved one. */
+	const [label, pendingLabel] = hook ? ["Save", "Saving..."] : ["Add hook", "Adding..."];
 	const canSubmit = !!trimmedName && !invalidReason && (!!hook || !!trimmedUrl) && changed;
 
 	return (
@@ -43,7 +48,7 @@ const HookForm = ({ hook, pending, error, onSave, onCancel }: HookFormProps) => 
 			onSubmit={(event) => {
 				event.preventDefault();
 				setUrlTouched(true);
-				if (canSubmit && !pending) onSave({ name: trimmedName, url: trimmedUrl });
+				if (canSubmit && !pending) onSave({ name: trimmedName, url: trimmedUrl, description: trimmedDescription });
 			}}
 		>
 			<div className="space-y-3 px-4 py-3">
@@ -55,6 +60,17 @@ const HookForm = ({ hook, pending, error, onSave, onCancel }: HookFormProps) => 
 							value={name}
 							readOnly={pending}
 							onChange={(event) => setName(event.target.value)}
+						/>
+					)}
+				</Field>
+				<Field label="Description (optional)" hint="One line on what it rebuilds, shown in the list.">
+					{(props) => (
+						<Input
+							{...props}
+							value={description}
+							maxLength={HOOK_DESCRIPTION_MAX}
+							readOnly={pending}
+							onChange={(event) => setDescription(event.target.value)}
 						/>
 					)}
 				</Field>
@@ -84,15 +100,7 @@ const HookForm = ({ hook, pending, error, onSave, onCancel }: HookFormProps) => 
 					Cancel
 				</Button>
 				<Button type="submit" variant="primary" pending={pending} disabled={!canSubmit}>
-					{pending
-						? hook
-							? "Saving..."
-							: "Adding..."
-						: error && !invalidReason
-							? "Retry"
-							: hook
-								? "Save"
-								: "Add hook"}
+					{pending ? pendingLabel : error && !invalidReason ? "Retry" : label}
 				</Button>
 			</DialogFooter>
 		</form>
@@ -119,12 +127,20 @@ export const HookDialog = ({ open, onOpenChange, hook, onSaved }: HookDialogProp
 		onOpenChange(next);
 	};
 
-	const save = ({ name, url }: { name: string; url: string }) => {
+	const save = ({ name, url, description }: HookValues) => {
 		const done = { onSuccess: () => handleOpenChange(false) };
 		if (hook) {
-			update.mutate({ id: hook.id, ...(name !== hook.name && { name }), ...(url && { url }) }, done);
+			update.mutate(
+				{
+					id: hook.id,
+					...(name !== hook.name && { name }),
+					...(description !== hook.description && { description }),
+					...(url && { url }),
+				},
+				done,
+			);
 		} else {
-			add.mutate({ name, url }, done);
+			add.mutate({ name, url, ...(description && { description }) }, done);
 		}
 	};
 

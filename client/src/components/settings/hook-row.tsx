@@ -41,6 +41,11 @@ export const HookRow = ({ hook, onChanged }: { hook: DeployHook; onChanged: () =
 					<p title={hook.name} className="truncate text-body font-medium text-fg">
 						{hook.name}
 					</p>
+					{hook.description && (
+						<p title={hook.description} className="truncate text-secondary text-fg-1">
+							{hook.description}
+						</p>
+					)}
 					<p className="truncate font-mono text-caption text-fg-2">{hook.maskedUrl}</p>
 				</div>
 				<LastResult result={hook.lastResult} />
