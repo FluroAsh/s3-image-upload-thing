@@ -28,6 +28,8 @@ COPY --from=builder /app/server/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/server/src ./src
 COPY --from=builder /app/shared /shared
 
+# A named volume copies this directory's owner on first use, so the bun user can write the settings file.
+RUN mkdir -p /data && chown bun:bun /data
 USER bun
 EXPOSE 5101/tcp
 

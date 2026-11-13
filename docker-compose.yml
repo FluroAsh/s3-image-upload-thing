@@ -25,5 +25,12 @@ services:
     restart: unless-stopped
     env_file:
       - ./server/.env
+    environment:
+      - SETTINGS_PATH=/data/settings.json
+    volumes:
+      - s3-upload-settings:/data
     ports:
       - "5101:5101"
+
+volumes:
+  s3-upload-settings:
