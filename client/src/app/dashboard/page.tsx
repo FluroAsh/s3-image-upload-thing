@@ -1,11 +1,10 @@
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { LucideAlertTriangle, LucideDatabase } from "lucide-react";
-import { redirect } from "next/navigation";
 
 import { ExplorerLayout } from "@/components/explorer";
 import { serverErrorMessage } from "@/components/explorer/utils";
 import { StateMessage } from "@/components/ui/state-message";
-import { getInitialQueryState } from "@/lib/initial-query-state";
+import { redirectToValidBucket } from "@/lib/initial-query-state";
 import type { ApiError } from "@/lib/ofetch";
 import { loadDashboardParams } from "@/lib/search-params";
 import { getBuckets, getFileTree } from "@/services/s3";
@@ -53,12 +52,7 @@ export default async function Page({
 		);
 	}
 
-	const { activeBucket, activeRegion } = getInitialQueryState(data, bucket, region);
-
-	// The explorer reads bucket/region from the URL, so it must always hold a valid pair
-	if (bucket !== activeBucket || region !== activeRegion) {
-		redirect(`/dashboard?bucket=${activeBucket}&region=${activeRegion}`);
-	}
+	const { activeBucket, activeRegion } = redirectToValidBucket(data, bucket, region, "/dashboard");
 
 	await queryClient.prefetchQuery({
 		queryKey: ["fileTree", activeBucket],

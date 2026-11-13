@@ -1,107 +1,49 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { LucideAlertTriangle } from "lucide-react";
 
 import { serverErrorMessage } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { FormDialog } from "@/components/ui/form-dialog";
 import { Input } from "@/components/ui/input";
 import { StateMessage } from "@/components/ui/state-message";
-import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 import { useAddHook, useUpdateHook } from "@/lib/query";
+import { isAllowedHookUrl } from "~/shared/hooks";
 import type { DeployHook } from "~/shared/types";
 
-/** Mirrors the server, which also allows plain `http://localhost` outside production. */
 const isHookUrl = (value: string) => {
 	const url = URL.parse(value);
-	return (
-		!!url &&
-		(url.protocol === "https:" ||
-			(process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost"))
-	);
+	return !!url && isAllowedHookUrl(url);
 };
 
-const Field = ({
-	label,
-	error,
-	hint,
-	children,
-}: {
-	label: string;
+type HookFormProps = {
+	hook?: DeployHook;
+	pending: boolean;
 	error?: string;
-	hint?: string;
-	children: (props: { id: string; invalid: boolean; "aria-describedby"?: string }) => React.ReactNode;
-}) => {
-	const id = useId();
-	const noteId = useId();
-
-	return (
-		<div className="space-y-1.5">
-			<label htmlFor={id} className="block text-caption text-fg-2">
-				{label}
-			</label>
-			{children({ id, invalid: !!error, "aria-describedby": error || hint ? noteId : undefined })}
-			{error ? (
-				<p id={noteId} className="flex items-start gap-1.5 text-caption text-err">
-					<LucideAlertTriangle className="mt-px size-3 shrink-0" />
-					{error}
-				</p>
-			) : (
-				hint && (
-					<p id={noteId} className="text-caption text-fg-2">
-						{hint}
-					</p>
-				)
-			)}
-		</div>
-	);
+	/** `url` is empty when editing and the saved URL is kept. */
+	onSave: (values: { name: string; url: string }) => void;
+	onCancel: () => void;
 };
 
-const HookForm = ({ hook, onClose }: { hook?: DeployHook; onClose: () => void }) => {
-	const add = useAddHook();
-	const update = useUpdateHook();
-	const mutation = hook ? update : add;
+const HookForm = ({ hook, pending, error, onSave, onCancel }: HookFormProps) => {
 	const [name, setName] = useState(hook?.name ?? "");
 	const [url, setUrl] = useState("");
 	const [urlTouched, setUrlTouched] = useState(false);
 	const trimmedName = name.trim();
 	const trimmedUrl = url.trim();
-	/** Editing with an empty URL keeps the saved one. */
-	const urlInvalid = trimmedUrl ? !isHookUrl(trimmedUrl) : !hook;
+	const invalidReason = trimmedUrl && !isHookUrl(trimmedUrl) ? "Use an https:// URL." : undefined;
 	const changed = !hook || trimmedName !== hook.name || !!trimmedUrl;
-	const canSubmit = !!trimmedName && !urlInvalid && changed;
-	const urlError = urlTouched && trimmedUrl && urlInvalid ? "Use an https:// URL." : undefined;
-
-	const submit = () => {
-		setUrlTouched(true);
-		if (!canSubmit || mutation.isPending) return;
-		const done = { onSuccess: onClose };
-		if (hook) {
-			update.mutate(
-				{
-					id: hook.id,
-					...(trimmedName !== hook.name && { name: trimmedName }),
-					...(trimmedUrl && { url: trimmedUrl }),
-				},
-				done,
-			);
-		} else {
-			add.mutate({ name: trimmedName, url: trimmedUrl }, done);
-		}
-	};
+	/** Editing with an empty URL keeps the saved one. */
+	const canSubmit = !!trimmedName && !invalidReason && (!!hook || !!trimmedUrl) && changed;
 
 	return (
 		<form
 			onSubmit={(event) => {
 				event.preventDefault();
-				submit();
+				setUrlTouched(true);
+				if (canSubmit && !pending) onSave({ name: trimmedName, url: trimmedUrl });
 			}}
 		>
 			<div className="space-y-3 px-4 py-3">
@@ -111,14 +53,14 @@ const HookForm = ({ hook, onClose }: { hook?: DeployHook; onClose: () => void })
 							{...props}
 							autoFocus
 							value={name}
-							readOnly={mutation.isPending}
+							readOnly={pending}
 							onChange={(event) => setName(event.target.value)}
 						/>
 					)}
 				</Field>
 				<Field
 					label={hook ? "Replace URL" : "URL"}
-					error={urlError}
+					error={urlTouched ? invalidReason : undefined}
 					hint={hook ? "Leave empty to keep the current URL." : "The full URL can't be shown again once saved."}
 				>
 					{(props) => (
@@ -127,32 +69,26 @@ const HookForm = ({ hook, onClose }: { hook?: DeployHook; onClose: () => void })
 							autoComplete="off"
 							spellCheck={false}
 							value={url}
-							readOnly={mutation.isPending}
+							readOnly={pending}
 							onChange={(event) => setUrl(event.target.value)}
 							onBlur={() => setUrlTouched(true)}
 						/>
 					)}
 				</Field>
-				{mutation.error && (
-					<StateMessage
-						size="inline"
-						tone="err"
-						icon={LucideAlertTriangle}
-						title="Could not save"
-						message={serverErrorMessage(mutation.error)}
-					/>
+				{error && (
+					<StateMessage size="inline" tone="err" icon={LucideAlertTriangle} title="Could not save" message={error} />
 				)}
 			</div>
 			<DialogFooter>
-				<Button disabled={mutation.isPending} onClick={onClose}>
+				<Button disabled={pending} onClick={onCancel}>
 					Cancel
 				</Button>
-				<Button type="submit" variant="primary" pending={mutation.isPending} disabled={!canSubmit}>
-					{mutation.isPending
+				<Button type="submit" variant="primary" pending={pending} disabled={!canSubmit}>
+					{pending
 						? hook
 							? "Saving..."
 							: "Adding..."
-						: mutation.error
+						: error && !invalidReason
 							? "Retry"
 							: hook
 								? "Save"
@@ -168,28 +104,45 @@ type HookDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	/** The hook being edited; leave out to add a new one. */
 	hook?: DeployHook;
+	/** Runs once the hook is saved. */
+	onSaved: () => void;
 };
 
-/** The form lives inside the content, so its fields and error reset each time the dialog closes. */
-export const HookDialog = ({ open, onOpenChange, hook }: HookDialogProps) => {
-	const restoreFocus = useRestoreFocus(open);
+/** The mutations live here, above the form, so the dialog can refuse to close while a save is pending. */
+export const HookDialog = ({ open, onOpenChange, hook, onSaved }: HookDialogProps) => {
+	const add = useAddHook(onSaved);
+	const update = useUpdateHook(onSaved);
+	const mutation = hook ? update : add;
+
+	const handleOpenChange = (next: boolean) => {
+		if (!next) mutation.reset();
+		onOpenChange(next);
+	};
+
+	const save = ({ name, url }: { name: string; url: string }) => {
+		const done = { onSuccess: () => handleOpenChange(false) };
+		if (hook) {
+			update.mutate({ id: hook.id, ...(name !== hook.name && { name }), ...(url && { url }) }, done);
+		} else {
+			add.mutate({ name, url }, done);
+		}
+	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent
-				size="small"
-				showClose={false}
-				onCloseAutoFocus={restoreFocus}
-				{...(hook ? {} : { "aria-describedby": undefined })}
-			>
-				<DialogHeader className="pr-4">
-					<DialogTitle>{hook ? "Edit hook" : "Add hook"}</DialogTitle>
-					{hook && (
-						<DialogDescription className="font-mono text-secondary text-fg-2">{hook.maskedUrl}</DialogDescription>
-					)}
-				</DialogHeader>
-				<HookForm hook={hook} onClose={() => onOpenChange(false)} />
-			</DialogContent>
-		</Dialog>
+		<FormDialog
+			open={open}
+			onOpenChange={handleOpenChange}
+			title={hook ? "Edit hook" : "Add hook"}
+			subtitle={hook?.maskedUrl}
+			pending={mutation.isPending}
+		>
+			<HookForm
+				hook={hook}
+				pending={mutation.isPending}
+				error={mutation.error ? serverErrorMessage(mutation.error) : undefined}
+				onSave={save}
+				onCancel={() => handleOpenChange(false)}
+			/>
+		</FormDialog>
 	);
 };

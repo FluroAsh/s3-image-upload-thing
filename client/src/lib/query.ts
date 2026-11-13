@@ -97,26 +97,31 @@ export const useDeployNow = () => {
 	});
 };
 
-/** Refetches the hooks after a write, so the list shows what the server saved. */
-const useHooksWrite = <Response, Variables>(
-	write: (variables: Variables, location: BucketLocation) => Promise<Response>,
+/** Refetches the hooks after any call settles, so the list shows what the server holds even when the call failed. */
+const useHooksCall = <Response, Variables>(
+	call: (variables: Variables, location: BucketLocation) => Promise<Response>,
+	onSuccess?: () => void,
 ) => {
 	const qc = useQueryClient();
 	const { bucketName, bucketRegion } = useExplorer().state;
 
 	return useMutation<Response, ApiError, Variables>({
-		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
-		onSuccess: () => qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
+		mutationFn: (variables) => call(variables, { bucketName, bucketRegion }),
+		onSuccess,
+		onSettled: () => qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
 	});
 };
 
-export const useAddHook = () => useHooksWrite<DeployHook, AddHookRequest>(postHook);
+/** `onSuccess` is on the hook rather than the call, so it still runs after the row that started it is gone. */
+export const useAddHook = (onSuccess?: () => void) => useHooksCall<DeployHook, AddHookRequest>(postHook, onSuccess);
 
-export const useUpdateHook = () => useHooksWrite<DeployHook, { id: string } & UpdateHookRequest>(patchHook);
+export const useUpdateHook = (onSuccess?: () => void) =>
+	useHooksCall<DeployHook, { id: string } & UpdateHookRequest>(patchHook, onSuccess);
 
-export const useDeleteHook = () => useHooksWrite<DeleteHookResponse, string>(deleteHook);
+export const useDeleteHook = (onSuccess?: () => void) =>
+	useHooksCall<DeleteHookResponse, string>(deleteHook, onSuccess);
 
-export const useTestHook = () => useHooksWrite<HookFired, string>(postTestHook);
+export const useTestHook = () => useHooksCall<HookFired, string>(postTestHook);
 
 export const useMutateUpload = (bucketName: string) => {
 	const qc = useQueryClient();

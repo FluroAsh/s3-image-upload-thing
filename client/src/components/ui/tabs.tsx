@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 
 import * as TabsPrimitive from "@radix-ui/react-tabs";
@@ -6,14 +8,14 @@ import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
-/** `actions` sit at the right of the tab row, so a tab's section actions line up with its label. */
+/** `actionsRef` points at an empty slot at the right of the tab row, so the active tab can portal its own actions into it. */
 const TabsList = React.forwardRef<
 	React.ElementRef<typeof TabsPrimitive.List>,
-	React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & { actions?: React.ReactNode }
->(({ className, actions, ...props }, ref) => (
+	React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & { actionsRef?: React.Ref<HTMLDivElement> }
+>(({ className, actionsRef, ...props }, ref) => (
 	<div className="flex items-end justify-between gap-3 border-b border-line">
 		<TabsPrimitive.List ref={ref} className={cn("-mb-px flex items-end gap-4", className)} {...props} />
-		{actions && <div className="flex items-center gap-2 pb-1.5">{actions}</div>}
+		<div ref={actionsRef} className="flex items-center gap-2 pb-1.5" />
 	</div>
 ));
 TabsList.displayName = "TabsList";
@@ -36,9 +38,7 @@ TabsTrigger.displayName = "TabsTrigger";
 const TabsContent = React.forwardRef<
 	React.ElementRef<typeof TabsPrimitive.Content>,
 	React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-	<TabsPrimitive.Content ref={ref} className={cn("pt-3 outline-none", className)} {...props} />
-));
+>(({ className, ...props }, ref) => <TabsPrimitive.Content ref={ref} className={cn("pt-3", className)} {...props} />);
 TabsContent.displayName = "TabsContent";
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
