@@ -39,14 +39,17 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 	const gridRef = useRef<HTMLDivElement>(null);
 	const focusAfter = useRef<string | null>(null);
 
-	const focusTile = (set: string) =>
-		gridRef.current?.querySelector<HTMLElement>(`[data-set="${CSS.escape(set)}"]`)?.focus();
+	/** Scrolls as well as focuses, because focusing an already-focused tile doesn't scroll the grid. */
+	const focusTile = (set: string) => {
+		const tile = gridRef.current?.querySelector<HTMLElement>(`[data-set="${CSS.escape(set)}"]`);
+		tile?.focus();
+		tile?.scrollIntoView({ block: "nearest" });
+	};
 
-	/** A moved tile is remounted by the reorder, so focus is put back once the new order renders. */
+	/** Reordering moves tiles, which can drop focus, so focus goes back once the new order renders. */
 	useEffect(() => {
 		if (focusAfter.current === null) return;
 		focusTile(focusAfter.current);
-		document.activeElement?.scrollIntoView({ block: "nearest" });
 		focusAfter.current = null;
 	});
 
@@ -83,7 +86,7 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 			</ScreenHeader>
 
 			<DialogBody className="flex min-h-[380px] overflow-hidden p-0">
-				<section aria-label="Photos" className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto p-4">
+				<section aria-label="Photos" className="min-w-0 flex-1 space-y-3 overflow-y-auto p-4">
 					<p className={cn(SECTION_LABEL, "flex justify-between")}>
 						<span>Photos · drag to reorder</span>
 						<span>Cover = first unless set</span>
@@ -147,11 +150,11 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 				</section>
 				{current && (
 					<aside
+						key={current.set}
 						aria-label="Selected photo"
-						className="min-h-0 w-[280px] shrink-0 overflow-y-auto border-l border-line p-4"
+						className="w-[280px] shrink-0 overflow-y-auto border-l border-line p-4"
 					>
 						<PhotoEditor
-							key={current.set}
 							collection={collection}
 							photo={current}
 							isCover={current.set === cover}
