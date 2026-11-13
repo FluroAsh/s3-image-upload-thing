@@ -15,10 +15,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { SmithyResolvedConfiguration } from "@smithy/smithy-client";
 import type { Command, HttpHandlerOptions } from "@smithy/types";
 
-import { BUCKETS_LIST_MAX } from "@/shared/constants/s3";
 import type { ImageVariants, VariantOutput } from "@/shared/types/image";
 import type { BucketStats } from "@/shared/types/s3";
 import { errorMessage } from "@/shared/utils/helpers";
+import { BUCKETS_LIST_MAX } from "~/shared/constants/buckets";
 import { TIME } from "~/shared/constants/time";
 import type { BucketLocation, FileVariant, ImageVariant, Manifest } from "~/shared/types";
 

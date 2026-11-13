@@ -74,6 +74,8 @@ export type BucketsResponse = {
   totalCount: number;
   /** Number of pages at this `limit`. */
   totalPages: number;
+  /** Name of the bucket pinned as the default; absent when nothing is pinned or the setting could not be read. */
+  pinnedBucket?: string;
 };
 
 export type PresignedUrlEntry = {
@@ -210,4 +212,14 @@ export type AttentionResponse = {
   total: number;
   /** `true` when the folder listing passed its time limit, so sets may be missing. */
   partial: boolean;
+};
+
+export type SetPinnedBucketRequest = {
+	/** Bucket to open by default, or `null` to clear the pin. */
+	bucket: string | null;
+};
+
+export type PinnedBucketResponse = {
+	/** The bucket now pinned; absent when the pin was cleared. */
+	pinnedBucket?: string;
 };

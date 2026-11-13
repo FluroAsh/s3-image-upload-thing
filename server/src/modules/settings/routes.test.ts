@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import settings from "./routes";
 import { cancelPending, markBucketChanged } from "./services/deploy-hooks";
+import { readSettings } from "./services/settings-store";
 
 const SECRET_URL = "https://example.com/hooks/abc123secret9c2e";
 const q = "?bucket=b&region=r";
@@ -145,5 +146,37 @@ describe("hook routes", () => {
 		const other = await app.request("/settings/hooks?bucket=other&region=r");
 
 		expect((await other.json()).hooks).toEqual([]);
+	});
+});
+
+describe("pinned bucket route", () => {
+	const pin = (body: unknown) =>
+		app.request("/settings/pinned-bucket", {
+			method: "PUT",
+			body: JSON.stringify(body),
+			headers: { "content-type": "application/json" },
+		});
+
+	it("pins a bucket, replaces the pin, and clears it with null", async () => {
+		expect(await (await pin({ bucket: "photos-archive" })).json()).toEqual({ pinnedBucket: "photos-archive" });
+		expect(await (await pin({ bucket: "other-bucket" })).json()).toEqual({ pinnedBucket: "other-bucket" });
+		expect((await readSettings()).pinnedBucket).toBe("other-bucket");
+
+		expect(await (await pin({ bucket: null })).json()).toEqual({});
+		expect((await readSettings()).pinnedBucket).toBeUndefined();
+	});
+
+	it("rejects a bucket that is not a non-empty string", async () => {
+		expect((await pin({ bucket: 5 })).status).toBe(400);
+		expect((await pin({ bucket: " " })).status).toBe(400);
+		expect((await pin({})).status).toBe(400);
+		expect((await pin("nope")).status).toBe(400);
+	});
+
+	it("leaves hooks alone", async () => {
+		await add();
+		await pin({ bucket: "photos-archive" });
+
+		expect((await (await call("GET", "")).json()).hooks).toHaveLength(1);
 	});
 });

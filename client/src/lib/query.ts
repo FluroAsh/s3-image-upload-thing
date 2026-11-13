@@ -24,7 +24,7 @@ import {
 import { deleteHook, getHooks, patchHook, postDeploy, postHook, postTestHook } from "@/services/hooks";
 import { postUploadImages } from "@/services/images";
 import { getAttention, getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
-import { getBuckets, getFileTree } from "@/services/s3";
+import { getBuckets, getFileTree, putPinnedBucket } from "@/services/s3";
 import type {
 	AddHookRequest,
 	AttentionResponse,
@@ -39,6 +39,7 @@ import type {
 	HookFired,
 	HooksResponse,
 	Manifest,
+	PinnedBucketResponse,
 	TreeNode,
 	UpdateHookRequest,
 	UpdatePhotoRequest,
@@ -50,6 +51,22 @@ export const useBuckets = () =>
 		queryFn: getBuckets,
 		retry: false,
 	});
+
+export const useSetPinnedBucket = () => {
+	const qc = useQueryClient();
+
+	/** Optimistic, since a refetch would recount every bucket; a failed save puts the old pin back. */
+	return useMutation<PinnedBucketResponse, ApiError, string | null, BucketsResponse | undefined>({
+		mutationFn: putPinnedBucket,
+		onMutate: async (bucket) => {
+			await qc.cancelQueries({ queryKey: ["buckets"] });
+			const previous = qc.getQueryData<BucketsResponse>(["buckets"]);
+			qc.setQueryData<BucketsResponse>(["buckets"], (old) => old && { ...old, pinnedBucket: bucket ?? undefined });
+			return previous;
+		},
+		onError: (_error, _bucket, previous) => qc.setQueryData(["buckets"], previous),
+	});
+};
 
 export const useFileTree = (bucketName: string, bucketRegion: string) => {
 	const query = useQuery<FileTreeResponse, ApiError>({

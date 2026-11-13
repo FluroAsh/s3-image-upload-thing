@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { bucketLocationOf } from "@/shared/utils/params";
-import { badRequest, respond } from "@/shared/utils/respond";
+import { badRequest, readBody, respond } from "@/shared/utils/respond";
 import { HOOK_DESCRIPTION_MAX, isAllowedHookUrl } from "~/shared/hooks";
 import type {
 	AddHookRequest,
@@ -40,12 +40,6 @@ const requireDescription = (value: unknown): string => {
 };
 
 const byCreated = (a: StoredHook, b: StoredHook) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
-
-const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
-	const body = await ctx.req.json().catch(() => null);
-	if (typeof body !== "object" || body === null) throw badRequest("Body must be a JSON object");
-	return body;
-};
 
 const maskUrl = (value: string): string => `${new URL(value).host}/…${value.slice(-4)}`;
 

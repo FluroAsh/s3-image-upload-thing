@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { Fragment, useCallback, useId, useMemo, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { LucideCheck, LucideChevronDown, LucideDatabase } from "lucide-react";
+import { LucideCheck, LucideChevronDown, LucideDatabase, LucidePin } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
 import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useBuckets } from "@/lib/query";
+import { useBuckets, useSetPinnedBucket } from "@/lib/query";
 import { dashboardSearchParams } from "@/lib/search-params";
 import type { Bucket } from "~/shared/types";
 
@@ -29,11 +29,56 @@ const bucketDetails = (bucket: Bucket) =>
 
 const bucketKey = (bucket: Pick<Bucket, "Name" | "BucketRegion">) => `${bucket.Name}|${bucket.BucketRegion}`;
 
+/** Handled on the pin only, so a click neither selects the row nor closes the menu. */
+const stopRowSelect = (event: React.SyntheticEvent) => event.stopPropagation();
+
+/** Enter and Space press the pin natively; arrows hand focus back to the row, since Radix only navigates from rows. */
+const handlePinKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+	if (event.key === "Enter" || event.key === " ") return event.stopPropagation();
+	if (!event.key.startsWith("Arrow")) return;
+	event.preventDefault();
+	event.stopPropagation();
+	event.currentTarget.closest<HTMLElement>("[role=menuitemradio]")?.focus();
+};
+
+const PinToggle = ({ pinned, onToggle }: { pinned: boolean; onToggle: () => void }) => (
+	<button
+		type="button"
+		tabIndex={-1}
+		aria-label={pinned ? "Unpin default bucket" : "Pin as default bucket"}
+		aria-pressed={pinned}
+		title={pinned ? "Unpin" : "Pin as default"}
+		onPointerDown={stopRowSelect}
+		onPointerUp={stopRowSelect}
+		onMouseDown={(event) => event.preventDefault()}
+		onKeyDown={handlePinKeyDown}
+		onClick={(event) => {
+			event.stopPropagation();
+			onToggle();
+		}}
+		className={`flex size-6 shrink-0 items-center justify-center rounded-md outline-none hover:bg-raised focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent ${
+			pinned
+				? "text-accent"
+				: "text-fg-2 opacity-0 group-hover:opacity-100 group-data-[highlighted]:opacity-100 group-data-[match]:opacity-100"
+		}`}
+	>
+		<LucidePin className={`size-3.5 ${pinned ? "fill-current" : ""}`} />
+	</button>
+);
+
 export const BucketPicker = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const [, setParams] = useQueryStates(dashboardSearchParams);
 	const { data } = useBuckets();
-	const buckets = data?.buckets ?? [];
+	const pinnedBucket = data?.pinnedBucket;
+	const setPinned = useSetPinnedBucket();
+	/** Sorted by the pin as it was when the menu opened, so pinning never moves a row, and its focus, mid-use. */
+	const [pinnedAtOpen, setPinnedAtOpen] = useState(pinnedBucket);
+	const buckets = useMemo(() => {
+		const all = data?.buckets ?? [];
+		return [...all.filter(({ Name }) => Name === pinnedAtOpen), ...all.filter(({ Name }) => Name !== pinnedAtOpen)];
+	}, [data?.buckets, pinnedAtOpen]);
+	const activePinned = bucketName === pinnedBucket;
 	const activeKey = bucketKey({ Name: bucketName, BucketRegion: bucketRegion });
 	const [open, setOpen] = useState(false);
 	const [filter, setFilter] = useState("");
@@ -52,6 +97,7 @@ export const BucketPicker = () => {
 
 	const handleOpenChange = (next: boolean) => {
 		setOpen(next);
+		if (next) setPinnedAtOpen(pinnedBucket);
 		if (!next) changeFilter("");
 	};
 
@@ -90,8 +136,13 @@ export const BucketPicker = () => {
 		if (document.activeElement === inputRef.current) event.preventDefault();
 	};
 
-	/** ArrowUp on the first row is the keyboard route back to the filter. */
+	/** ArrowUp on the first row is the keyboard route back to the filter; ArrowRight reaches the row's pin. */
 	const handleRowKeyDown = (event: React.KeyboardEvent, index: number) => {
+		if (event.key === "ArrowRight") {
+			event.preventDefault();
+			event.currentTarget.querySelector("button")?.focus();
+			return;
+		}
 		if (event.key !== "ArrowUp" || index !== 0) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -103,9 +154,14 @@ export const BucketPicker = () => {
 			<DropdownMenu.Trigger asChild>
 				<Button
 					aria-label={`Choose bucket: ${bucketName} ${bucketRegion}`}
+					title={activePinned ? "Pinned · opens by default" : undefined}
 					className="gap-2 data-[state=open]:bg-pressed"
 				>
-					<LucideDatabase className="size-3.5 text-fg-1" />
+					{activePinned ? (
+						<LucidePin className="size-3.5 fill-current text-accent" />
+					) : (
+						<LucideDatabase className="size-3.5 text-fg-1" />
+					)}
 					<span className="font-mono">{bucketName}</span>
 					<span className="font-mono text-fg-2">{bucketRegion}</span>
 					<LucideChevronDown className="size-3.5 text-fg-2" />
@@ -133,31 +189,41 @@ export const BucketPicker = () => {
 							}}
 						/>
 					</div>
-					<div className="max-h-[60vh] overflow-y-auto p-1">
+					<div className="max-h-[min(60vh,480px)] overflow-y-auto p-1">
 						{visible.length === 0 && (
 							<output className="block px-2 py-1.5 text-caption text-fg-2">No buckets match “{filter.trim()}”</output>
 						)}
 						<DropdownMenu.RadioGroup value={activeKey} onValueChange={selectBucket}>
 							{visible.map((bucket, index) => (
-								<DropdownMenu.RadioItem
-									key={bucketKey(bucket)}
-									id={`${rowId}-${index}`}
-									data-match={needle && index === matchIndex ? "" : undefined}
-									ref={index === 0 ? firstRowRef : undefined}
-									onPointerMove={keepFilterFocus}
-									onPointerLeave={keepFilterFocus}
-									onKeyDown={(event) => handleRowKeyDown(event, index)}
-									value={bucketKey(bucket)}
-									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[match]:bg-pressed [&[data-state=checked]:not(:hover,[data-highlighted],[data-match])]:bg-raised"
-								>
-									<div className="min-w-0 flex-1">
-										<div className="truncate font-mono text-body text-fg">{bucket.Name}</div>
-										<div className="truncate font-mono text-caption text-fg-2">{bucketDetails(bucket)}</div>
-									</div>
-									<DropdownMenu.ItemIndicator>
-										<LucideCheck className="size-3.5 shrink-0 text-fg" />
-									</DropdownMenu.ItemIndicator>
-								</DropdownMenu.RadioItem>
+								<Fragment key={bucketKey(bucket)}>
+									<DropdownMenu.RadioItem
+										id={`${rowId}-${index}`}
+										data-match={needle && index === matchIndex ? "" : undefined}
+										ref={index === 0 ? firstRowRef : undefined}
+										onPointerMove={keepFilterFocus}
+										onPointerLeave={keepFilterFocus}
+										onKeyDown={(event) => handleRowKeyDown(event, index)}
+										value={bucketKey(bucket)}
+										className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[match]:bg-pressed [&[data-state=checked]:not(:hover,[data-highlighted],[data-match])]:bg-raised"
+									>
+										<div className="min-w-0 flex-1">
+											<div className="truncate font-mono text-body text-fg">{bucket.Name}</div>
+											<div className="truncate font-mono text-caption text-fg-2">{bucketDetails(bucket)}</div>
+										</div>
+										<PinToggle
+											pinned={bucket.Name === pinnedBucket}
+											onToggle={() => setPinned.mutate(bucket.Name === pinnedBucket ? null : bucket.Name)}
+										/>
+										<span className="size-3.5 shrink-0">
+											<DropdownMenu.ItemIndicator>
+												<LucideCheck className="size-3.5 text-fg" />
+											</DropdownMenu.ItemIndicator>
+										</span>
+									</DropdownMenu.RadioItem>
+									{index === 0 && !needle && bucket.Name === pinnedAtOpen && visible.length > 1 && (
+										<DropdownMenu.Separator className="my-1 h-px bg-line" />
+									)}
+								</Fragment>
 							))}
 						</DropdownMenu.RadioGroup>
 					</div>

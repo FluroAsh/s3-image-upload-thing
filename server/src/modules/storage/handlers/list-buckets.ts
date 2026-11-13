@@ -3,12 +3,14 @@ import type { Context } from "hono";
 import { BUCKETS_PAGE_SIZE } from "@/shared/constants/s3";
 import { errorMessage, readableSize } from "@/shared/utils/helpers";
 import { transformBucket } from "@/shared/utils/transformers";
+import { BUCKETS_LIST_MAX } from "~/shared/constants/buckets";
 import type { BucketsResponse } from "~/shared/types";
 
+import { readSettings } from "../../settings/services/settings-store";
 import { getBucketStats, listBuckets } from "../services/s3-operations";
 
 export const listBucketsHandler = async (ctx: Context) => {
-	const limit = Math.min(Math.max(1, Number(ctx.req.query("limit")) || BUCKETS_PAGE_SIZE), 100);
+	const limit = Math.min(Math.max(1, Number(ctx.req.query("limit")) || BUCKETS_PAGE_SIZE), BUCKETS_LIST_MAX);
 	const page = Math.max(1, Number(ctx.req.query("page")) || 1);
 
 	try {
@@ -28,6 +30,11 @@ export const listBucketsHandler = async (ctx: Context) => {
 			}),
 		);
 
+		const pinnedBucket = await readSettings().then(
+			({ pinnedBucket }) => pinnedBucket,
+			() => undefined,
+		);
+
 		const totalSizeBytes = bucketsWithStats.reduce((sum, b) => sum + b.totalSizeBytes, 0);
 		const totalObjectCount = bucketsWithStats.reduce((sum, b) => sum + b.objectCount, 0);
 
@@ -41,6 +48,7 @@ export const listBucketsHandler = async (ctx: Context) => {
 			limit,
 			totalCount,
 			totalPages,
+			pinnedBucket,
 		} satisfies BucketsResponse);
 	} catch (e) {
 		console.error(e);
