@@ -1,18 +1,10 @@
-import { useId, useState } from "react";
-
-import { LucideAlertTriangle } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { FormDialog } from "@/components/ui/form-dialog";
 import { Input } from "@/components/ui/input";
-import { useRestoreFocus } from "@/components/ui/use-restore-focus";
 
 type PromptDialogProps = {
 	/** Whether the dialog is shown. */
@@ -60,8 +52,6 @@ const PromptForm = ({
 	const invalidReason = trimmed ? validate?.(trimmed) : undefined;
 	const shownError = invalidReason ?? error;
 	const shownHint = typeof hint === "function" ? (trimmed ? hint(trimmed) : undefined) : hint;
-	const inputId = useId();
-	const errorId = useId();
 
 	return (
 		<form
@@ -70,28 +60,18 @@ const PromptForm = ({
 				if (!pending && trimmed && !invalidReason) onSubmit(trimmed);
 			}}
 		>
-			<div className="space-y-1.5 px-4 py-3">
-				<label htmlFor={inputId} className="block text-caption text-fg-2">
-					{label}
-				</label>
-				<Input
-					id={inputId}
-					autoFocus
-					className="mt-1"
-					value={value}
-					invalid={!!shownError}
-					aria-describedby={shownError ? errorId : undefined}
-					readOnly={pending}
-					onChange={(event) => setValue(event.target.value)}
-				/>
-				{shownError ? (
-					<p id={errorId} className="flex items-start gap-1.5 text-caption text-err">
-						<LucideAlertTriangle className="mt-px size-3 shrink-0" />
-						{shownError}
-					</p>
-				) : (
-					shownHint && <p className="text-caption text-fg-2">{shownHint}</p>
-				)}
+			<div className="px-4 py-3">
+				<Field label={label} error={shownError} hint={shownHint}>
+					{(props) => (
+						<Input
+							{...props}
+							autoFocus
+							value={value}
+							readOnly={pending}
+							onChange={(event) => setValue(event.target.value)}
+						/>
+					)}
+				</Field>
 			</div>
 			<DialogFooter>
 				<Button disabled={pending} onClick={() => onOpenChange(false)}>
@@ -106,23 +86,8 @@ const PromptForm = ({
 };
 
 /** A one-field form; the field lives inside the dialog content so it resets each time the dialog closes. */
-export const PromptDialog = ({ open, onOpenChange, title, subtitle, ...form }: PromptDialogProps) => {
-	const restoreFocus = useRestoreFocus(open);
-
-	return (
-		<Dialog open={open} onOpenChange={(next) => !form.pending && onOpenChange(next)}>
-			<DialogContent
-				size="small"
-				showClose={false}
-				onCloseAutoFocus={restoreFocus}
-				{...(subtitle ? {} : { "aria-describedby": undefined })}
-			>
-				<DialogHeader className="pr-4">
-					<DialogTitle>{title}</DialogTitle>
-					{subtitle && <DialogDescription className="font-mono text-secondary text-fg-2">{subtitle}</DialogDescription>}
-				</DialogHeader>
-				<PromptForm onOpenChange={onOpenChange} {...form} />
-			</DialogContent>
-		</Dialog>
-	);
-};
+export const PromptDialog = ({ open, onOpenChange, title, subtitle, ...form }: PromptDialogProps) => (
+	<FormDialog open={open} onOpenChange={onOpenChange} title={title} subtitle={subtitle} pending={form.pending}>
+		<PromptForm onOpenChange={onOpenChange} {...form} />
+	</FormDialog>
+);

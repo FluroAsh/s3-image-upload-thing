@@ -4,12 +4,12 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useDeployHooks, useDeployNow } from "@/lib/query";
+import { useBucketHref } from "@/lib/use-bucket-href";
+import { isOk } from "~/shared/hooks";
 import type { DeployHook } from "~/shared/types";
 
-const isFailure = (hook: DeployHook) =>
-	!!hook.lastResult && (hook.lastResult.status < 200 || hook.lastResult.status >= 300);
+const isFailure = ({ lastResult }: DeployHook) => !!lastResult && !isOk(lastResult);
 
 /** A settled status stops being news after this long, so the top bar clears. */
 const SETTLED_MS = 30 * 60_000;
@@ -30,7 +30,7 @@ const useSettledExpired = (at: number | undefined) => {
 
 /** Pending shows before a failure, because the pending deploy will replace the failed result. */
 export const DeployStatus = () => {
-	const { bucketName, bucketRegion } = useExplorer().state;
+	const settingsHref = useBucketHref("/settings");
 	const { data } = useDeployHooks();
 	const deploy = useDeployNow();
 	const results = data?.hooks.flatMap(({ lastResult }) => (lastResult ? [lastResult] : [])) ?? [];
@@ -54,10 +54,9 @@ export const DeployStatus = () => {
 	const failed = data.hooks.filter(isFailure);
 
 	if (failed.length > 0) {
-		const params = new URLSearchParams({ bucket: bucketName, region: bucketRegion });
 		return (
 			<Link
-				href={`/settings?${params}`}
+				href={settingsHref}
 				className="rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
 			>
 				<Badge tone="err" className="whitespace-nowrap">

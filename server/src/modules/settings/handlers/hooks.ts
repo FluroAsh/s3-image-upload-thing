@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 
 import { bucketLocationOf } from "@/shared/utils/params";
 import { badRequest, respond } from "@/shared/utils/respond";
+import { HOOK_DESCRIPTION_MAX, isAllowedHookUrl } from "~/shared/hooks";
 import type {
 	AddHookRequest,
 	DeleteHookResponse,
@@ -18,15 +19,10 @@ import { hooksOf, readSettings, type StoredHook, updateHooks } from "../services
 
 const bucketOf = (ctx: Context) => bucketLocationOf(ctx).bucketName;
 
-/** Plain `http://localhost` is allowed outside production, so a local request catcher can stand in for a site. */
-const isAllowedUrl = (url: URL) =>
-	url.protocol === "https:" ||
-	(process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost");
-
 const requireUrl = (value: unknown): string => {
 	if (typeof value !== "string") throw badRequest("URL must be a valid https URL");
 	const url = URL.parse(value);
-	if (!url || !isAllowedUrl(url)) throw badRequest("URL must be a valid https URL");
+	if (!url || !isAllowedHookUrl(url)) throw badRequest("URL must be a valid https URL");
 	return value;
 };
 
@@ -34,6 +30,16 @@ const requireName = (value: unknown): string => {
 	if (typeof value !== "string" || !value.trim()) throw badRequest("Name is required");
 	return value.trim();
 };
+
+const requireDescription = (value: unknown): string => {
+	if (typeof value !== "string") throw badRequest("Description must be text");
+	const description = value.trim();
+	if (description.length > HOOK_DESCRIPTION_MAX)
+		throw badRequest(`Description must be ${HOOK_DESCRIPTION_MAX} characters or fewer`);
+	return description;
+};
+
+const byCreated = (a: StoredHook, b: StoredHook) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
 
 const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
 	const body = await ctx.req.json().catch(() => null);
@@ -43,9 +49,10 @@ const readBody = async (ctx: Context): Promise<Record<string, unknown>> => {
 
 const maskUrl = (value: string): string => `${new URL(value).host}/…${value.slice(-4)}`;
 
-const present = ({ id, name, url }: StoredHook): DeployHook => ({
+const present = ({ id, name, description, url }: StoredHook): DeployHook => ({
 	id,
 	name,
+	description: description ?? "",
 	maskedUrl: maskUrl(url),
 	lastResult: lastResultOf(id),
 });
@@ -55,7 +62,12 @@ const hookNotFound = () => new HTTPException(404, { message: "No such hook" });
 export const listHooksHandler = (ctx: Context) =>
 	respond<HooksResponse>(ctx, async () => {
 		const bucket = bucketOf(ctx);
-		return { hooks: hooksOf(await readSettings(), bucket).map(present), pending: isPending(bucket) };
+		return {
+			hooks: hooksOf(await readSettings(), bucket)
+				.toSorted(byCreated)
+				.map(present),
+			pending: isPending(bucket),
+		};
 	});
 
 export const addHookHandler = (ctx: Context) =>
@@ -64,7 +76,13 @@ export const addHookHandler = (ctx: Context) =>
 		async () => {
 			const bucket = bucketOf(ctx);
 			const body: Partial<AddHookRequest> = await readBody(ctx);
-			const hook = { id: crypto.randomUUID(), name: requireName(body.name), url: requireUrl(body.url) };
+			const hook: StoredHook = {
+				id: crypto.randomUUID(),
+				name: requireName(body.name),
+				url: requireUrl(body.url),
+				description: body.description === undefined ? "" : requireDescription(body.description),
+				createdAt: new Date().toISOString(),
+			};
 			await updateHooks(bucket, (hooks) => ({ hooks: [...hooks, hook], result: null }));
 			return present(hook);
 		},
@@ -81,6 +99,7 @@ export const updateHookHandler = (ctx: Context) =>
 				...current,
 				...(body.name !== undefined && { name: requireName(body.name) }),
 				...(body.url !== undefined && { url: requireUrl(body.url) }),
+				...(body.description !== undefined && { description: requireDescription(body.description) }),
 			};
 			return {
 				hooks: hooks.map((hook) => (hook === current ? next : hook)),

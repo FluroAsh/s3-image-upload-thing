@@ -7,6 +7,7 @@ import type { TreeNode } from "~/shared/types";
 import {
 	fileType,
 	filterNeedle,
+	formatAgo,
 	formatCount,
 	formatSize,
 	matchesFilter,
@@ -234,5 +235,16 @@ describe("previewShapeOf", () => {
 		expect(previewShapeOf({ width: 120, height: 80 })).toBe("landscape");
 		expect(previewShapeOf({ width: 80, height: 120 })).toBe("portrait");
 		expect(previewShapeOf({ width: 120, height: 110 })).toBe("square");
+	});
+});
+
+describe("formatAgo", () => {
+	const now = Date.parse("2026-01-01T12:00:00Z");
+
+	it("rounds down to the coarsest unit", () => {
+		expect(formatAgo("2026-01-01T11:59:40Z", now)).toBe("just now");
+		expect(formatAgo("2026-01-01T11:57:00Z", now)).toBe("3 min ago");
+		expect(formatAgo("2026-01-01T09:00:00Z", now)).toBe("3 h ago");
+		expect(formatAgo("2025-12-29T12:00:00Z", now)).toBe("3 d ago");
 	});
 });
