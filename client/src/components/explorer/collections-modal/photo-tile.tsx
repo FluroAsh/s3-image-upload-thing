@@ -6,7 +6,7 @@ import type { CollectionPhoto } from "~/shared/types";
 import { CollectionThumb } from "./collection-thumb";
 import { useBucketSets } from "./use-bucket-sets";
 
-export const TILE_BADGE = "absolute rounded-sm bg-canvas/80 px-1 font-mono text-caption";
+export const TILE_BADGE = "pointer-events-none absolute rounded-sm bg-canvas/80 px-1 font-mono text-caption";
 
 export type DragState = "lifted" | "before" | "after";
 
