@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { setNameOf } from "~/shared/set-name";
 
-import { type PickedFile, uploadWarnings } from "./upload-files";
+import { type PickedFile, pickFile, uploadWarnings } from "./upload-files";
 
 const picked = (name: string, width?: number, height?: number): PickedFile => ({
 	id: name,
@@ -29,5 +29,14 @@ describe("uploadWarnings", () => {
 
 	it("warns when the set name is already in the folder", () => {
 		expect(uploadWarnings(picked("dawn.jpg", 4000, 3000), new Set(["dawn"]))).toEqual(["a set named dawn exists here"]);
+	});
+});
+
+describe("pickFile", () => {
+	it("gives each file its own id without crypto.randomUUID", async () => {
+		vi.stubGlobal("crypto", {});
+		const [a, b] = await Promise.all([pickFile(new File([], "a.png")), pickFile(new File([], "a.png"))]);
+		vi.unstubAllGlobals();
+		expect(a.id).not.toBe(b.id);
 	});
 });
