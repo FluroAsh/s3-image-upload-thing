@@ -8,7 +8,7 @@ Direction: minimal, compact, dark. One accent, status as green / amber / red dot
 - **Primary button is white** (`fg-0` on `bg-0`), not accent. Accent is reserved for selection, links, focus, the set icon.
 - **Context-menu actions without a server endpoint are omitted, not disabled.** Server routes on `main` cover upload, buckets, presigned URLs, manifests, collections CRUD and (on PR #78) generate-sizes. There is no rename, object delete or ZIP endpoint, so the menu has Open, Download (per size), Copy public URL and Add to collection… only.
 - **No per-set status dots in the tree.** `FileTreeResponse.tree` is `TreeNode[]` (`id, parentId, name, depth, isFolder, childCount, size, presignedUrl`): no manifest data, so a dot would need a manifest fetch per set. Gaps show in the details panel and in `SizeChips` only.
-- **Settings button removed.** It only logged to the console.
+- **Settings button removed.** It only logged to the console. A real Settings page returns in #121 (mockups 10a–10c).
 - **One PR per ticket**, in the order below; 1 first so the #13 / #23 UI lands on the new design.
 
 ## 2. Reference branches
@@ -84,6 +84,10 @@ See `mockups/01-tokens-primitives.png` for every primitive in every state.
 | [`mockups/08b-upload-progress-error`](mockups/08b-upload-progress-error.png) | 8 | Uploading (indeterminate bar, close disabled); request failed with files kept |
 | [`mockups/08c-upload-complete`](mockups/08c-upload-complete.png) | 8 (stacked on #79) | Mixed stored / refused / failed; all stored; nothing stored |
 | [`mockups/09-size-status`](mockups/09-size-status.png) | 9 (stacked on #78) | SizeChips in every state (complete, missing, mismatched, small source, no manifest, loading); Sizes block with Generate idle / generating / generated; generate failed part-way; no original kept; collection editor strip |
+| [`mockups/07d-collections-pick-previews`](mockups/07d-collections-pick-previews.png) | #111 | Set picker with row thumbnails and the Picked tray |
+| [`mockups/10a-settings-hooks`](mockups/10a-settings-hooks.png) | #121 | `/settings` Deploy hooks tab: hook rows (quiet ok, red failure), pending notice, Deploy now; tab bar with an illustrative second tab; top-bar deploy status on the dashboard (pending / ok / failed / none); inline Test and Deploy now results |
+| [`mockups/10b-settings-add-hook`](mockups/10b-settings-add-hook.png) | #121 | Add hook (https error after blur, valid); Edit hook (Replace URL); Delete hook (ConfirmDialog, pending); server error |
+| [`mockups/10c-settings-empty`](mockups/10c-settings-empty.png) | #121 | No hooks yet; loading; failed to load |
 
 ## 7. Ticket breakdown (ordered, one PR each)
 
