@@ -8,6 +8,7 @@ import type {
 	DeployResponse,
 	HookFired,
 	HooksResponse,
+	PinnedBucketResponse,
 	UpdateHookRequest,
 } from "~/shared/types";
 
@@ -31,3 +32,6 @@ export const deleteHook = (id: string, location: BucketLocation): Promise<Delete
 
 export const postTestHook = (id: string, location: BucketLocation): Promise<HookFired> =>
 	ofetch<HookFired>(`/settings/hooks/${id}/test`, { method: "POST", query: bucketQuery(location) });
+
+export const putPinnedBucket = (bucket: string | null): Promise<PinnedBucketResponse> =>
+	ofetch<PinnedBucketResponse>("/settings/pinned-bucket", { method: "PUT", body: { bucket } });

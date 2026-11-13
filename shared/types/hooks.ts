@@ -30,3 +30,13 @@ export type DeleteHookResponse = { id: string };
 export type HookFired = { id: string; name: string; result: HookResult };
 
 export type DeployResponse = { results: HookFired[] };
+
+export type SetPinnedBucketRequest = {
+	/** Bucket to open by default, or `null` to clear the pin. */
+	bucket: string | null;
+};
+
+export type PinnedBucketResponse = {
+	/** The bucket now pinned; absent when the pin was cleared. */
+	pinnedBucket?: string;
+};

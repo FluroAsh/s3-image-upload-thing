@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { hooksOf, readSettings, updateHooks, writeSettings } from "./settings-store";
+import { hooksOf, readSettings, updateHooks, updateSettings, writeSettings } from "./settings-store";
 
 const renames = vi.hoisted(() => [] as [string, string][]);
 
@@ -81,5 +81,18 @@ describe("settings store", () => {
 		).rejects.toThrow("no");
 
 		await expect(updateHooks("b", (hooks) => ({ hooks, result: "ok" }))).resolves.toBe("ok");
+	});
+
+	it("keeps the pinned bucket when hooks change, and serialises it with hook edits", async () => {
+		await Promise.all([
+			updateSettings((settings) => {
+				settings.pinnedBucket = "photos-archive";
+			}),
+			updateHooks("b", () => ({ hooks: [{ id: "1", name: "Site", url: "https://example.com/x" }], result: null })),
+		]);
+
+		const settings = await readSettings();
+		expect(settings.pinnedBucket).toBe("photos-archive");
+		expect(hooksOf(settings, "b")).toHaveLength(1);
 	});
 });

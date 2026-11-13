@@ -21,7 +21,7 @@ import {
 	putCollectionOrder,
 	putSetMembers,
 } from "@/services/collections";
-import { deleteHook, getHooks, patchHook, postDeploy, postHook, postTestHook } from "@/services/hooks";
+import { deleteHook, getHooks, patchHook, postDeploy, postHook, postTestHook, putPinnedBucket } from "@/services/hooks";
 import { postUploadImages } from "@/services/images";
 import { getAttention, getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
@@ -39,6 +39,7 @@ import type {
 	HookFired,
 	HooksResponse,
 	Manifest,
+	PinnedBucketResponse,
 	TreeNode,
 	UpdateHookRequest,
 	UpdatePhotoRequest,
@@ -50,6 +51,15 @@ export const useBuckets = () =>
 		queryFn: getBuckets,
 		retry: false,
 	});
+
+export const useSetPinnedBucket = () => {
+	const qc = useQueryClient();
+
+	return useMutation<PinnedBucketResponse, ApiError, string | null>({
+		mutationFn: putPinnedBucket,
+		onSettled: () => qc.invalidateQueries({ queryKey: ["buckets"] }),
+	});
+};
 
 export const useFileTree = (bucketName: string, bucketRegion: string) => {
 	const query = useQuery<FileTreeResponse, ApiError>({

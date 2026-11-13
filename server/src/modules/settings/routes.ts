@@ -8,6 +8,7 @@ import {
 	testHookHandler,
 	updateHookHandler,
 } from "./handlers/hooks";
+import { setPinnedBucketHandler } from "./handlers/pinned-bucket";
 
 const settings = new Hono();
 
@@ -18,5 +19,7 @@ settings.post("/hooks/deploy", deployHandler);
 settings.patch("/hooks/:id", updateHookHandler);
 settings.delete("/hooks/:id", deleteHookHandler);
 settings.post("/hooks/:id/test", testHookHandler);
+
+settings.put("/pinned-bucket", setPinnedBucketHandler);
 
 export default settings;

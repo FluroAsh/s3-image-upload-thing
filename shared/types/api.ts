@@ -74,6 +74,8 @@ export type BucketsResponse = {
   totalCount: number;
   /** Number of pages at this `limit`. */
   totalPages: number;
+  /** Name of the bucket pinned as the default; absent when nothing is pinned or the setting could not be read. */
+  pinnedBucket?: string;
 };
 
 export type PresignedUrlEntry = {

@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { LucideCheck, LucideChevronDown, LucideDatabase } from "lucide-react";
+import { LucideCheck, LucideChevronDown, LucideDatabase, LucidePin } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
 import { FilterInput } from "@/components/ui/filter-input";
 import { useExplorer } from "@/lib/providers/explorer-provider";
-import { useBuckets } from "@/lib/query";
+import { useBuckets, useSetPinnedBucket } from "@/lib/query";
 import { dashboardSearchParams } from "@/lib/search-params";
 import type { Bucket } from "~/shared/types";
 
@@ -29,11 +29,44 @@ const bucketDetails = (bucket: Bucket) =>
 
 const bucketKey = (bucket: Pick<Bucket, "Name" | "BucketRegion">) => `${bucket.Name}|${bucket.BucketRegion}`;
 
+/** Handled on the pin only, so a click neither selects the row nor closes the menu. */
+const stopRowSelect = (event: React.SyntheticEvent) => event.stopPropagation();
+
+const PinToggle = ({ pinned, onToggle }: { pinned: boolean; onToggle: () => void }) => (
+	<button
+		type="button"
+		tabIndex={-1}
+		aria-label={pinned ? "Unpin default bucket" : "Pin as default bucket"}
+		aria-pressed={pinned}
+		title={pinned ? "Unpin" : "Pin as default"}
+		onPointerDown={stopRowSelect}
+		onPointerUp={stopRowSelect}
+		onKeyDown={stopRowSelect}
+		onClick={(event) => {
+			event.stopPropagation();
+			onToggle();
+		}}
+		className={`flex size-6 shrink-0 items-center justify-center rounded-md hover:bg-raised ${
+			pinned
+				? "text-accent"
+				: "text-fg-2 opacity-0 group-hover:opacity-100 group-data-[highlighted]:opacity-100 group-data-[match]:opacity-100"
+		}`}
+	>
+		<LucidePin className={`size-3.5 ${pinned ? "fill-current" : ""}`} />
+	</button>
+);
+
 export const BucketPicker = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const [, setParams] = useQueryStates(dashboardSearchParams);
 	const { data } = useBuckets();
-	const buckets = data?.buckets ?? [];
+	const pinnedBucket = data?.pinnedBucket;
+	const setPinned = useSetPinnedBucket();
+	const buckets = useMemo(() => {
+		const all = data?.buckets ?? [];
+		return [...all.filter(({ Name }) => Name === pinnedBucket), ...all.filter(({ Name }) => Name !== pinnedBucket)];
+	}, [data?.buckets, pinnedBucket]);
+	const activePinned = bucketName === pinnedBucket;
 	const activeKey = bucketKey({ Name: bucketName, BucketRegion: bucketRegion });
 	const [open, setOpen] = useState(false);
 	const [filter, setFilter] = useState("");
@@ -103,9 +136,14 @@ export const BucketPicker = () => {
 			<DropdownMenu.Trigger asChild>
 				<Button
 					aria-label={`Choose bucket: ${bucketName} ${bucketRegion}`}
+					title={activePinned ? "Pinned · opens by default" : undefined}
 					className="gap-2 data-[state=open]:bg-pressed"
 				>
-					<LucideDatabase className="size-3.5 text-fg-1" />
+					{activePinned ? (
+						<LucidePin className="size-3.5 fill-current text-accent" />
+					) : (
+						<LucideDatabase className="size-3.5 text-fg-1" />
+					)}
 					<span className="font-mono">{bucketName}</span>
 					<span className="font-mono text-fg-2">{bucketRegion}</span>
 					<LucideChevronDown className="size-3.5 text-fg-2" />
@@ -148,15 +186,21 @@ export const BucketPicker = () => {
 									onPointerLeave={keepFilterFocus}
 									onKeyDown={(event) => handleRowKeyDown(event, index)}
 									value={bucketKey(bucket)}
-									className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[match]:bg-pressed [&[data-state=checked]:not(:hover,[data-highlighted],[data-match])]:bg-raised"
+									className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 outline-none transition-colors duration-100 hover:bg-pressed data-[highlighted]:bg-pressed data-[match]:bg-pressed [&[data-state=checked]:not(:hover,[data-highlighted],[data-match])]:bg-raised"
 								>
 									<div className="min-w-0 flex-1">
 										<div className="truncate font-mono text-body text-fg">{bucket.Name}</div>
 										<div className="truncate font-mono text-caption text-fg-2">{bucketDetails(bucket)}</div>
 									</div>
-									<DropdownMenu.ItemIndicator>
-										<LucideCheck className="size-3.5 shrink-0 text-fg" />
-									</DropdownMenu.ItemIndicator>
+									<PinToggle
+										pinned={bucket.Name === pinnedBucket}
+										onToggle={() => setPinned.mutate(bucket.Name === pinnedBucket ? null : bucket.Name)}
+									/>
+									<span className="size-3.5 shrink-0">
+										<DropdownMenu.ItemIndicator>
+											<LucideCheck className="size-3.5 text-fg" />
+										</DropdownMenu.ItemIndicator>
+									</span>
 								</DropdownMenu.RadioItem>
 							))}
 						</DropdownMenu.RadioGroup>

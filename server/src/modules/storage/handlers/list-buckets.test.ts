@@ -1,3 +1,7 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +20,10 @@ beforeEach(() => {
 	s3.options.length = 0;
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+	vi.useRealTimers();
+	delete process.env.SETTINGS_PATH;
+});
 
 describe("listBucketsHandler", () => {
 	it("answers 200 with an empty list when the account has no buckets", async () => {
@@ -81,5 +88,33 @@ describe("listBucketsHandler", () => {
 		expect(body.buckets.map(({ counted, partial }: Bucket) => ({ counted, partial }))).toEqual([
 			{ counted: false, partial: true },
 		]);
+	});
+
+	describe("pinned bucket", () => {
+		let dir: string;
+		beforeEach(async () => {
+			dir = await mkdtemp(path.join(os.tmpdir(), "buckets-"));
+			process.env.SETTINGS_PATH = path.join(dir, "settings.json");
+			s3.respond = async () => ({ Buckets: [] });
+		});
+		afterEach(() => rm(dir, { recursive: true }));
+
+		it("returns the pinned bucket from the settings file", async () => {
+			await writeFile(
+				process.env.SETTINGS_PATH as string,
+				JSON.stringify({ buckets: {}, pinnedBucket: "photos-archive" }),
+			);
+
+			expect((await (await get()).json()).pinnedBucket).toBe("photos-archive");
+		});
+
+		it("still lists buckets when the settings file cannot be read", async () => {
+			await writeFile(process.env.SETTINGS_PATH as string, "{not json");
+
+			const res = await get();
+
+			expect(res.status).toBe(200);
+			expect((await res.json()).pinnedBucket).toBeUndefined();
+		});
 	});
 });

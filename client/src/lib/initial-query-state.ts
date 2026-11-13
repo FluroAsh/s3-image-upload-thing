@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import type { BucketsResponse } from "~/shared/types";
 
 export function getInitialQueryState(data: BucketsResponse, requestedBucket: string, requestedRegion: string) {
-	const defaultBucket = data.buckets[0];
+	const defaultBucket = data.buckets.find((bucket) => bucket.Name === data.pinnedBucket) ?? data.buckets[0];
 	const fallback = {
 		activeBucket: defaultBucket.Name,
 		activeRegion: defaultBucket.BucketRegion,
