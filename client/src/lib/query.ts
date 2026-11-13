@@ -21,21 +21,26 @@ import {
 	putCollectionOrder,
 	putSetMembers,
 } from "@/services/collections";
-import { getHooks, postDeploy } from "@/services/hooks";
+import { deleteHook, getHooks, patchHook, postDeploy, postHook, postTestHook } from "@/services/hooks";
 import { postUploadImages } from "@/services/images";
 import { getAttention, getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
 import type {
+	AddHookRequest,
 	AttentionResponse,
 	BucketLocation,
 	BucketsResponse,
 	CollectionsFile,
+	DeleteHookResponse,
+	DeployHook,
 	DeployResponse,
 	FileTreeResponse,
 	GenerateSizesResponse,
+	HookFired,
 	HooksResponse,
 	Manifest,
 	TreeNode,
+	UpdateHookRequest,
 	UpdatePhotoRequest,
 } from "~/shared/types";
 
@@ -91,6 +96,27 @@ export const useDeployNow = () => {
 		onSettled: () => qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
 	});
 };
+
+/** Refetches the hooks after a write, so the list shows what the server saved. */
+const useHooksWrite = <Response, Variables>(
+	write: (variables: Variables, location: BucketLocation) => Promise<Response>,
+) => {
+	const qc = useQueryClient();
+	const { bucketName, bucketRegion } = useExplorer().state;
+
+	return useMutation<Response, ApiError, Variables>({
+		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
+	});
+};
+
+export const useAddHook = () => useHooksWrite<DeployHook, AddHookRequest>(postHook);
+
+export const useUpdateHook = () => useHooksWrite<DeployHook, { id: string } & UpdateHookRequest>(patchHook);
+
+export const useDeleteHook = () => useHooksWrite<DeleteHookResponse, string>(deleteHook);
+
+export const useTestHook = () => useHooksWrite<HookFired, string>(postTestHook);
 
 export const useMutateUpload = (bucketName: string) => {
 	const qc = useQueryClient();

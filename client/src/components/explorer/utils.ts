@@ -128,3 +128,12 @@ export type PreviewShape = (typeof PREVIEW_SHAPES)[number];
 /** A box shape fixed from the thumbnail, so the box never resizes when the larger image swaps in. */
 export const previewShapeOf = ({ width, height }: Size): PreviewShape =>
 	width > height * 1.2 ? "landscape" : height > width * 1.2 ? "portrait" : "square";
+
+/** Coarse "3 min ago" from a point in time, worked out at render so no clock has to tick. */
+export const formatAgo = (iso: string, now = Date.now()) => {
+	const minutes = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+	if (minutes < 1) return "just now";
+	if (minutes < 60) return `${minutes} min ago`;
+	if (minutes < 60 * 24) return `${Math.floor(minutes / 60)} h ago`;
+	return `${Math.floor(minutes / (60 * 24))} d ago`;
+};

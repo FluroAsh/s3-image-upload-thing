@@ -12,7 +12,8 @@ export const buttonVariants = cva(
 			variant: {
 				primary: "h-control bg-fg px-2.5 text-canvas hover:bg-white",
 				default: "h-control border border-line-strong bg-raised px-2.5 text-fg hover:bg-pressed",
-				ghost: "h-control px-2.5 text-fg hover:bg-raised",
+				ghost:
+					"h-control px-2.5 text-fg hover:bg-raised aria-[current=page]:pointer-events-none aria-[current=page]:bg-pressed",
 				icon: "size-control text-fg-1 hover:bg-raised hover:text-fg",
 			},
 			danger: { true: "text-err hover:text-err" },
