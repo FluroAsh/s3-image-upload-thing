@@ -1,10 +1,10 @@
 import type { Context } from "hono";
 
+import { bucketLocationOf } from "@/shared/utils/params";
+import { respond } from "@/shared/utils/respond";
 import type { AttentionResponse } from "~/shared/types";
 
 import { listSetAttention } from "../services/attention";
-import { bucketLocationOf } from "./params";
-import { respond } from "./respond";
 
 export const attentionHandler = (ctx: Context) =>
 	respond<AttentionResponse>(ctx, () =>

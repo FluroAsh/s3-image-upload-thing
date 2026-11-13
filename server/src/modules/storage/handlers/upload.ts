@@ -1,9 +1,9 @@
 import type { Context } from "hono";
 
+import { badRequest, respond } from "@/shared/utils/respond";
 import { UPLOAD_FIELD } from "~/shared/constants/upload";
 
 import { runUploadPipeline } from "../services/upload-pipeline";
-import { badRequest, respond } from "./respond";
 
 /** Trims and collapses slashes so `trip/` and `trip` store under the same keys; dot segments could climb out of the folder. */
 const normaliseDestination = (destination: string): string => {

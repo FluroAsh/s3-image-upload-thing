@@ -11,6 +11,7 @@ Documentation for the upload server and the scripts that live beside it. Keep it
 ## Runbooks
 
 - [Backfill manifests](runbooks/backfill-manifests.md): write manifests for image sets stored before uploads wrote their own
+- [Deploy hooks](runbooks/deploy-hooks.md): where the hook settings file lives, and how to inspect and back it up without printing URLs
 
 ## Conventions
 

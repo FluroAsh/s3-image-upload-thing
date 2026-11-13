@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
+import { markBucketChangedOnWrite } from "@/shared/middleware/mark-bucket-changed";
+
 import { attachOriginalHandler } from "./handlers/attach-original";
 import { attentionHandler } from "./handlers/attention";
 import {
@@ -31,6 +33,8 @@ storage.use(
 		onError: (ctx) => ctx.json({ error: "Request body too large" }, 413),
 	}),
 );
+
+storage.use(markBucketChangedOnWrite);
 
 storage.post("/upload", uploadImagesHandler);
 

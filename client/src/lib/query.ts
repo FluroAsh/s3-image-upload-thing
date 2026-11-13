@@ -21,6 +21,7 @@ import {
 	putCollectionOrder,
 	putSetMembers,
 } from "@/services/collections";
+import { getHooks, postDeploy } from "@/services/hooks";
 import { postUploadImages } from "@/services/images";
 import { getAttention, getManifest, postGenerateSizes, postOriginal } from "@/services/manifests";
 import { getBuckets, getFileTree } from "@/services/s3";
@@ -29,8 +30,10 @@ import type {
 	BucketLocation,
 	BucketsResponse,
 	CollectionsFile,
+	DeployResponse,
 	FileTreeResponse,
 	GenerateSizesResponse,
+	HooksResponse,
 	Manifest,
 	TreeNode,
 	UpdatePhotoRequest,
@@ -65,6 +68,30 @@ export const useFileTree = (bucketName: string, bucketRegion: string) => {
 	return { ...query, childMap };
 };
 
+const PENDING_POLL_MS = 5000;
+
+/** Polls while a deploy is pending, so its result shows soon after it fires. */
+export const useDeployHooks = () => {
+	const { bucketName, bucketRegion } = useExplorer().state;
+	return useQuery<HooksResponse, ApiError>({
+		queryKey: ["hooks", bucketName],
+		queryFn: () => getHooks({ bucketName, bucketRegion }),
+		enabled: !!bucketName && !!bucketRegion,
+		refetchInterval: ({ state }) => (state.data?.pending ? PENDING_POLL_MS : false),
+		retry: false,
+	});
+};
+
+export const useDeployNow = () => {
+	const qc = useQueryClient();
+	const { bucketName, bucketRegion } = useExplorer().state;
+
+	return useMutation<DeployResponse, ApiError>({
+		mutationFn: () => postDeploy({ bucketName, bucketRegion }),
+		onSettled: () => qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
+	});
+};
+
 export const useMutateUpload = (bucketName: string) => {
 	const qc = useQueryClient();
 
@@ -72,6 +99,7 @@ export const useMutateUpload = (bucketName: string) => {
 		mutationFn: (formData: FormData) => postUploadImages(formData),
 		onSuccess: ({ results }) => {
 			if (!results.some(({ status }) => status === "stored")) return;
+			qc.invalidateQueries({ queryKey: ["hooks", bucketName] });
 			qc.invalidateQueries({
 				exact: false,
 				queryKey: ["fileTree", bucketName],
@@ -132,6 +160,7 @@ const useSetSizesWrite = <Variables>(
 				qc.invalidateQueries({ queryKey: ["manifest", bucketName] }),
 				qc.invalidateQueries({ queryKey: ["fileTree", bucketName] }),
 				qc.invalidateQueries({ queryKey: ["attention", bucketName] }),
+				qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
 			]),
 	});
 };
@@ -151,7 +180,11 @@ const useCollectionsWrite = <Response, Variables>(
 
 	return useMutation<Response, ApiError, Variables>({
 		mutationFn: (variables) => write(variables, { bucketName, bucketRegion }),
-		onSuccess: () => qc.invalidateQueries({ queryKey: ["collections", bucketName] }),
+		onSuccess: () =>
+			Promise.all([
+				qc.invalidateQueries({ queryKey: ["collections", bucketName] }),
+				qc.invalidateQueries({ queryKey: ["hooks", bucketName] }),
+			]),
 	});
 };
 
