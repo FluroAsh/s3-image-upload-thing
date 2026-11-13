@@ -72,10 +72,12 @@ export const BucketPicker = () => {
 	const { data } = useBuckets();
 	const pinnedBucket = data?.pinnedBucket;
 	const setPinned = useSetPinnedBucket();
+	/** Sorted by the pin as it was when the menu opened, so pinning never moves a row, and its focus, mid-use. */
+	const [pinnedAtOpen, setPinnedAtOpen] = useState(pinnedBucket);
 	const buckets = useMemo(() => {
 		const all = data?.buckets ?? [];
-		return [...all.filter(({ Name }) => Name === pinnedBucket), ...all.filter(({ Name }) => Name !== pinnedBucket)];
-	}, [data?.buckets, pinnedBucket]);
+		return [...all.filter(({ Name }) => Name === pinnedAtOpen), ...all.filter(({ Name }) => Name !== pinnedAtOpen)];
+	}, [data?.buckets, pinnedAtOpen]);
 	const activePinned = bucketName === pinnedBucket;
 	const activeKey = bucketKey({ Name: bucketName, BucketRegion: bucketRegion });
 	const [open, setOpen] = useState(false);
@@ -95,6 +97,7 @@ export const BucketPicker = () => {
 
 	const handleOpenChange = (next: boolean) => {
 		setOpen(next);
+		if (next) setPinnedAtOpen(pinnedBucket);
 		if (!next) changeFilter("");
 	};
 
@@ -217,7 +220,7 @@ export const BucketPicker = () => {
 											</DropdownMenu.ItemIndicator>
 										</span>
 									</DropdownMenu.RadioItem>
-									{index === 0 && !needle && bucket.Name === pinnedBucket && visible.length > 1 && (
+									{index === 0 && !needle && bucket.Name === pinnedAtOpen && visible.length > 1 && (
 										<DropdownMenu.Separator className="my-1 h-px bg-line" />
 									)}
 								</Fragment>
