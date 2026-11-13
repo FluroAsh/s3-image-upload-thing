@@ -18,8 +18,11 @@ const SMALL_SOURCE_PX = VARIANT_LONGEST_EDGE.medium;
 /** The sizes of the table that are not in `present`. */
 export const skippedSizes = (present: readonly string[]) => IMAGE_VARIANTS.filter((name) => !present.includes(name));
 
+/** A counter rather than `crypto.randomUUID()`, which throws outside a secure context such as the plain-HTTP admin. */
+let nextId = 0;
+
 export const pickFile = async (file: File): Promise<PickedFile> => {
-	const picked = { id: crypto.randomUUID(), file };
+	const picked = { id: `file-${nextId++}`, file };
 	try {
 		const bitmap = await createImageBitmap(file);
 		const { width, height } = bitmap;
