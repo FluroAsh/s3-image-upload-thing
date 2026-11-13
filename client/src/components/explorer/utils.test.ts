@@ -10,6 +10,7 @@ import {
 	formatAgo,
 	formatCount,
 	formatSize,
+	groupSets,
 	matchesFilter,
 	PREVIEW_ORDER,
 	pickedInTreeOrder,
@@ -20,7 +21,6 @@ import {
 	setFoldersIn,
 	setFoldersUnder,
 	setPathOf,
-	setsUnder,
 	toggleSets,
 	variantOf,
 } from "./utils";
@@ -173,12 +173,15 @@ describe("set picker selection", () => {
 		["cdn/solo", folder("solo/")],
 	]);
 
-	it("takes every set under a folder", () => {
-		expect(setsUnder(sets, "trip/")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
+	it("groups each folder's shown sets, the bucket root included", () => {
+		const groups = groupSets(childMap, new Set(["trip/kyoto", "trip/osaka"]));
+		expect(groups.get("trip/")).toEqual(["trip/kyoto", "trip/osaka"]);
+		expect(groups.get("trip/kyoto/")).toEqual(["trip/kyoto"]);
+		expect(groups.get("")).toEqual(["trip/kyoto", "trip/osaka"]);
 	});
 
-	it("takes every set for the bucket root", () => {
-		expect(setsUnder(sets, "")).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka", "cdn/solo"]);
+	it("leaves out sets the filter hides", () => {
+		expect(groupSets(childMap, new Set(["trip/osaka"])).get("trip/")).toEqual(["trip/osaka"]);
 	});
 
 	it("lists picked sets in tree order, not the order they were ticked", () => {
@@ -187,7 +190,7 @@ describe("set picker selection", () => {
 	});
 
 	it("ticks a partly ticked group, then clears it once whole", () => {
-		const group = setsUnder(sets, "trip/");
+		const group = ["cdn/trip/kyoto", "cdn/trip/osaka"];
 		const whole = toggleSets(new Set(["cdn/trip/kyoto"]), group);
 		expect([...whole]).toEqual(["cdn/trip/kyoto", "cdn/trip/osaka"]);
 		expect(toggleSets(whole, group).size).toBe(0);
