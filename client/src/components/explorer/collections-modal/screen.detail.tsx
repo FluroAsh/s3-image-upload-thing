@@ -46,6 +46,7 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 	useEffect(() => {
 		if (focusAfter.current === null) return;
 		focusTile(focusAfter.current);
+		document.activeElement?.scrollIntoView({ block: "nearest" });
 		focusAfter.current = null;
 	});
 
@@ -81,8 +82,8 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 				</Button>
 			</ScreenHeader>
 
-			<DialogBody className="flex min-h-[380px] p-0">
-				<section aria-label="Photos" className="min-w-0 flex-1 space-y-3 p-4">
+			<DialogBody className="flex min-h-[380px] overflow-hidden p-0">
+				<section aria-label="Photos" className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto p-4">
 					<p className={cn(SECTION_LABEL, "flex justify-between")}>
 						<span>Photos · drag to reorder</span>
 						<span>Cover = first unless set</span>
@@ -145,7 +146,10 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 					)}
 				</section>
 				{current && (
-					<aside aria-label="Selected photo" className="w-[280px] shrink-0 border-l border-line p-4">
+					<aside
+						aria-label="Selected photo"
+						className="min-h-0 w-[280px] shrink-0 overflow-y-auto border-l border-line p-4"
+					>
 						<PhotoEditor
 							key={current.set}
 							collection={collection}
