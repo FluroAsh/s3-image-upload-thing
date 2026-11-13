@@ -27,7 +27,8 @@ const countdown = (ms: number) => {
 
 const ago = (ms: number) => {
 	const minutes = Math.floor(ms / 60_000);
-	return minutes < 1 ? "just now" : `${minutes} min ago`;
+	if (minutes < 1) return "just now";
+	return minutes < 60 ? `${minutes} min ago` : `${Math.floor(minutes / 60)} h ago`;
 };
 
 /** Pending shows before a failure, because the pending deploy will replace the failed result. */
