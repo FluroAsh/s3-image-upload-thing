@@ -42,7 +42,9 @@ export const DeployStatus = () => {
 	if (data.pendingUntil) {
 		return (
 			<div className="flex items-center gap-1">
-				<Badge className="tabular-nums">Deploys in {countdown(Date.parse(data.pendingUntil) - now)}</Badge>
+				<Badge className="whitespace-nowrap tabular-nums">
+					Deploys in {countdown(Date.parse(data.pendingUntil) - now)}
+				</Badge>
 				<Button variant="ghost" pending={deploy.isPending} onClick={() => deploy.mutate()}>
 					Deploy now
 				</Button>
@@ -62,7 +64,7 @@ export const DeployStatus = () => {
 				href={`/settings?${params}`}
 				className="rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
 			>
-				<Badge tone="err">
+				<Badge tone="err" className="whitespace-nowrap">
 					{failed.length} of {data.hooks.length} hooks failed
 					<span className="sr-only">: {failed.map(({ name }) => name).join(", ")}</span>
 					<span aria-hidden> · {ago(now - lastAt)}</span>
