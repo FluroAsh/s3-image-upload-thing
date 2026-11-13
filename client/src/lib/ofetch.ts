@@ -15,6 +15,9 @@ export const baseURL = isServer ? process.env.API_URL || "http://localhost:3002"
 /** A failed request; `data.error` is the message the server sent, when it sent one. */
 export type ApiError = FetchError<{ error?: string }>;
 
+export const serverErrorMessage = (error: ApiError, fallback = "Something went wrong. Try again shortly.") =>
+	error.data?.error ?? fallback;
+
 const ofetchInstance = ofetch.create({ baseURL });
 
 export default ofetchInstance;

@@ -5,7 +5,6 @@ import type { ApiError } from "@/lib/ofetch";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useMutateUpload } from "@/lib/query";
 import { type PickedFile, pickFile } from "@/lib/upload-files";
-import { buildUploadFormData } from "@/lib/upload-form-data";
 import type { UploadResponse } from "~/shared/types";
 
 export const EUploadState = {
@@ -24,6 +23,8 @@ type UploadProviderContext = {
 	uploadResponse: UploadResponse | null;
 	/** The server's message for a failed request; `null` when none was sent. */
 	uploadError: string | null;
+	/** Files of the current send whose request has finished, out of `total` sent. */
+	progress: { done: number; total: number };
 	/** Picked files; kept through the error and complete screens so they can be retried. */
 	files: PickedFile[];
 	/** Folder path the sets are created in, without a trailing slash; `""` for the bucket root. */
@@ -52,11 +53,12 @@ const UploadContext = createContext<UploadProviderContext | null>(null);
 
 export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 	const { bucketName, bucketRegion } = useExplorer().state;
-	const { mutateAsync: postUploadImages } = useMutateUpload(bucketName);
+	const { mutateAsync: uploadImages } = useMutateUpload(bucketName);
 
 	const [uploadState, setUploadState] = useState<UploadState>(EUploadState.Idle);
 	const [uploadResponse, setUploadResponse] = useState<UploadResponse | null>(null);
 	const [uploadError, setUploadError] = useState<string | null>(null);
+	const [progress, setProgress] = useState({ done: 0, total: 0 });
 	const [files, setFiles] = useState<PickedFile[]>([]);
 	const [destination, setDestination] = useState("");
 	const lastSend = useRef<{ batch: PickedFile[]; merge: boolean }>({ batch: [], merge: false });
@@ -67,15 +69,19 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 			if (!bucketName || !bucketRegion) throw new Error("Unable to find the active bucket and region.");
 
 			setUploadError(null);
+			setProgress({ done: 0, total: batch.length });
 			setUploadState(EUploadState.Uploading);
-			const response = await postUploadImages(
-				buildUploadFormData({ bucketName, bucketRegion, destination, images: batch.map(({ file }) => file) }),
-			);
-			const retried = new Map(response.results.map((result) => [result.file, result]));
+			const results = await uploadImages({
+				bucketRegion,
+				destination,
+				images: batch.map(({ file }) => file),
+				onSettled: () => setProgress((previous) => ({ ...previous, done: previous.done + 1 })),
+			});
+			const retried = new Map(results.map((result) => [result.file, result]));
 			setUploadResponse((previous) =>
 				merge && previous
 					? { results: previous.results.map((result) => retried.get(result.file) ?? result) }
-					: response,
+					: { results },
 			);
 			setUploadState(EUploadState.Complete);
 		} catch (e) {
@@ -134,6 +140,7 @@ export const UploadProvider = ({ children }: { children: React.ReactNode }) => {
 				uploadState,
 				uploadResponse,
 				uploadError,
+				progress,
 				files,
 				destination,
 				setDestination,

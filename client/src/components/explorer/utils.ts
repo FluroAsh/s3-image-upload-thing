@@ -1,6 +1,5 @@
 import type { Point } from "@/hooks/usePointerPosition";
 import type { ImageSize } from "@/lib/image-header";
-import type { ApiError } from "@/lib/ofetch";
 import { IMAGE_VARIANTS, INLINE_VARIANTS } from "~/shared/constants/image-variants";
 import { type SizeState, sizeStatuses } from "~/shared/image-sizes";
 import type { ImageVariant, Manifest, TreeNode } from "~/shared/types";
@@ -76,8 +75,7 @@ export const formatCount = (count: number | undefined, noun: string | undefined,
 export const formatSize = (size: string | undefined, partial: boolean) => qualify(size, partial);
 
 /** The server's own `{ error }` text, which says what went wrong, over ofetch's message, which only names the request. */
-export const serverErrorMessage = (error: ApiError, fallback = "Something went wrong. Try again shortly.") =>
-	error.data?.error ?? fallback;
+export { serverErrorMessage } from "@/lib/ofetch";
 
 /** The path collections record for a set: its folder (a tree `parentId`, which ends in a slash) without the slash. */
 export const setPathOf = (folderId: string) => folderId.replace(/\/$/, "");
