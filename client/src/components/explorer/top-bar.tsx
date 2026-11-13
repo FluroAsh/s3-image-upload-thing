@@ -7,6 +7,7 @@ import { useActiveFile } from "@/hooks/useActiveFile";
 import { BucketPicker } from "./bucket-picker";
 import { CollectionsTrigger } from "./collections-modal";
 import { CollectionsProvider } from "./collections-modal/provider";
+import { DeployStatus } from "./deploy-status";
 import { UploadTrigger } from "./upload-modal";
 import { UploadProvider } from "./upload-modal/provider";
 
@@ -43,6 +44,7 @@ export const TopBar = () => (
 			<CollectionsProvider>
 				<CollectionsTrigger />
 			</CollectionsProvider>
+			<DeployStatus />
 			<UploadProvider>
 				<UploadTrigger />
 			</UploadProvider>
