@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { LucideAlertTriangle, LucidePlus } from "lucide-react";
+import { LucideAlertTriangle, LucideArrowLeft, LucideArrowRight, LucideOption, LucidePlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DialogBody, DialogClose } from "@/components/ui/dialog";
@@ -171,9 +171,17 @@ const CollectionDetail = ({ collection }: { collection: Collection }) => {
 			<ScreenFooter
 				info={
 					<span className="inline-flex items-center gap-1">
-						Changes save on blur · drag, or <Kbd>⌥</Kbd>
-						<Kbd>←</Kbd>
-						<Kbd>→</Kbd> to reorder
+						Changes save on blur · drag, or{" "}
+						<Kbd>
+							<LucideOption aria-label="Option" />
+						</Kbd>
+						<Kbd>
+							<LucideArrowLeft aria-label="Left" />
+						</Kbd>
+						<Kbd>
+							<LucideArrowRight aria-label="Right" />
+						</Kbd>{" "}
+						to reorder
 					</span>
 				}
 			>
