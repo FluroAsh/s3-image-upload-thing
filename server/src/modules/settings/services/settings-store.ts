@@ -5,6 +5,7 @@ import path from "node:path";
 export type StoredHook = { id: string; name: string; url: string; description?: string; createdAt?: string };
 
 export type Settings = {
+	/** Per-bucket settings, keyed by bucket name. */
 	buckets: Record<string, { hooks: StoredHook[] }>;
 	/** Name of the bucket the admin opens on when the URL names none; absent when nothing is pinned. */
 	pinnedBucket?: string;

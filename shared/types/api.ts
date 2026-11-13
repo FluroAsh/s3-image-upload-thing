@@ -213,3 +213,13 @@ export type AttentionResponse = {
   /** `true` when the folder listing passed its time limit, so sets may be missing. */
   partial: boolean;
 };
+
+export type SetPinnedBucketRequest = {
+	/** Bucket to open by default, or `null` to clear the pin. */
+	bucket: string | null;
+};
+
+export type PinnedBucketResponse = {
+	/** The bucket now pinned; absent when the pin was cleared. */
+	pinnedBucket?: string;
+};
