@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { LucideCheck, LucideChevronDown, LucideDatabase, LucidePin } from "lucide-react";
@@ -8,6 +8,7 @@ import { useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
 import { FilterInput } from "@/components/ui/filter-input";
+import { Kbd } from "@/components/ui/kbd";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useBuckets, useSetPinnedBucket } from "@/lib/query";
 import { dashboardSearchParams } from "@/lib/search-params";
@@ -101,6 +102,18 @@ export const BucketPicker = () => {
 		if (!next) changeFilter("");
 	};
 
+	useEffect(() => {
+		const toggle = (event: KeyboardEvent) => {
+			if (!event.metaKey || event.key.toLowerCase() !== "k" || event.repeat) return;
+			if (document.querySelector("[role=dialog]")) return;
+			event.preventDefault();
+			handleOpenChange(!open);
+		};
+		/** Capture phase, because the filter stops keydown propagation and would otherwise swallow the close. */
+		document.addEventListener("keydown", toggle, true);
+		return () => document.removeEventListener("keydown", toggle, true);
+	});
+
 	const selectBucket = (key: string) => {
 		const bucket = buckets.find((candidate) => bucketKey(candidate) === key);
 		if (bucket) setParams({ bucket: bucket.Name, region: bucket.BucketRegion });
@@ -154,6 +167,7 @@ export const BucketPicker = () => {
 			<DropdownMenu.Trigger asChild>
 				<Button
 					aria-label={`Choose bucket: ${bucketName} ${bucketRegion}`}
+					aria-keyshortcuts="Meta+K"
 					title={activePinned ? "Pinned · opens by default" : undefined}
 					className="gap-2 data-[state=open]:bg-pressed"
 				>
@@ -165,6 +179,7 @@ export const BucketPicker = () => {
 					<span className="font-mono">{bucketName}</span>
 					<span className="font-mono text-fg-2">{bucketRegion}</span>
 					<LucideChevronDown className="size-3.5 text-fg-2" />
+					<Kbd>⌘K</Kbd>
 				</Button>
 			</DropdownMenu.Trigger>
 
