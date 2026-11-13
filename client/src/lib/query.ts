@@ -12,6 +12,8 @@ import {
 import type { ApiError } from "@/lib/ofetch";
 import { fetchPresignedUrl, setBatcherBucket } from "@/lib/presigned-url-batcher";
 import { useExplorer } from "@/lib/providers/explorer-provider";
+import { uploadEach } from "@/lib/upload-each";
+import { buildUploadFormData } from "@/lib/upload-form-data";
 import {
 	deleteCollection,
 	getCollections,
@@ -140,12 +142,28 @@ export const useDeleteHook = (onSuccess?: () => void) =>
 
 export const useTestHook = () => useHooksCall<HookFired, string>(postTestHook);
 
+type UploadBatch = {
+	/** AWS region of the active bucket. */
+	bucketRegion: string;
+	/** Folder path inside the bucket to upload into; empty for the bucket root. */
+	destination: string;
+	/** Files to upload, each in its own request. */
+	images: File[];
+	/** Called once per file as its request finishes, whatever the outcome. */
+	onSettled: () => void;
+};
+
+/** One mutation per batch, so the tree is refetched once rather than after every file. */
 export const useMutateUpload = (bucketName: string) => {
 	const qc = useQueryClient();
 
 	return useMutation({
-		mutationFn: (formData: FormData) => postUploadImages(formData),
-		onSuccess: ({ results }) => {
+		mutationFn: async ({ images, onSettled, ...fields }: UploadBatch) => {
+			const post = async (file: File) =>
+				(await postUploadImages(buildUploadFormData({ bucketName, ...fields, images: [file] }))).results;
+			return uploadEach(images, post, onSettled);
+		},
+		onSuccess: (results) => {
 			if (!results.some(({ status }) => status === "stored")) return;
 			qc.invalidateQueries({ queryKey: ["hooks", bucketName] });
 			qc.invalidateQueries({

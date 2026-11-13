@@ -42,5 +42,4 @@ console.log(`Server started on port ${port}`);
 export default {
 	port,
 	fetch: app.fetch,
-	// maxRequestBodySize: maxSize,
 };

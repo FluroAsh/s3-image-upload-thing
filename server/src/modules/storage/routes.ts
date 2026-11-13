@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
 
 import { markBucketChangedOnWrite } from "@/shared/middleware/mark-bucket-changed";
 
@@ -23,16 +22,6 @@ import { presignedUrlsHandler } from "./handlers/presigned-urls";
 import { uploadImagesHandler } from "./handlers/upload";
 
 const storage = new Hono();
-
-/** Virtually unlimited size (DO NOT use this in Prod). */
-const maxSize = Number.MAX_SAFE_INTEGER;
-
-storage.use(
-	bodyLimit({
-		maxSize,
-		onError: (ctx) => ctx.json({ error: "Request body too large" }, 413),
-	}),
-);
 
 storage.use(markBucketChangedOnWrite);
 
