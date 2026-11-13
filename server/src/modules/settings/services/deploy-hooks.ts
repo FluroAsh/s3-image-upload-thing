@@ -33,16 +33,21 @@ export const fireHook = async (bucket: string, hook: StoredHook): Promise<HookFi
 	return { id: hook.id, name: hook.name, result };
 };
 
-const cancelPending = (bucket: string) => {
+export const cancelPending = (bucket: string) => {
 	clearTimeout(pending.get(bucket)?.timer);
 	pending.delete(bucket);
 };
 
-/** Fires every hook of the bucket now and clears its pending deploy. */
+/** The pending entry outlives the hook calls, so a poll never sees neither a countdown nor a result. */
 export const deployBucket = async (bucket: string): Promise<HookFired[]> => {
-	cancelPending(bucket);
-	const hooks = hooksOf(await readSettings(), bucket);
-	return Promise.all(hooks.map((hook) => fireHook(bucket, hook)));
+	const entry = pending.get(bucket);
+	clearTimeout(entry?.timer);
+	try {
+		const hooks = hooksOf(await readSettings(), bucket);
+		return await Promise.all(hooks.map((hook) => fireHook(bucket, hook)));
+	} finally {
+		if (pending.get(bucket) === entry) pending.delete(bucket);
+	}
 };
 
 /** Restarts the bucket's countdown, so one deploy follows the last of a run of writes. */

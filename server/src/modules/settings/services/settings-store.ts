@@ -7,12 +7,19 @@ export type Settings = { buckets: Record<string, { hooks: StoredHook[] }> };
 
 const settingsPath = () => process.env.SETTINGS_PATH ?? "/data/settings.json";
 
+/** Never puts file content in the error, since it holds secret URLs. */
 export const readSettings = async (): Promise<Settings> => {
+	let text: string;
 	try {
-		return JSON.parse(await readFile(settingsPath(), "utf8"));
+		text = await readFile(settingsPath(), "utf8");
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return { buckets: {} };
 		throw error;
+	}
+	try {
+		return JSON.parse(text);
+	} catch {
+		throw new Error("Settings file is not valid JSON");
 	}
 };
 
@@ -27,14 +34,20 @@ export const writeSettings = async (settings: Settings): Promise<void> => {
 
 export const hooksOf = (settings: Settings, bucket: string): StoredHook[] => settings.buckets[bucket]?.hooks ?? [];
 
-/** Reads the bucket's hooks, lets `change` edit the list, and saves it. */
-export const updateHooks = async <Result>(
+/** Calls queue up, so concurrent edits neither lose each other's changes nor share the temp file. */
+let queue: Promise<unknown> = Promise.resolve();
+
+export const updateHooks = <Result>(
 	bucket: string,
 	change: (hooks: StoredHook[]) => { hooks: StoredHook[]; result: Result },
 ): Promise<Result> => {
-	const settings = await readSettings();
-	const { hooks, result } = change(hooksOf(settings, bucket));
-	settings.buckets[bucket] = { hooks };
-	await writeSettings(settings);
-	return result;
+	const run = queue.then(async () => {
+		const settings = await readSettings();
+		const { hooks, result } = change(hooksOf(settings, bucket));
+		settings.buckets[bucket] = { hooks };
+		await writeSettings(settings);
+		return result;
+	});
+	queue = run.catch(() => {});
+	return run;
 };

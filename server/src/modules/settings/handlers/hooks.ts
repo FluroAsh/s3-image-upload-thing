@@ -1,6 +1,8 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
+import { bucketLocationOf } from "@/shared/utils/params";
+import { badRequest, respond } from "@/shared/utils/respond";
 import type {
 	AddHookRequest,
 	DeleteHookResponse,
@@ -11,9 +13,14 @@ import type {
 	UpdateHookRequest,
 } from "~/shared/types";
 
-import { bucketLocationOf } from "../../storage/handlers/params";
-import { badRequest, respond } from "../../storage/handlers/respond";
-import { deployBucket, fireHook, forgetHook, lastResultOf, pendingUntil } from "../services/deploy-hooks";
+import {
+	cancelPending,
+	deployBucket,
+	fireHook,
+	forgetHook,
+	lastResultOf,
+	pendingUntil,
+} from "../services/deploy-hooks";
 import { hooksOf, readSettings, type StoredHook, updateHooks } from "../services/settings-store";
 
 const bucketOf = (ctx: Context) => bucketLocationOf(ctx).bucketName;
@@ -24,9 +31,10 @@ const isAllowedUrl = (url: URL) =>
 	(process.env.NODE_ENV !== "production" && url.protocol === "http:" && url.hostname === "localhost");
 
 const requireUrl = (value: unknown): string => {
-	const url = typeof value === "string" ? URL.parse(value) : null;
+	if (typeof value !== "string") throw badRequest("URL must be a valid https URL");
+	const url = URL.parse(value);
 	if (!url || !isAllowedUrl(url)) throw badRequest("URL must be a valid https URL");
-	return value as string;
+	return value;
 };
 
 const requireName = (value: unknown): string => {
@@ -49,11 +57,7 @@ const present = ({ id, name, url }: StoredHook): DeployHook => ({
 	lastResult: lastResultOf(id),
 });
 
-const findHook = async (ctx: Context): Promise<StoredHook> => {
-	const hook = hooksOf(await readSettings(), bucketOf(ctx)).find(({ id }) => id === ctx.req.param("id"));
-	if (!hook) throw new HTTPException(404, { message: "No such hook" });
-	return hook;
-};
+const hookNotFound = () => new HTTPException(404, { message: "No such hook" });
 
 export const listHooksHandler = (ctx: Context) =>
 	respond<HooksResponse>(ctx, async () => {
@@ -77,28 +81,44 @@ export const addHookHandler = (ctx: Context) =>
 export const updateHookHandler = (ctx: Context) =>
 	respond<DeployHook>(ctx, async () => {
 		const body: UpdateHookRequest = await readBody(ctx);
-		await findHook(ctx);
-		return updateHooks(bucketOf(ctx), (hooks) => {
-			const current = hooks.find(({ id }) => id === ctx.req.param("id")) as StoredHook;
+		const { hook, urlChanged } = await updateHooks(bucketOf(ctx), (hooks) => {
+			const current = hooks.find(({ id }) => id === ctx.req.param("id"));
+			if (!current) throw hookNotFound();
 			const next = {
 				...current,
 				...(body.name !== undefined && { name: requireName(body.name) }),
 				...(body.url !== undefined && { url: requireUrl(body.url) }),
 			};
-			return { hooks: hooks.map((hook) => (hook === current ? next : hook)), result: present(next) };
+			return {
+				hooks: hooks.map((hook) => (hook === current ? next : hook)),
+				result: { hook: next, urlChanged: next.url !== current.url },
+			};
 		});
+		if (urlChanged) forgetHook(hook.id);
+		return present(hook);
 	});
 
 export const deleteHookHandler = (ctx: Context) =>
 	respond<DeleteHookResponse>(ctx, async () => {
-		const { id } = await findHook(ctx);
-		await updateHooks(bucketOf(ctx), (hooks) => ({ hooks: hooks.filter((hook) => hook.id !== id), result: null }));
+		const bucket = bucketOf(ctx);
+		const id = ctx.req.param("id");
+		const left = await updateHooks(bucket, (hooks) => {
+			if (!hooks.some((hook) => hook.id === id)) throw hookNotFound();
+			const kept = hooks.filter((hook) => hook.id !== id);
+			return { hooks: kept, result: kept.length };
+		});
 		forgetHook(id);
+		if (left === 0) cancelPending(bucket);
 		return { id };
 	});
 
 export const testHookHandler = (ctx: Context) =>
-	respond<HookFired>(ctx, async () => fireHook(bucketOf(ctx), await findHook(ctx)));
+	respond<HookFired>(ctx, async () => {
+		const bucket = bucketOf(ctx);
+		const hook = hooksOf(await readSettings(), bucket).find(({ id }) => id === ctx.req.param("id"));
+		if (!hook) throw hookNotFound();
+		return fireHook(bucket, hook);
+	});
 
 export const deployHandler = (ctx: Context) =>
 	respond<DeployResponse>(ctx, async () => ({ results: await deployBucket(bucketOf(ctx)) }));

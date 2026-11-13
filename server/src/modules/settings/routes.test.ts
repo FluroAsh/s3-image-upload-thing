@@ -5,14 +5,8 @@ import path from "node:path";
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { markBucketChangedOnWrite } from "./mark-bucket-changed";
 import settings from "./routes";
-
-const mark = vi.hoisted(() => vi.fn());
-vi.mock("./services/deploy-hooks", async (importActual) => ({
-	...(await importActual<typeof import("./services/deploy-hooks")>()),
-	markBucketChanged: mark,
-}));
+import { cancelPending, markBucketChanged } from "./services/deploy-hooks";
 
 const SECRET_URL = "https://example.com/hooks/abc123secret9c2e";
 const q = "?bucket=b&region=r";
@@ -38,8 +32,8 @@ beforeEach(async () => {
 afterEach(async () => {
 	vi.unstubAllGlobals();
 	delete process.env.SETTINGS_PATH;
+	cancelPending("b");
 	await rm(dir, { recursive: true });
-	mark.mockReset();
 });
 
 describe("hook routes", () => {
@@ -52,17 +46,23 @@ describe("hook routes", () => {
 	});
 
 	it("masks the URL in every response", async () => {
-		const { id } = await add();
+		const added = await call("POST", "", { name: "Site", url: SECRET_URL });
+		const { id } = await added.clone().json();
 		await call("PATCH", `/${id}`, { url: `${SECRET_URL}x` });
 		const bodies = [
+			await added.text(),
 			await (await call("GET", "")).text(),
 			await (await call("POST", `/${id}/test`)).text(),
 			await (await call("POST", "/deploy")).text(),
 			await (await call("PATCH", `/${id}`, { name: "Renamed" })).text(),
+			await (await call("PATCH", `/${id}`, { url: "http://example.com/abc123secret" })).text(),
+			await (await call("POST", "", { name: "Other", url: "http://example.com/abc123secret" })).text(),
+			await (await call("DELETE", `/${id}`)).text(),
+			await (await call("DELETE", `/${id}`)).text(),
 		];
 
 		for (const body of bodies) expect(body).not.toContain("abc123secret");
-		expect(JSON.parse(bodies[0]).hooks[0]).toMatchObject({
+		expect(JSON.parse(bodies[1]).hooks[0]).toMatchObject({
 			name: "Site",
 			maskedUrl: "example.com/…c2ex",
 			lastResult: null,
@@ -92,45 +92,35 @@ describe("hook routes", () => {
 		expect((await call("POST", `/${id}/test`)).status).toBe(404);
 	});
 
+	it("forgets a hook's last result only when its URL changes", async () => {
+		const { id } = await add();
+		await call("POST", `/${id}/test`);
+
+		await call("PATCH", `/${id}`, { name: "Renamed" });
+		expect((await (await call("GET", "")).json()).hooks[0].lastResult.status).toBe(204);
+
+		await call("PATCH", `/${id}`, { url: `${SECRET_URL}x` });
+		expect((await (await call("GET", "")).json()).hooks[0].lastResult).toBeNull();
+	});
+
+	it("cancels the pending deploy when the last hook is deleted, not before", async () => {
+		const first = await add();
+		const second = await add("Other");
+		await markBucketChanged("b");
+		const pendingUntil = async () => (await (await call("GET", "")).json()).pendingUntil;
+
+		await call("DELETE", `/${first.id}`);
+		expect(await pendingUntil()).not.toBeNull();
+
+		await call("DELETE", `/${second.id}`);
+		expect(await pendingUntil()).toBeNull();
+	});
+
 	it("keeps hooks per bucket", async () => {
 		await add();
 
 		const other = await app.request("/settings/hooks?bucket=other&region=r");
 
 		expect((await other.json()).hooks).toEqual([]);
-	});
-});
-
-describe("markBucketChangedOnWrite", () => {
-	const storage = new Hono()
-		.use(markBucketChangedOnWrite)
-		.get("/collections", (ctx) => ctx.json({}))
-		.post("/collections", (ctx) => ctx.json({}, 201))
-		.post("/presigned-urls", (ctx) => ctx.json({}))
-		.put("/collections/members", (ctx) => ctx.json({ error: "no" }, 400))
-		.post("/upload", (ctx) => ctx.json({}));
-	const run = (method: string, route: string, init: RequestInit = {}) => storage.request(route, { method, ...init });
-
-	it("marks the bucket after a successful write", async () => {
-		await run("POST", "/collections?bucket=b&region=r");
-
-		expect(mark).toHaveBeenCalledWith("b");
-	});
-
-	it("takes an upload's bucket from its form", async () => {
-		const form = new FormData();
-		form.set("bucketName", "from-form");
-
-		await run("POST", "/upload", { body: form });
-
-		expect(mark).toHaveBeenCalledWith("from-form");
-	});
-
-	it("ignores reads, presigned URLs and failed writes", async () => {
-		await run("GET", "/collections?bucket=b&region=r");
-		await run("POST", "/presigned-urls?bucket=b&region=r");
-		await run("PUT", "/collections/members?bucket=b&region=r");
-
-		expect(mark).not.toHaveBeenCalled();
 	});
 });

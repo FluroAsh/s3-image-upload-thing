@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBOUNCE_MS, deployBucket, markBucketChanged, pendingUntil } from "./deploy-hooks";
+import { DEBOUNCE_MS, deployBucket, lastResultOf, markBucketChanged, pendingUntil } from "./deploy-hooks";
 
 const settings = vi.hoisted(() => ({ hooks: [] as { id: string; name: string; url: string }[] }));
 
@@ -78,5 +78,36 @@ describe("deploy debounce", () => {
 		expect(result.status).toBe(0);
 		expect(JSON.stringify(log.mock.calls)).not.toContain("secret-path");
 		log.mockRestore();
+	});
+
+	it("stays pending until the hooks answer, then clears", async () => {
+		let answer: (response: { status: number }) => void = () => {};
+		fetchMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		await markBucketChanged("b");
+
+		const deploying = deployBucket("b");
+		await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+		expect(pendingUntil("b")).not.toBeNull();
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+
+		answer({ status: 200 });
+		await deploying;
+
+		expect(pendingUntil("b")).toBeNull();
+		expect(lastResultOf("1")?.status).toBe(200);
+	});
+
+	it("keeps a countdown started while a deploy is in flight", async () => {
+		let answer: (response: { status: number }) => void = () => {};
+		fetchMock.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+		await markBucketChanged("b");
+
+		const deploying = deployBucket("b");
+		await markBucketChanged("b");
+		answer({ status: 200 });
+		await deploying;
+
+		expect(pendingUntil("b")).not.toBeNull();
 	});
 });

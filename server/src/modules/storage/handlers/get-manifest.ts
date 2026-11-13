@@ -1,12 +1,12 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 
+import { bucketLocationOf } from "@/shared/utils/params";
+import { respond } from "@/shared/utils/respond";
 import type { Manifest } from "~/shared/types";
 
 import { MANIFEST_FILE_NAME, NotAManifestError, nestedSetOf } from "../services/manifest";
 import { readManifest } from "../services/s3-operations";
-import { bucketLocationOf } from "./params";
-import { respond } from "./respond";
 
 /** The manifest of the set named by the route, or the 404 or 422 a route answers when there is none to use. */
 export const requestedManifest = async (ctx: Context): Promise<Manifest> => {

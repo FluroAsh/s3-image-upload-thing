@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { readSettings, updateHooks, writeSettings } from "./settings-store";
+import { hooksOf, readSettings, updateHooks, writeSettings } from "./settings-store";
 
 const renames = vi.hoisted(() => [] as [string, string][]);
 
@@ -54,10 +54,32 @@ describe("settings store", () => {
 		expect(Object.keys(settings.buckets).sort()).toEqual(["b", "other"]);
 	});
 
-	it("does not swallow a corrupt file as empty settings", async () => {
+	it("does not swallow a corrupt file as empty settings, nor echo its content", async () => {
 		await writeSettings({ buckets: {} });
-		await writeFile(process.env.SETTINGS_PATH as string, "{not json");
+		await writeFile(process.env.SETTINGS_PATH as string, "{not json https://example.com/secret");
 
-		await expect(readSettings()).rejects.toThrow();
+		await expect(readSettings()).rejects.toThrow(new Error("Settings file is not valid JSON"));
+	});
+
+	it("keeps every change when edits overlap", async () => {
+		const add = (id: string) =>
+			updateHooks("b", (hooks) => ({
+				hooks: [...hooks, { id, name: id, url: "https://example.com/x" }],
+				result: null,
+			}));
+
+		await Promise.all(["1", "2", "3", "4", "5"].map(add));
+
+		expect(hooksOf(await readSettings(), "b")).toHaveLength(5);
+	});
+
+	it("keeps accepting edits after one fails", async () => {
+		await expect(
+			updateHooks("b", () => {
+				throw new Error("no");
+			}),
+		).rejects.toThrow("no");
+
+		await expect(updateHooks("b", (hooks) => ({ hooks, result: "ok" }))).resolves.toBe("ok");
 	});
 });

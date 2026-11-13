@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
-import { markBucketChangedOnWrite } from "../settings/mark-bucket-changed";
+import { markBucketChangedOnWrite } from "@/shared/middleware/mark-bucket-changed";
+
 import { attachOriginalHandler } from "./handlers/attach-original";
 import { attentionHandler } from "./handlers/attention";
 import {
