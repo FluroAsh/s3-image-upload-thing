@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { LucideUpload } from "lucide-react";
+import { LucideArrowRight, LucideUpload } from "lucide-react";
 
 import { setPathOf } from "@/components/explorer/utils";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,8 @@ export const UploadTrigger = () => {
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription className="truncate font-mono text-secondary text-fg-2">
-						→ {[bucketName, ...(destination ? destination.split("/") : [""])].join(" / ")}
+						<LucideArrowRight aria-hidden className="mr-1 inline size-3.5 align-[-2px]" />
+						{[bucketName, ...(destination ? destination.split("/") : [""])].join(" / ")}
 					</DialogDescription>
 				</DialogHeader>
 				<Screen />

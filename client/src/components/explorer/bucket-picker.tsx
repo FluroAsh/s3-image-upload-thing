@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { LucideCheck, LucideChevronDown, LucideDatabase, LucidePin } from "lucide-react";
+import { LucideCheck, LucideChevronDown, LucideCommand, LucideDatabase, LucidePin } from "lucide-react";
 import { useQueryStates } from "nuqs";
 
 import { Button } from "@/components/ui/button";
@@ -179,7 +179,9 @@ export const BucketPicker = () => {
 					<span className="font-mono">{bucketName}</span>
 					<span className="font-mono text-fg-2">{bucketRegion}</span>
 					<LucideChevronDown className="size-3.5 text-fg-2" />
-					<Kbd>⌘K</Kbd>
+					<Kbd>
+						<LucideCommand aria-label="Command" />K
+					</Kbd>
 				</Button>
 			</DropdownMenu.Trigger>
 

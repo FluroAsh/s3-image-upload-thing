@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { LucideAlertTriangle, LucideChevronsUp, LucideFolder, LucideLoader2, LucideSearch } from "lucide-react";
+import {
+	LucideAlertTriangle,
+	LucideArrowDown,
+	LucideArrowRight,
+	LucideArrowUp,
+	LucideChevronsUp,
+	LucideCornerDownLeft,
+	LucideFolder,
+	LucideLoader2,
+	LucideSearch,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { FilterInput } from "@/components/ui/filter-input";
@@ -26,9 +36,16 @@ const FooterHints = ({ filtering }: { filtering: boolean }) =>
 		</span>
 	) : (
 		<span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
-			<Kbd>↑↓</Kbd>
-			<Kbd>→</Kbd>
-			<Kbd>⏎</Kbd>
+			<Kbd>
+				<LucideArrowUp aria-label="Up" />
+				<LucideArrowDown aria-label="Down" />
+			</Kbd>
+			<Kbd>
+				<LucideArrowRight aria-label="Right" />
+			</Kbd>
+			<Kbd>
+				<LucideCornerDownLeft aria-label="Enter" />
+			</Kbd>
 			<Kbd>a</Kbd> attention
 		</span>
 	);
