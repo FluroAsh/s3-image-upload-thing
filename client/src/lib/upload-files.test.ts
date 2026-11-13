@@ -35,8 +35,11 @@ describe("uploadWarnings", () => {
 describe("pickFile", () => {
 	it("gives each file its own id without crypto.randomUUID", async () => {
 		vi.stubGlobal("crypto", {});
-		const [a, b] = await Promise.all([pickFile(new File([], "a.png")), pickFile(new File([], "a.png"))]);
-		vi.unstubAllGlobals();
-		expect(a.id).not.toBe(b.id);
+		try {
+			const [a, b] = await Promise.all([pickFile(new File([], "a.png")), pickFile(new File([], "a.png"))]);
+			expect(a.id).not.toBe(b.id);
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 });

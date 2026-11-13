@@ -2,18 +2,17 @@ import { useEffect, useState } from "react";
 
 const RESULT_MS = 1500;
 
-/** `navigator.clipboard` only exists in a secure context, so plain-HTTP pages copy through a selected textarea. */
+/** `navigator.clipboard` needs a secure context; the copy-event fallback needs no focus, so it works inside menus' focus traps. */
 const writeText = async (text: string) => {
 	if (navigator.clipboard) return navigator.clipboard.writeText(text);
 
-	const field = document.createElement("textarea");
-	field.value = text;
-	field.style.position = "fixed";
-	field.style.opacity = "0";
-	document.body.append(field);
-	field.select();
+	const onCopy = (event: ClipboardEvent) => {
+		event.clipboardData?.setData("text/plain", text);
+		event.preventDefault();
+	};
+	document.addEventListener("copy", onCopy);
 	const copied = document.execCommand("copy");
-	field.remove();
+	document.removeEventListener("copy", onCopy);
 	if (!copied) throw new Error("Copy failed");
 };
 
