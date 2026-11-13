@@ -79,7 +79,7 @@ describe("hook routes", () => {
 		expect(tested.result.status).toBe(204);
 		expect(deployed.results).toHaveLength(1);
 		expect(listed.hooks[0].lastResult.status).toBe(204);
-		expect(listed.pendingUntil).toBeNull();
+		expect(listed.pending).toBe(false);
 	});
 
 	it("renames, replaces the URL and deletes", async () => {
@@ -107,13 +107,13 @@ describe("hook routes", () => {
 		const first = await add();
 		const second = await add("Other");
 		await markBucketChanged("b");
-		const pendingUntil = async () => (await (await call("GET", "")).json()).pendingUntil;
+		const pending = async () => (await (await call("GET", "")).json()).pending;
 
 		await call("DELETE", `/${first.id}`);
-		expect(await pendingUntil()).not.toBeNull();
+		expect(await pending()).toBe(true);
 
 		await call("DELETE", `/${second.id}`);
-		expect(await pendingUntil()).toBeNull();
+		expect(await pending()).toBe(false);
 	});
 
 	it("keeps hooks per bucket", async () => {

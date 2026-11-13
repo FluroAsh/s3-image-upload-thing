@@ -11,24 +11,21 @@ import type { DeployHook } from "~/shared/types";
 const isFailure = (hook: DeployHook) =>
 	!!hook.lastResult && (hook.lastResult.status < 200 || hook.lastResult.status >= 300);
 
-const useNow = () => {
-	const [now, setNow] = useState(() => Date.now());
+/** A settled status stops being news after this long, so the top bar clears. */
+const SETTLED_MS = 30 * 60_000;
+
+/** True once `at` is older than SETTLED_MS; one timer per settled deploy instead of a ticking clock. */
+const useSettledExpired = (at: number | undefined) => {
+	const [expired, setExpired] = useState(false);
 	useEffect(() => {
-		const timer = setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(timer);
-	}, []);
-	return now;
-};
-
-const countdown = (ms: number) => {
-	const seconds = Math.max(0, Math.ceil(ms / 1000));
-	return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-};
-
-const ago = (ms: number) => {
-	const minutes = Math.floor(ms / 60_000);
-	if (minutes < 1) return "just now";
-	return minutes < 60 ? `${minutes} min ago` : `${Math.floor(minutes / 60)} h ago`;
+		if (at === undefined) return;
+		const left = at + SETTLED_MS - Date.now();
+		setExpired(left <= 0);
+		if (left <= 0) return;
+		const timer = setTimeout(() => setExpired(true), left);
+		return () => clearTimeout(timer);
+	}, [at]);
+	return expired;
 };
 
 /** Pending shows before a failure, because the pending deploy will replace the failed result. */
@@ -36,16 +33,16 @@ export const DeployStatus = () => {
 	const { bucketName, bucketRegion } = useExplorer().state;
 	const { data } = useDeployHooks();
 	const deploy = useDeployNow();
-	const now = useNow();
+	const results = data?.hooks.flatMap(({ lastResult }) => (lastResult ? [lastResult] : [])) ?? [];
+	const lastAt = results.length ? Math.max(...results.map(({ at }) => Date.parse(at))) : undefined;
+	const expired = useSettledExpired(lastAt);
 
 	if (!data || data.hooks.length === 0) return null;
 
-	if (data.pendingUntil) {
+	if (data.pending) {
 		return (
 			<div className="flex items-center gap-1">
-				<Badge className="whitespace-nowrap tabular-nums">
-					Deploys in {countdown(Date.parse(data.pendingUntil) - now)}
-				</Badge>
+				<Badge className="whitespace-nowrap">Deploy pending</Badge>
 				<Button variant="ghost" pending={deploy.isPending} onClick={() => deploy.mutate()}>
 					Deploy now
 				</Button>
@@ -53,9 +50,7 @@ export const DeployStatus = () => {
 		);
 	}
 
-	const results = data.hooks.flatMap(({ lastResult }) => (lastResult ? [lastResult] : []));
-	if (results.length === 0) return null;
-	const lastAt = Math.max(...results.map(({ at }) => Date.parse(at)));
+	if (lastAt === undefined || expired) return null;
 	const failed = data.hooks.filter(isFailure);
 
 	if (failed.length > 0) {
@@ -68,7 +63,6 @@ export const DeployStatus = () => {
 				<Badge tone="err" className="whitespace-nowrap">
 					{failed.length} of {data.hooks.length} hooks failed
 					<span className="sr-only">: {failed.map(({ name }) => name).join(", ")}</span>
-					<span aria-hidden> · {ago(now - lastAt)}</span>
 				</Badge>
 			</Link>
 		);
@@ -77,7 +71,7 @@ export const DeployStatus = () => {
 	return (
 		<span className="inline-flex items-center gap-1.5 text-caption text-fg-2">
 			<span aria-hidden className="size-1.5 rounded-full bg-ok" />
-			Deployed {ago(now - lastAt)}
+			Deployed
 		</span>
 	);
 };

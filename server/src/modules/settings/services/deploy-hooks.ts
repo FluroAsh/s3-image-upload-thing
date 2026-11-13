@@ -5,16 +5,13 @@ import { hooksOf, readSettings, type StoredHook } from "./settings-store";
 export const DEBOUNCE_MS = 2 * 60 * 1000;
 const HOOK_TIMEOUT_MS = 10_000;
 
-type Pending = { timer: ReturnType<typeof setTimeout>; deadline: number };
+type Pending = { timer: ReturnType<typeof setTimeout> };
 
 /** In memory only: a restart drops a pending deploy and the last results. */
 const pending = new Map<string, Pending>();
 const lastResults = new Map<string, HookResult>();
 
-export const pendingUntil = (bucket: string): string | null => {
-	const deadline = pending.get(bucket)?.deadline;
-	return deadline === undefined ? null : new Date(deadline).toISOString();
-};
+export const isPending = (bucket: string) => pending.has(bucket);
 
 export const lastResultOf = (hookId: string): HookResult | null => lastResults.get(hookId) ?? null;
 
@@ -57,5 +54,5 @@ export const markBucketChanged = async (bucket: string): Promise<void> => {
 	const timer = setTimeout(() => {
 		deployBucket(bucket).catch((error) => console.error(`Deploy of ${bucket} failed`, error));
 	}, DEBOUNCE_MS);
-	pending.set(bucket, { timer, deadline: Date.now() + DEBOUNCE_MS });
+	pending.set(bucket, { timer });
 };

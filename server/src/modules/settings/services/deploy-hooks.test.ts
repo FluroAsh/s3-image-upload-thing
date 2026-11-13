@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEBOUNCE_MS, deployBucket, lastResultOf, markBucketChanged, pendingUntil } from "./deploy-hooks";
+import { DEBOUNCE_MS, deployBucket, isPending, lastResultOf, markBucketChanged } from "./deploy-hooks";
 
 const settings = vi.hoisted(() => ({ hooks: [] as { id: string; name: string; url: string }[] }));
 
@@ -41,13 +41,13 @@ describe("deploy debounce", () => {
 			"https://example.com/secret-path",
 			expect.objectContaining({ method: "POST" }),
 		);
-		expect(pendingUntil("b")).toBeNull();
+		expect(isPending("b")).toBe(false);
 	});
 
-	it("reports the deadline while pending", async () => {
+	it("reports pending until the deploy fires", async () => {
 		await markBucketChanged("b");
 
-		expect(pendingUntil("b")).toBe(new Date(Date.now() + DEBOUNCE_MS).toISOString());
+		expect(isPending("b")).toBe(true);
 	});
 
 	it("does nothing for a bucket without hooks", async () => {
@@ -55,7 +55,7 @@ describe("deploy debounce", () => {
 
 		await markBucketChanged("b");
 
-		expect(pendingUntil("b")).toBeNull();
+		expect(isPending("b")).toBe(false);
 	});
 
 	it("deploys at once and cancels the pending timer", async () => {
@@ -66,7 +66,7 @@ describe("deploy debounce", () => {
 
 		expect(results).toEqual([{ id: "1", name: "Site", result: { at: expect.any(String), status: 200 } }]);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(pendingUntil("b")).toBeNull();
+		expect(isPending("b")).toBe(false);
 	});
 
 	it("records a failed call as status 0 and logs without the URL", async () => {
@@ -88,13 +88,13 @@ describe("deploy debounce", () => {
 		const deploying = deployBucket("b");
 		await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 
-		expect(pendingUntil("b")).not.toBeNull();
+		expect(isPending("b")).toBe(true);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 
 		answer({ status: 200 });
 		await deploying;
 
-		expect(pendingUntil("b")).toBeNull();
+		expect(isPending("b")).toBe(false);
 		expect(lastResultOf("1")?.status).toBe(200);
 	});
 
@@ -108,6 +108,6 @@ describe("deploy debounce", () => {
 		answer({ status: 200 });
 		await deploying;
 
-		expect(pendingUntil("b")).not.toBeNull();
+		expect(isPending("b")).toBe(true);
 	});
 });

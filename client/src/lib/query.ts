@@ -77,7 +77,7 @@ export const useDeployHooks = () => {
 		queryKey: ["hooks", bucketName],
 		queryFn: () => getHooks({ bucketName, bucketRegion }),
 		enabled: !!bucketName && !!bucketRegion,
-		refetchInterval: ({ state }) => (state.data?.pendingUntil ? PENDING_POLL_MS : false),
+		refetchInterval: ({ state }) => (state.data?.pending ? PENDING_POLL_MS : false),
 		retry: false,
 	});
 };

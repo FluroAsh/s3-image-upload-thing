@@ -13,14 +13,7 @@ import type {
 	UpdateHookRequest,
 } from "~/shared/types";
 
-import {
-	cancelPending,
-	deployBucket,
-	fireHook,
-	forgetHook,
-	lastResultOf,
-	pendingUntil,
-} from "../services/deploy-hooks";
+import { cancelPending, deployBucket, fireHook, forgetHook, isPending, lastResultOf } from "../services/deploy-hooks";
 import { hooksOf, readSettings, type StoredHook, updateHooks } from "../services/settings-store";
 
 const bucketOf = (ctx: Context) => bucketLocationOf(ctx).bucketName;
@@ -62,7 +55,7 @@ const hookNotFound = () => new HTTPException(404, { message: "No such hook" });
 export const listHooksHandler = (ctx: Context) =>
 	respond<HooksResponse>(ctx, async () => {
 		const bucket = bucketOf(ctx);
-		return { hooks: hooksOf(await readSettings(), bucket).map(present), pendingUntil: pendingUntil(bucket) };
+		return { hooks: hooksOf(await readSettings(), bucket).map(present), pending: isPending(bucket) };
 	});
 
 export const addHookHandler = (ctx: Context) =>

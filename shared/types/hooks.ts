@@ -15,8 +15,8 @@ export type DeployHook = {
 
 export type HooksResponse = {
   hooks: DeployHook[];
-  /** ISO 8601 time the pending deploy fires, or null when no deploy is waiting. */
-  pendingUntil: string | null;
+  /** True while a deploy waits out the quiet period after the last write. */
+  pending: boolean;
 };
 
 export type AddHookRequest = { name: string; url: string };
