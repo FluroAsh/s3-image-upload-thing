@@ -97,9 +97,24 @@ export const setFoldersUnder = (childMap: Map<string, TreeNode[]>, folderId: str
 export const setFoldersIn = (childMap: Map<string, TreeNode[]>, folderId: string): TreeNode[] =>
 	(childMap.get(folderId) ?? []).filter((node) => isSetFolder(node, childMap.get(node.id)));
 
-/** The sets inside a folder (`""` for the bucket root), found by folder id prefix. */
-export const setsUnder = (sets: ReadonlyMap<string, TreeNode>, folderId: string) =>
-	[...sets].filter(([, folder]) => folder.id.startsWith(folderId)).map(([set]) => set);
+/** Each folder's `shown` sets in tree order, keyed by folder id (`""` for the bucket root); one walk, so rows never rescan every set. */
+export const groupSets = (childMap: Map<string, TreeNode[]>, shown: ReadonlySet<string>) => {
+	const groups = new Map<string, string[]>();
+	const walk = (folderId: string): string[] => {
+		const group = (childMap.get(folderId) ?? []).flatMap((node) => {
+			if (!node.isFolder) return [];
+			if (!isSetFolder(node, childMap.get(node.id))) return walk(node.id);
+			const set = setPathOf(node.id);
+			const own = shown.has(set) ? [set] : [];
+			groups.set(node.id, own);
+			return own;
+		});
+		groups.set(folderId, group);
+		return group;
+	};
+	walk("");
+	return groups;
+};
 
 export const pickedInTreeOrder = (sets: ReadonlyMap<string, TreeNode>, picked: ReadonlySet<string>) =>
 	[...sets].filter(([set]) => picked.has(set));

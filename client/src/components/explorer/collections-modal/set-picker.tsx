@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { memo, useDeferredValue, useMemo, useRef, useState } from "react";
 
 import { LucideDatabase, LucideFolderClosed } from "lucide-react";
 
@@ -12,10 +12,10 @@ import {
 	filterNeedle,
 	formatCount,
 	getDepthPadding,
+	groupSets,
 	isSetFolder,
 	matchesFilter,
 	pickedInTreeOrder,
-	setsUnder,
 	toggleSets,
 } from "../utils";
 import { RowThumb } from "./collection-thumb";
@@ -35,8 +35,10 @@ type PickerProps = {
 };
 
 type BranchProps = PickerProps & {
-	/** Sets that pass the filter; folders without one are hidden. */
-	shown: ReadonlySet<string>;
+	/** Each folder's sets that pass the filter; folders without one are hidden. */
+	groups: ReadonlyMap<string, string[]>;
+	/** The bucket's folders by parent id. */
+	childMap: Map<string, TreeNode[]>;
 };
 
 /** Sets leaving another collection are named when they share one source, since the footer has room for one name. */
@@ -108,10 +110,9 @@ const Row = ({
 	);
 };
 
-const Branch = ({ node, depth, shown, ...pick }: BranchProps & { node: TreeNode; depth: number }) => {
-	const { childMap, sets } = useBucketSets();
-
-	const group = setsUnder(sets, node.id).filter((set) => shown.has(set));
+/** Memoised, so a filter keystroke re-renders the rows only once the deferred filter catches up. */
+const Branch = memo(({ node, depth, groups, childMap, ...pick }: BranchProps & { node: TreeNode; depth: number }) => {
+	const group = groups.get(node.id) ?? [];
 	const held = useHeldBy(node.isFolder && isSetFolder(node, childMap.get(node.id)) ? group[0] : undefined);
 	if (!node.isFolder || !group.length) return null;
 
@@ -131,22 +132,24 @@ const Branch = ({ node, depth, shown, ...pick }: BranchProps & { node: TreeNode;
 				count={String(group.length)}
 			/>
 			{(childMap.get(node.id) ?? []).map((child) => (
-				<Branch key={child.id} {...pick} shown={shown} node={child} depth={depth + 1} />
+				<Branch key={child.id} {...pick} groups={groups} childMap={childMap} node={child} depth={depth + 1} />
 			))}
 		</>
 	);
-};
+});
 
-/** The bucket as a tree of folders with sets as leaves; ticking a folder (the root included) ticks every set under it that passes the filter. */
-export const SetPicker = (pick: PickerProps) => {
+/** The bucket as a tree of folders with sets as leaves; ticking a folder (the root included) ticks every set under it that passes the filter. Memoised, since re-rendering every row on each keystroke of a sibling input lags on large buckets. */
+export const SetPicker = memo((pick: PickerProps) => {
 	const { bucketName } = useExplorer().state;
 	const { childMap, sets, data } = useBucketSets();
 	const [filter, setFilter] = useState("");
 	const filterRef = useRef<HTMLInputElement>(null);
 
-	const needle = filterNeedle(filter);
+	/** Deferred, so the filter box keeps up with typing while hundreds of rows re-render behind it. */
+	const needle = useDeferredValue(filterNeedle(filter));
 	const shown = useMemo(() => new Set([...sets.keys()].filter((set) => matchesFilter(set, needle))), [sets, needle]);
-	const all = setsUnder(sets, "").filter((set) => shown.has(set));
+	const groups = useMemo(() => groupSets(childMap, shown), [childMap, shown]);
+	const all = groups.get("") ?? [];
 
 	return (
 		<div className="space-y-2">
@@ -171,7 +174,7 @@ export const SetPicker = (pick: PickerProps) => {
 							count={formatCount(all.length, "set", false)}
 						/>
 						{(childMap.get("") ?? []).map((node) => (
-							<Branch key={node.id} {...pick} shown={shown} node={node} depth={1} />
+							<Branch key={node.id} {...pick} groups={groups} childMap={childMap} node={node} depth={1} />
 						))}
 					</>
 				) : (
@@ -187,4 +190,4 @@ export const SetPicker = (pick: PickerProps) => {
 			/>
 		</div>
 	);
-};
+});

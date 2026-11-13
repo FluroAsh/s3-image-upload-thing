@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { LucideAlertTriangle } from "lucide-react";
 
@@ -22,6 +22,7 @@ const AddSetsForm = ({ collection }: { collection: Collection }) => {
 	const add = useSetMembers();
 	const [picked, setPicked] = useState<Set<string>>(new Set());
 	const [confirming, setConfirming] = useState(false);
+	const locked = useMemo(() => new Set(collection.photos.map((photo) => photo.set)), [collection.photos]);
 
 	const sets = setsNotIn(collection, picked);
 	const moving = setsToMove(data, sets, collection.slug);
@@ -44,7 +45,7 @@ const AddSetsForm = ({ collection }: { collection: Collection }) => {
 				backLabel={`Back to ${collection.name}`}
 			/>
 			<DialogBody className="space-y-2">
-				<SetPicker picked={picked} onChange={setPicked} locked={new Set(collection.photos.map((photo) => photo.set))} />
+				<SetPicker picked={picked} onChange={setPicked} locked={locked} />
 				{add.error && !confirming && (
 					<StateMessage
 						size="inline"
