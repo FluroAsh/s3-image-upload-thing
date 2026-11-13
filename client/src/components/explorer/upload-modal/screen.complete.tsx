@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { DialogBody, DialogClose, DialogFooter } from "@/components/ui/dialog";
-import { skippedSizes } from "@/lib/upload-files";
+import { type PickedFile, skippedSizes } from "@/lib/upload-files";
 import type { ImageVariant, UploadFileResult, UploadStatus } from "~/shared/types";
 
 import { Thumb } from "./file-list";
@@ -28,9 +28,9 @@ const detailOf = ({ status, reason, variants = [] }: UploadFileResult) => {
 	return skipped.length > 0 ? `Stored · ${sizes} · ${skipped.join(", ")} skipped` : `Stored · ${sizes}`;
 };
 
-const ResultRow = ({ result, file }: { result: UploadFileResult; file?: File }) => (
+const ResultRow = ({ result, picked }: { result: UploadFileResult; picked?: PickedFile }) => (
 	<li className="flex min-h-12 items-center gap-2.5 border-b border-line px-2 py-1 last:border-b-0">
-		<Thumb file={result.status === "stored" ? file : undefined} />
+		<Thumb picked={result.status === "stored" ? picked : undefined} />
 		<div className="min-w-0 flex-1">
 			<p className="truncate font-mono text-body text-fg">{result.file}</p>
 			<p className={result.status === "failed" ? "text-caption text-err" : "text-caption text-fg-2"}>
@@ -95,11 +95,7 @@ export const CompleteScreen = () => {
 				<Summary results={results} />
 				<ul className="rounded-md border border-line bg-panel">
 					{results.map((result) => (
-						<ResultRow
-							key={result.file}
-							result={result}
-							file={files.find(({ file }) => file.name === result.file)?.file}
-						/>
+						<ResultRow key={result.file} result={result} picked={files.find(({ file }) => file.name === result.file)} />
 					))}
 				</ul>
 			</DialogBody>

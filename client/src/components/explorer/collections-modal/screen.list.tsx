@@ -33,7 +33,7 @@ const CollectionRow = ({ collection, sets }: { collection: Collection; sets: Map
 				onClick={() => setScreen({ screen: "detail", slug: collection.slug })}
 				className="flex min-w-0 flex-1 items-center gap-3 text-left after:absolute after:inset-0"
 			>
-				<CollectionThumb folder={shown ? sets.get(shown) : undefined} />
+				<CollectionThumb folder={shown ? sets.get(shown) : undefined} className="relative z-10 size-8" />
 				<span className="min-w-0 flex-1">
 					<span className="block truncate text-body font-medium text-fg">{collection.name}</span>
 					<span className="block truncate font-mono text-caption text-fg-2">

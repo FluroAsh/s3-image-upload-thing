@@ -1,16 +1,16 @@
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { LucideImages } from "lucide-react";
 
 import { useInView } from "@/hooks/useInView";
-import type { Point } from "@/hooks/usePointerPosition";
 import { useExplorer } from "@/lib/providers/explorer-provider";
 import { useFileTree, usePresignedUrls } from "@/lib/query";
 import { cn } from "@/lib/utils";
 import type { ImageVariant, TreeNode } from "~/shared/types";
 
+import { useHoverPreview } from "../hover-preview";
 import { PREVIEW_ORDER, pickPreviewVariant } from "../utils";
-import { HoverPreview } from "./hover-preview";
+import { SetPreview } from "./set-preview";
 
 const THUMBNAIL_FIRST: ImageVariant[] = ["thumbnail", ...PREVIEW_ORDER];
 
@@ -43,9 +43,11 @@ export const CollectionThumb = ({
 	const { data, isError } = usePresignedUrls(variant && enabled ? [variant.id] : [], bucketName, bucketRegion);
 	const url = variant && data?.[variant.id];
 	const missing = fallback && (!variant || (url && failedUrl === url) || isError);
+	const hover = useHoverPreview();
 
 	return (
 		<div
+			{...(url && !missing ? hover.handlers : {})}
 			data-missing={missing ? "" : undefined}
 			className={cn("shrink-0 rounded-md bg-raised overflow-hidden", missing && "grid place-items-center", className)}
 		>
@@ -54,23 +56,17 @@ export const CollectionThumb = ({
 				: url && (
 						<img src={url} alt="" loading="lazy" className="size-full object-cover" onError={() => setFailedUrl(url)} />
 					)}
+			{hover.at && folder && <SetPreview folder={folder} start={hover.at} onClose={hover.close} />}
 		</div>
 	);
 };
 
-/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker, and previews it larger on hover. */
+/** A set row's 20px thumbnail, which asks for its image only once the row has scrolled into the picker. */
 export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 	const [ref, seen] = useInView();
-	const [hoverAt, setHoverAt] = useState<Point>();
-	const close = useCallback(() => setHoverAt(undefined), []);
 
 	return (
-		<div
-			ref={ref}
-			className="shrink-0"
-			onPointerEnter={(event) => setHoverAt({ x: event.clientX, y: event.clientY })}
-			onPointerLeave={close}
-		>
+		<div ref={ref} className="shrink-0">
 			<CollectionThumb
 				folder={folder}
 				className="size-5 rounded-sm"
@@ -78,7 +74,6 @@ export const RowThumb = ({ folder }: { folder: TreeNode }) => {
 				enabled={seen}
 				fallback={<SetIcon className="size-3.5" />}
 			/>
-			{hoverAt && <HoverPreview folder={folder} start={hoverAt} onClose={close} />}
 		</div>
 	);
 };
