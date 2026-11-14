@@ -22,7 +22,7 @@ type FileTreeProps = {
 
 export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps) => {
 	const {
-		actions: { setAttentionFolder },
+		actions: { setAttentionFolder, select },
 	} = useExplorer();
 	const collectionMove = useCollectionMove();
 	const [focusedId, setFocusedId] = useState<string>();
@@ -47,8 +47,11 @@ export const FileTree = ({ rows, query, onToggle, onClearFilter }: FileTreeProps
 
 		const move = navigate(rows, id, event.key);
 		event.preventDefault();
-		if (move?.type === "focus") focusRow(move.id);
-		else if (move) onToggle(move.id);
+		if (move?.type === "toggle") return onToggle(move.id);
+		if (!move) return;
+		focusRow(move.id);
+		const target = rows.find((row) => row.node.id === move.id);
+		if (target && target.kind !== "folder") select({ id: target.node.id, kind: target.kind });
 	};
 
 	return (
